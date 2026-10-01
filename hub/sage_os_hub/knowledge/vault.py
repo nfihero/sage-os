@@ -14,6 +14,8 @@ from pathlib import Path
 
 import yaml
 
+from .screen import screen
+
 REQUIRED = ("uid", "title", "created", "updated", "type", "status", "origin")
 ORIGINS = ("human", "imported", "scanned", "captured", "agent")
 ATTACHMENTS, ARCHIVE = "Attachments", "Archive"
@@ -88,6 +90,7 @@ class Note:
     links: list[str] = field(default_factory=list)   # uids (I8)
     archived: bool = False
     problems: list[str] = field(default_factory=list)
+    sensitive: str | None = None       # screening category (K4): the file stays, its text skips the index
     size: int = 0
     mtime: float = 0.0
 
@@ -131,7 +134,7 @@ def parse_note(rel: str, text: str, size: int = 0, mtime: float = 0.0) -> tuple[
                 origin=origin, agent=fm.get("agent") and str(fm["agent"]),
                 created=jsonable(fm.get("created")), updated=jsonable(fm.get("updated")),
                 tags=_list(fm.get("tags")), links=_list(fm.get("links")), archived=parts[0] == ARCHIVE,
-                problems=problems, size=size, mtime=mtime)
+                problems=problems, sensitive=screen(text), size=size, mtime=mtime)
     return note, fm, body
 
 

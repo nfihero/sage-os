@@ -187,8 +187,8 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Costs / not yet:** this is keyword search, not the meaning-based search BookShelf's DESIGN §6 asks
   for. Semantic search needs an embedding model and BookShelf's `Embedder` seam (its open decision 11.6)
   — revisit before Ask (K11) or briefing packs (K8), which benefit most. Screened-sensitive content
-  (I4) can't reach the index from Sage OS writes once K4 screens before disk; files a user drops in
-  directly are indexed as they are.
+  (I4): since K4 (D12) a note whose text looks secret is indexed by title and tags only, whether an
+  agent or the user put it there.
 - **Revisit if:** keyword results miss notes the user expects (e.g. synonyms), or the vault grows past
   ~20k notes (re-measure indexing time).
 
@@ -217,10 +217,34 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
     whole instead (correctness over formatting).
   - The journal (`data/bookshelf.db`) is not a cache: deleting it loses undo history and pending
     proposals, never notes.
-- **Not yet:** secret screening before the journal and disk (K4 — until then a proposal containing a
-  secret is stored in the journal, and written if approved); agents proposing through tools (K5 —
+- **Not yet:** ~~secret screening before the journal and disk~~ (done in K4, D12); agents proposing through tools (K5 —
   today only via `POST /api/vault/proposals`); approve-with-corrections, per-item undo inside a batch,
   batch approval across proposals and per-agent trust (K7).
+
+## D12 — Secret screening, held proposals and the *Save anyway* override
+
+- **Date / by:** 2026-10-01 — screening by Claude while building K4 (BookShelf I4, DESIGN §7); the
+  manual override at the user's request ("Add a manual override for K4")
+- **Status:** accepted
+- **Decision:**
+  - Everything a proposer sends is screened **before** anything is stored. A hit never reaches the
+    journal, the vault or the index. Only a coarse category ("a password or key", "a payment card
+    number", "a government ID number", "a bank account number") and *where* (e.g. "change 1 (body)")
+    are reported or logged — never the value; if the agent id itself is the hit, it's withheld too.
+  - Screened proposals are **held** in the inbox, in memory only. The user can *Reject* or *Save
+    anyway*. *Save anyway* is the manual override: two clicks with a warning, then the proposal is
+    stored and filed in one step, the category is recorded on the proposal (`screened`) and in a
+    `proposal.override` event. Agents can't override.
+  - Only the proposer's own text is screened: an agent may still retag or archive a note whose
+    existing text looks sensitive, because that text is the user's.
+  - Any vault note whose text looks sensitive keeps its file but is left out of the search index
+    (title and tags only) and is marked 🔒 in Bookshelf.
+- **Costs / limits:** held proposals vanish on a hub restart (by design: keeping them would mean
+  storing the secret). The patterns are heuristics — false positives are expected (the proposer can
+  rephrase; the user can Save anyway) and unknown token formats will slip through. *Save anyway* puts
+  the secret in the vault file and the undo journal (`data/bookshelf.db`), as the user chose.
+- **Revisit if:** false positives become frequent on real notes, or a secret slips through (add the
+  pattern and a test); consider a per-category allow list in settings rather than a global off switch.
 
 ---
 

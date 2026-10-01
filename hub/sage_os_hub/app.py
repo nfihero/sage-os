@@ -14,6 +14,7 @@ import sys
 import webbrowser
 import logging
 import time
+import uuid
 from pathlib import Path
 from contextlib import asynccontextmanager, contextmanager
 from urllib.parse import urlparse
@@ -34,7 +35,7 @@ from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
-from .knowledge import ProposalError, SearchIndex, Vault, Writer
+from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .store import Store
 
 log = logging.getLogger("sage_os")
@@ -159,6 +160,34 @@ class Hub:
                 self.offer_proposal(p, self.writer.preview(p["id"]))
             except ProposalError as exc:      # e.g. the note was edited while the hub was down
                 self.offer_proposal(p, problem=str(exc))
+
+    def hold_screened(self, body, exc, preview: list[dict]):
+        """K4 manual override: a screened proposal waits in the inbox, in memory only (never on disk),
+        until the user rejects it or chooses "Save anyway". A hub restart drops it."""
+        who = "(withheld)" if exc.where == "the agent name" else body.agent
+        key = f"held:{uuid.uuid4().hex[:10]}"
+
+        async def resolver(choice, note):
+            info = {"agent": who, "where": exc.where, "category": exc.category}
+            if choice != "save_anyway":
+                self.event("knowledge", "bookshelf", "proposal.held_rejected", info)
+                return
+            p = await asyncio.to_thread(lambda: self.writer.propose(body.agent, body.summary, body.changes, override=exc.category))
+            self.event("knowledge", "bookshelf", "proposal.override", info | {"proposal": p["id"]})
+            try:
+                batch = await asyncio.to_thread(self.writer.approve, p["id"], note)
+            except ProposalError as err:          # e.g. a note changed meanwhile: it stays as a normal proposal
+                self.offer_proposal(p, problem=str(err))
+                return
+            self.event("knowledge", "bookshelf", "proposal.applied",
+                       {"proposal": p["id"], "batch": batch["id"], "agent": who, "files": batch["files"]})
+            self.refresh_vault()
+
+        self.inbox.add(source="bookshelf", key=key, title=f"Held: a Bookshelf proposal looks like it contains {exc.category}",
+                       detail=f"{exc.where} looks like it contains {exc.category}. Nothing has been stored. "
+                              "Reject it, or save it anyway if you're sure it belongs in your notes.",
+                       choices=["reject", "save_anyway"], resolver=resolver,
+                       context={"held": True, "agent": who, "where": exc.where, "category": exc.category, "changes": preview})
 
     def refresh_vault(self):
         """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
@@ -383,6 +412,18 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         """Store a proposal and put it in the inbox. Nothing is written to the vault here (I1)."""
         try:
             p = await asyncio.to_thread(hub.writer.propose, body.agent, body.summary, body.changes)
+        except SensitiveContent as exc:
+            # The event says who, where and what kind -- never the content (I4). If the agent name
+            # itself tripped the screen, it isn't recorded either.
+            who = "(withheld)" if exc.where == "the agent name" else body.agent
+            hub.event("knowledge", "bookshelf", "proposal.screened", {"agent": who, "where": exc.where, "category": exc.category})
+            try:
+                preview = await asyncio.to_thread(hub.writer.render, body.agent, body.summary, body.changes)
+            except ProposalError as invalid:          # not worth holding: it couldn't be filed anyway
+                raise HTTPException(400, f"{exc} Also: {invalid}")
+            hub.hold_screened(body, exc, preview)
+            return JSONResponse({"status": "held", "detail": f"{exc} It is held for the user's review; only they can save it anyway."},
+                                status_code=202)
         except ProposalError as exc:
             raise HTTPException(400, str(exc))
         hub.offer_proposal(p, p.pop("preview"))

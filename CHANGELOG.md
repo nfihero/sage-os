@@ -12,6 +12,35 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-01
+
+Gate: K4 pass — on the scratch hub two proposals carrying a fake API key were held (HTTP 202, value
+never echoed); a byte search of every file the hub keeps (hub.db, journal, index, vault, log) found
+the key nowhere. Manual override (user request): one held card *Rejected*, the other *Saved anyway*
+after a two-step confirm — filed, recorded as `screened = a password or key`, its text kept out of
+search, the key present only in that note and the undo journal. Checks: pytest 95/95, UI build clean,
+smoke 17/17.
+
+### Added
+- **Secret screening (K4, BookShelf I4):** `knowledge/screen.py` checks everything a proposer sends
+  (title, body, tags, links, folder, type, status, summary, agent id) before anything is stored:
+  private keys; Anthropic, OpenAI, GitHub, AWS, Google, Slack and Stripe tokens; JWTs; URLs with a
+  password; `password:` / `API_KEY=` style assignments (placeholders and code like `os.getenv(...)`
+  ignored); Luhn-valid card numbers; US SSNs; Aadhaar (Verhoeff checksum); IBANs (mod-97). Only a
+  coarse category is ever reported or logged ("a password or key"), never the value.
+- **Manual override (*Save anyway*):** a screened proposal is **held** in the inbox — in memory only,
+  nothing on disk, dropped by a hub restart — with *Reject* or *Save anyway* (two clicks, with a
+  warning). Content is hidden behind *Show content*. Saving anyway stores and files it in one step and
+  records the category in the proposal's new `screened` column and a `proposal.override` event. Only
+  the user can override; agents get `202 held` back. (DECISIONS D12)
+- Notes already in the vault that look sensitive (e.g. dropped in by hand) stay in the file but their
+  text is left out of the search index; Bookshelf marks them 🔒. Index schema 2 forces a rebuild so
+  older indexes drop such bodies.
+
+### Changed
+- `POST /api/vault/proposals` answers `202 {"status": "held"}` for screened proposals (was going to
+  be a plain refusal); invalid ones still get 400.
+
 ## [0.6.0] — 2026-10-01
 
 Gate: K3 pass — on a 2,006-note scratch vault a proposal from `claude:cs_k3live` (create a note +

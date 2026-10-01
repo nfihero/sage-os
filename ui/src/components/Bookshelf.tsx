@@ -96,6 +96,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
                       className={`flex w-full items-baseline gap-1.5 border-l-2 py-0.5 pl-2 text-left ${n.ref === ref ? "border-cyan bg-cyan/10 text-ink" : "border-transparent text-ink/80 hover:border-cyan/40"}`}>
                       <span className="min-w-0 flex-1 truncate">{n.title}</span>
                       {n.origin === "agent" && <span className="text-[10px] text-orange" title={`written by ${n.agent ?? "an agent"}`}>AI</span>}
+                      {n.sensitive && <span className="text-[10px]" title={`Looks like it contains ${n.sensitive}; its text is left out of search`}>🔒</span>}
                       {n.problems.length > 0 && <span className="text-[10px] text-amber" title={n.problems.join("\n")}>⚠</span>}
                     </button>
                   ))}
@@ -226,6 +227,12 @@ function NoteView({ meta, onBack, onOpen, known }: { meta: NoteMeta; onBack: () 
         </span>
       </div>
       <div className="panel-body text-[13.5px] leading-relaxed">
+        {meta.sensitive && (
+          <div className="mb-3 border border-amber/50 bg-amber/5 p-2 text-[12px] text-amber">
+            🔒 This note looks like it contains {meta.sensitive}. It stays in your file, but Sage OS leaves its text out of search.
+            A password manager is a safer home for secrets.
+          </div>
+        )}
         {meta.problems.length > 0 && (
           <div className="mb-3 border border-amber/50 bg-amber/5 p-2 text-[12px]">
             <div className="display mb-1 text-[10px] text-amber">Doesn't follow the vault contract</div>

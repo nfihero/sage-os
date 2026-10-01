@@ -1,6 +1,8 @@
 """The single writer (K3): the only code that changes the vault, and only for an approved proposal.
 
-BookShelf invariants, carried into Python (DECISIONS D2, D11):
+BookShelf invariants, carried into Python (DECISIONS D2, D11, D12):
+  I4  screened content never stored -- `propose` screens everything the proposer sent before the
+      journal sees it (screen.py); a hit refuses the whole proposal.
   I1  no write without approval -- `approve` is called only from the inbox's resolver; no HTTP route
       reaches it directly, and agents (K5) get propose tools only.
   I2  every write journaled and reversible -- the journal keeps exact before/after bytes per file;
@@ -21,7 +23,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .proposals import Entry, ProposalError, normalize, plan, sha
+from .proposals import Entry, ProposalError, normalize, plan, screen_proposal, sha
 from .vault import Vault
 
 
@@ -67,30 +69,49 @@ class Writer:
           CREATE TABLE IF NOT EXISTS entries(batch_id INTEGER, seq INTEGER, path TEXT NOT NULL,
             before BLOB, after BLOB, PRIMARY KEY(batch_id, seq));
         """)
+        if "screened" not in [r[1] for r in self.db.execute("PRAGMA table_info(proposals)")]:
+            # K4 override: the screening category the user chose to save anyway (never the content)
+            self.db.execute("ALTER TABLE proposals ADD COLUMN screened TEXT")
+            self.db.commit()
 
     # -- proposals -----------------------------------------------------------------------------
-    def propose(self, agent: str, summary: str, changes: list) -> dict:
-        """Check and store a proposal; the vault is not touched. -> proposal with a preview per change."""
-        if not isinstance(agent, str) or not agent.strip() or len(agent) > 200 or "\n" in agent:
-            raise ProposalError("agent must name who is proposing, e.g. claude:<session> or hermes:default:<session>")
-        summary = (summary or "").strip()[:500]
-        norm = normalize(changes)
+    def propose(self, agent: str, summary: str, changes: list, *, override: str | None = None) -> dict:
+        """Check and store a proposal; the vault is not touched. -> proposal with a preview per change.
+
+        `override` is the user's "Save anyway" (K4): the screening category they accepted. Only the
+        inbox's held-proposal resolver passes it; agents can't.
+        """
+        agent, summary, norm = self._check(agent, summary, changes)
+        if override is None:
+            screen_proposal(agent, summary, norm)      # K4: before anything is stored (I4)
         with self.lock:
-            planned = plan(self.vault, norm, agent.strip())
+            planned = plan(self.vault, norm, agent)
             bases = {e.path: sha(e.before) for p in planned for e in p.entries if e.before is not None}
             pid = f"p_{uuid.uuid4().hex[:10]}"
-            self.db.execute("INSERT INTO proposals(id, agent, summary, created, status, changes, bases) VALUES (?,?,?,?,?,?,?)",
-                            (pid, agent.strip(), summary, time.time(), "pending", json.dumps(norm), json.dumps(bases)))
+            self.db.execute("INSERT INTO proposals(id, agent, summary, created, status, changes, bases, screened) VALUES (?,?,?,?,?,?,?,?)",
+                            (pid, agent, summary, time.time(), "pending", json.dumps(norm), json.dumps(bases), override))
             self.db.commit()
         return self.proposal(pid) | {"preview": [p.preview() for p in planned]}
 
+    @staticmethod
+    def _check(agent, summary, changes) -> tuple[str, str, list[dict]]:
+        if not isinstance(agent, str) or not agent.strip() or len(agent) > 200 or "\n" in agent:
+            raise ProposalError("agent must name who is proposing, e.g. claude:<session> or hermes:default:<session>")
+        return agent.strip(), (summary or "").strip()[:500], normalize(changes)
+
+    def render(self, agent: str, summary: str, changes: list) -> list[dict]:
+        """Preview a proposal without screening or storing it (for a held card, kept in memory only)."""
+        agent, _, norm = self._check(agent, summary, changes)
+        with self.lock:
+            return [p.preview() for p in plan(self.vault, norm, agent)]
+
     @_locked
     def proposal(self, pid: str) -> dict | None:
-        row = self.db.execute("SELECT id, agent, summary, created, status, decided, note, changes, batch_id FROM proposals WHERE id=?",
-                              (pid,)).fetchone()
+        row = self.db.execute("SELECT id, agent, summary, created, status, decided, note, changes, batch_id, screened "
+                              "FROM proposals WHERE id=?", (pid,)).fetchone()
         if row is None:
             return None
-        keys = ("id", "agent", "summary", "created", "status", "decided", "note", "changes", "batch_id")
+        keys = ("id", "agent", "summary", "created", "status", "decided", "note", "changes", "batch_id", "screened")
         p = dict(zip(keys, row))
         p["changes"] = json.loads(p["changes"])
         return p

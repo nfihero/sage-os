@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import yaml
 
+from .screen import screen
 from .vault import ARCHIVE, ATTACHMENTS, ULID, Vault, parse_note, split_frontmatter
 
 OPS = ("create", "update", "archive")
@@ -32,6 +33,31 @@ class ProposalError(ValueError):
 
 class StaleProposal(ProposalError):
     """A note it changes was edited after the proposal was made."""
+
+
+class SensitiveContent(ProposalError):
+    """Screening (K4) found something secret-looking; nothing was stored. Never carries the value."""
+
+    def __init__(self, category: str, where: str):
+        self.category, self.where = category, where
+        super().__init__(f"Not saving this: {where} looks like it contains {category}. Nothing was stored. "
+                         "Keep secrets in a password manager, not in notes.")
+
+
+def screen_proposal(agent: str, summary: str, changes: list[dict]) -> None:
+    """Raise SensitiveContent if anything the proposer sent looks secret (BookShelf I4). Only the
+    proposer's own text is screened; an existing note's content is the user's business."""
+    parts = [("the agent name", agent), ("the summary", summary)]
+    for i, ch in enumerate(changes, 1):
+        for k in ("folder", "title", "type", "status", "body"):
+            if k in ch:
+                parts.append((f"change {i} ({k})", ch[k]))
+        for k in ("tags", "links"):
+            parts += [(f"change {i} ({k})", x) for x in ch.get(k, [])]
+    for where, text in parts:
+        category = screen(text)
+        if category:
+            raise SensitiveContent(category, where)
 
 
 def new_ulid(ms: int | None = None) -> str:

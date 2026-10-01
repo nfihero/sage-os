@@ -40,13 +40,14 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.6.0 (1 Oct) | `pytest` 53/53 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
+| Hub (FastAPI) + UI (React) | **works**, v0.7.0 (1 Oct) | `pytest` 95/95 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
 | Hermes chat pane (gateway sessions API) | **works** incl. multi-turn | 3-turn test today, turns 2–3 in 0.9 s (needs the hub's runtime pin, §7 #9) |
 | Inbox: Claude permissions | **works** | gate above |
 | Inbox: Bookshelf proposals → single writer → undo | **works** (K3) | K3 gate 1 Oct on a scratch vault: nothing written before approval; undo byte-exact (vault SHA-256 identical) |
+| Secret screening + *Save anyway* (K4) | **works** | K4 gate 1 Oct: fake key held, found nowhere on disk; override rejected once, saved once (D12) |
 | Inbox: Hermes `approval.request` | **untested live** | code maps it (`hermes_chat.py`); no Hermes run has raised one through Sage OS yet |
 | Inbox: kanban `needs_input` → reply + unblock | **untested live** | card appears for blocked task `t_549737c1`; reply path (`hermes kanban comment` + `unblock`) never clicked |
 | Subscription usage meter | **works, limited** | CLI sends `rate_limit_event`; it omits `utilization` until near a limit, so UI shows "OK + reset time" |
@@ -54,7 +55,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1), keyword search (K2), approved writes + exact undo (K3)** over `data/vault`; agents can't reach it through tools until K5 | gates in `docs/STATUS.md`; contract D9/D11, index D10 |
+| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1), keyword search (K2), approved writes + exact undo (K3), secret screening (K4)** over `data/vault`; agents can't reach it through tools until K5 | gates in `docs/STATUS.md`; contract D9/D11, index D10 |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack

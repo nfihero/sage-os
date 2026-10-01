@@ -6,7 +6,7 @@ import Scramble from "./Scramble";
 
 const LABEL: Record<string, string> = {
   allow_once: "Allow once", allow_session: "Allow for session", allow_always: "Always allow", deny: "Deny",
-  reply_unblock: "Reply & unblock", reply_only: "Reply only", approve: "Approve & file", reject: "Reject",
+  reply_unblock: "Reply & unblock", reply_only: "Reply only", approve: "Approve & file", reject: "Reject", save_anyway: "Save anyway",
 };
 const SOURCE_TONE: Record<string, string> = { claude: "orange", hermes: "", kanban: "amber", bookshelf: "" };
 
@@ -58,34 +58,45 @@ function Card({ it, now, onOpenTask }: { it: InboxItem; now: number; onOpenTask:
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const needsNote = it.source === "kanban";
+  const held = !!it.context.held;              // K4: screened as secret-looking, kept in memory only
+  const [show, setShow] = useState(false);
+  const [armed, setArmed] = useState(false);   // "Save anyway" needs a second, deliberate click
   const decide = async (choice: string) => {
+    if (choice === "save_anyway" && !armed) { setArmed(true); return; }
     setBusy(true); setErr(null);
     try { await post(`/api/inbox/${encodeURIComponent(it.id)}`, { choice, note }); }
     catch (e) { setErr(String((e as Error).message)); setBusy(false); }
   };
   const tone = SOURCE_TONE[it.source] ?? "";
   return (
-    <div className={`card cursor-default ${it.source === "kanban" ? "blocked" : ""}`} data-inbox={it.id}>
+    <div className={`card cursor-default ${it.source === "kanban" || held ? "blocked" : ""}`} data-inbox={it.id}>
       <div className="flex items-center gap-2 text-[11px]">
         <span className={`chip ${tone}`}>{it.source}</span>
+        {held && <span className="chip amber">🔒 held</span>}
         {it.context.task_id && <button className="text-cyan hover:underline" onClick={() => onOpenTask(it.context.task_id)}>{it.context.task_id}</button>}
         {it.context.session_title && <span className="truncate text-mute">{it.context.session_title}</span>}
         <span className="ml-auto text-mute">{ago(it.created, now)}</span>
       </div>
       <div className="mt-1 text-[13px] text-ink">{it.title}</div>
       {it.detail && <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-cyan/15 bg-void/70 p-1.5 text-[12px] text-ink/85">{it.detail}</pre>}
-      {it.source === "bookshelf" && <Changes changes={it.context.changes ?? []} />}
+      {it.source === "bookshelf" && (!held || show) && <Changes changes={it.context.changes ?? []} />}
+      {held && !show && (
+        <button className="mt-1 text-left text-[11.5px] text-amber underline" onClick={() => setShow(true)}>
+          Show content (it may display the secret on screen)
+        </button>
+      )}
+      {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your vault and the undo journal (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
       {it.context.problem && <div className="mt-1 text-[11.5px] text-amber">{String(it.context.problem)}</div>}
       {it.context.cwd && <div className="mt-0.5 text-[10.5px] text-mute">in {it.context.cwd}</div>}
       {it.context.reason && <div className="mt-0.5 text-[11px] text-amber/90">{String(it.context.reason)}</div>}
       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={needsNote ? 3 : 1}
-        placeholder={needsNote ? "Your answer to the worker (required)" : it.source === "bookshelf" ? "Note (optional; kept with your decision)" : "Note (optional; sent with a deny)"}
+        placeholder={needsNote ? "Your answer to the worker (required)" : it.source === "bookshelf" ? "Note (optional; kept with your decision; don't paste secrets)" : "Note (optional; sent with a deny)"}
         className="mt-1.5 w-full resize-y border border-cyan/25 bg-void/80 px-2 py-1 text-[12.5px] text-ink outline-none placeholder:text-mute focus:border-cyan" />
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {it.choices.map((c) => (
           <button key={c} disabled={busy || (needsNote && !note.trim())} onClick={() => decide(c)}
-            className={`chip h-7 px-2.5 disabled:opacity-40 ${c === "deny" || c === "reject" ? "red" : c.startsWith("allow") || c === "reply_unblock" || c === "approve" ? "" : "mute"}`}>
-            {LABEL[c] ?? c}
+            className={`chip h-7 px-2.5 disabled:opacity-40 ${c === "deny" || c === "reject" ? "red" : c === "save_anyway" ? "amber" : c.startsWith("allow") || c === "reply_unblock" || c === "approve" ? "" : "mute"}`}>
+            {c === "save_anyway" && armed ? "Confirm: save it anyway" : LABEL[c] ?? c}
           </button>
         ))}
       </div>

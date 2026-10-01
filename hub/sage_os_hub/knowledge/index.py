@@ -15,7 +15,7 @@ from typing import Callable, Iterable
 
 from .vault import Note
 
-SCHEMA = 1                      # bump to drop and rebuild old indexes
+SCHEMA = 2                      # bump to drop and rebuild old indexes (2: K4 keeps sensitive bodies out)
 HIT_START, HIT_END = "\x02", "\x03"   # snippet markers; the UI turns them into highlights
 WEIGHTS = (10.0, 5.0, 1.0)      # bm25 weights: title, tags, body
 TERM = re.compile(r"\w+", re.UNICODE)
@@ -78,6 +78,8 @@ class SearchIndex:
                 body = read_body(n.path)
                 if body is None:                   # vanished or unreadable since the scan
                     continue
+                if n.sensitive:                    # K4: a secret-looking note is findable by title only
+                    body = ""
                 row = (n.ref, n.title, n.folder, int(n.archived), n.mtime, n.size)
                 if old:
                     c.execute("UPDATE docs SET ref=?, title=?, folder=?, archived=?, mtime=?, size=? WHERE id=?", (*row, old[0]))

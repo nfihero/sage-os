@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.6.0 · 1 Oct 2026.** Checked today: `pytest` 53/53, `npm run build` clean, hub `/api/smoke`
+**Version 0.7.0 · 1 Oct 2026.** Checked today: `pytest` 95/95, `npm run build` clean, hub `/api/smoke`
 17/17, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
 chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
@@ -19,6 +19,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | Bookshelf search (K2) | FTS5 keyword search as you type: ranked (title > tags > body), stemmed + prefix, highlighted snippets; index is a cache at `data/bookshelf-index.db`, kept in step by the vault watcher, rebuildable (`POST /api/vault/reindex`) |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Bookshelf writes (K3) | agents propose (create / update / archive); inbox card shows each change's diff; *Approve & file* applies the batch through one journaled writer; History tab undoes a batch byte for byte; stale and contract-breaking proposals refused; pending proposals survive restarts |
+| Secret screening (K4) + *Save anyway* | proposals with secret-looking content (keys, tokens, passwords, card / ID / bank numbers) are held in the inbox in memory only, never stored; *Reject* or two-step *Save anyway*; only the category is ever shown or logged; sensitive notes' text stays out of search (🔒) |
 | Subscription usage | 5-hour / 7-day windows from the CLI's `rate_limit_event` (shows "OK" until near a limit) |
 | Visuals | phosphor theme (+ Tron, eDEX amber), WebGL agent orbs with bloom, handoff arcs, Doto dot-matrix accents, boot screen, constant scanlines/grain, S-trail icon, Motion setting |
 | Safety of the hub itself | localhost-only bind; write routes require `X-Sage-OS` + local Host/Origin; no Hermes code imported; smoke test names broken Hermes surfaces |
@@ -33,7 +34,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
-- **Bookshelf** agent use: secret screening (K4), MCP tools so agents can propose (K5), imports (K6), batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); meaning-based search (D10)
+- **Bookshelf** agent use: MCP tools so agents can propose (K5), imports (K6), batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); meaning-based search (D10)
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
@@ -49,7 +50,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 ## Next
 
-1. K4 screening, then K5 agent tools (A1 done 30 Sep; K1–K3 done 1 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+1. K5 agent tools for Bookshelf (A1 done 30 Sep; K1–K4 done 1 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
    D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
@@ -68,6 +69,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | 2 | Answering it in the inbox releases Claude | pass — *Allow once* clicked; file written |
 | 2 | Deny with a note | pass — nothing written; note reached Claude verbatim |
 | 2 | Write routes refuse requests without the header | pass — HTTP 403, covered by tests |
+| K4 | A proposal containing a key is refused before anything is written | pass — two proposals with a fake key held (202, value never echoed); byte search of hub.db, journal, index, vault and log found it nowhere; override checked live: one rejected, one *Saved anyway* (two clicks) → filed, `screened` recorded, text out of search; pytest 95/95 (incl. canary tests) |
 | K3 | An agent's proposal lands only after approval; undo restores bytes exactly | pass — scratch vault (2,006 notes): proposal from `claude:cs_k3live` left the vault fingerprint unchanged until *Approve & file*; after approval the new note was searchable at once; *Undo* returned the identical SHA-256 fingerprint; tests cover stale refusal, rollback mid-write, crash recovery, restart; pytest 53/53 |
 | K2 | A query returns ranked notes in < 300 ms | pass — 2,006-note scratch vault: 8 queries ≤ 12 ms in the index, ≤ 13 ms round trip; from-cold index ~12 s; delete-and-rebuild gives identical results (test); pytest 39/39; smoke 17/17 |
 | K1 | Sage OS lists and renders notes from the vault; the button opens the folder | pass — scratch vault of 6 notes listed and rendered (table, code, links by uid, agent label, 3 problems named on a broken note); a file added while open appeared without reload; on the real hub Open vault opened Explorer at `data\vault`; pytest 32/32; smoke 16/16 |
