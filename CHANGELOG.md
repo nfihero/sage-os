@@ -12,6 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-01
+
+Gate: K2 pass — on a 2,006-note vault every query returned ranked notes in at most 12 ms (13 ms round
+trip) against a 300 ms target; from-cold indexing took ~12 s. Checks: pytest 39/39, UI build clean,
+smoke 17/17.
+
+### Added
+- **Bookshelf search (K2):** SQLite FTS5 index at `data/bookshelf-index.db` (`[bookshelf] index`), a
+  rebuildable cache outside the vault (DECISIONS D10). Ranked by BM25 with title > tags > body; English
+  stemming plus prefix matching, so "valuing" finds "valuation" and "disc cash" works as you type;
+  snippets mark the matches. The vault watcher keeps it in step, re-reading only changed notes.
+- Routes `GET /api/vault/search?q=&archived=&limit=` and `POST /api/vault/reindex` (rebuild from cold,
+  write-guarded); smoke check that the index opens; the Bookshelf panel reports `indexed`.
+- UI: the Bookshelf filter box is now search-as-you-type with highlighted snippets, match count and
+  timing; archived notes only when the archive box is ticked.
+
 ## [0.4.0] — 2026-10-01
 
 Gates: A1 pass (30 Sep) · K1 pass (1 Oct). Checks: pytest 32/32, UI build clean, smoke 16/16.

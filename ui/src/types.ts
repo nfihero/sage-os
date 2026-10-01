@@ -51,7 +51,9 @@ export type NoteMeta = {
   tags: string[]; links: NoteLink[]; archived: boolean; problems: string[]; size: number; mtime: number;
 };
 export type NoteFull = NoteMeta & { frontmatter: Record<string, any>; body: string; source: string };
-export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[] };
+export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[]; indexed?: number };
+export type SearchHit = { path: string; ref: string; title: string; folder: string; archived: boolean; snippet: string; score: number };
+export type SearchResult = { q: string; ms: number; results: SearchHit[] };
 
 export type Panels = {
   board?: Board; gpu?: Gpu; health?: Health; safety?: Guard[]; sessions?: ProfileSessions[];

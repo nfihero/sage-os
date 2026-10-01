@@ -40,7 +40,7 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.4.0 (1 Oct) | `pytest` 32/32 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 16/16 |
+| Hub (FastAPI) + UI (React) | **works**, v0.5.0 (1 Oct) | `pytest` 39/39 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
@@ -53,7 +53,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **Bookshelf K1 (1 Oct): read-only vault reader** at `data/vault`; writes come with K3 | see `DECISIONS.md` D9, `docs/STATUS.md` |
+| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1) + keyword search (K2)** over `data/vault`; writes come with K3 | K1/K2 gates in `docs/STATUS.md`; contract D9, index D10 |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
@@ -106,7 +106,7 @@ agents should reach it only through these surfaces, never through its files dire
 
 | Question | Answer from the Sage OS side |
 |---|---|
-| Query/search or read-by-path? | **Search is required.** Agents today find notes by `grep`/`find` in the terminal (every call guardian-screened, ~1–1.5 s overhead each). Read-by-path alone would not replace that. BookShelf having no search (its B1) is the gating gap. |
+| Query/search or read-by-path? | **Search is required.** Agents today find notes by `grep`/`find` in the terminal (every call guardian-screened, ~1–1.5 s overhead each). Read-by-path alone would not replace that. BookShelf having no search (its B1) was the gating gap — **closed by K2** (FTS5 keyword search, v0.5.0); meaning-based search still open (D10). |
 | Do agents write knowledge? | **Yes.** Observed: Hermes acted as an Obsidian "librarian" (reorganised notes, created topic notes, added cross-links), daily runs created/updated 3–5 notes each, outlines like `SAGE-OUTLINE.md`. |
 | Per-write approval: fits or breaks? | **Fits for chat-driven writes** (Sage OS already has an inbox designed for approvals). **Breaks for background/kanban bulk writes** (a single librarian run touched dozens of files) unless batches can be approved as one unit or trust is per agent. |
 | Transport | **MCP first** (Claude Agent SDK and Hermes both speak MCP; Hermes has none configured yet). **HTTP/WS** for the Sage OS hub to list/approve proposals in its inbox. **Direct filesystem reads** acceptable. |

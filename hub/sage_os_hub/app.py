@@ -34,7 +34,7 @@ from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
-from .knowledge import Vault
+from .knowledge import SearchIndex, Vault
 from .store import Store
 
 log = logging.getLogger("sage_os")
@@ -69,9 +69,10 @@ class Hub:
         self.kanban = KanbanAdapter(self, cfg.hermes_home, cfg.poll["board"])
         self.vault = Vault(cfg.vault)
         self.vault.ensure()
+        self.index = SearchIndex(cfg.vault_index)
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
                          SafetyAdapter(self, cfg), SessionsAdapter(self, cfg),
-                         VaultAdapter(self, self.vault, cfg.poll["vault"])]
+                         VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])]
         self.inbox = Inbox(self.publish, self.event)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         self.claude = self.agents.get("claude")
@@ -212,6 +213,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             t.cancel()
         for a in hub.agents.values():
             await a.shutdown()
+        hub.index.close()
         hub.store.close()
 
     app = FastAPI(title="Sage OS hub", version=__version__, lifespan=lifespan)
@@ -271,6 +273,14 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     async def vault():
         return await asyncio.to_thread(hub.vault.summary)
 
+    @app.get("/api/vault/search")
+    async def vault_search(q: str, archived: bool = False, limit: int = 30):
+        def run():
+            if hub.index.synced_at is None:          # first search before the watcher's first pass
+                hub.index.sync(hub.vault.scan(), hub.vault.read_body)
+            return hub.index.search(q, archived=archived, limit=max(1, min(limit, 100)))
+        return await asyncio.to_thread(run)
+
     @app.get("/api/vault/note")
     async def vault_note(ref: str):
         note = await asyncio.to_thread(hub.vault.read, ref)
@@ -315,6 +325,12 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         except OSError as exc:
             raise HTTPException(500, f"couldn't open the vault folder: {exc}")
         return {"ok": True, "path": str(hub.vault.root)}
+
+    @app.post("/api/vault/reindex", dependencies=W)
+    async def vault_reindex():
+        """Rebuild the search index from the notes (it is only a cache)."""
+        stats = await asyncio.to_thread(lambda: hub.index.rebuild(hub.vault.scan(), hub.vault.read_body))
+        return stats | {"indexed": hub.index.count()}
 
     @app.post("/api/agents/{agent_id}/sessions", dependencies=W)
     async def agent_new(agent_id: str, body: NewSession):

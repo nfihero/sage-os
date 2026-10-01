@@ -174,6 +174,24 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   attachment serving yet; BookShelf's open question 11.1, wikilinks vs uids, is still open).
 - **The app writes no notes on its own** — `ensure()` creates only `Archive/` and `Attachments/`.
 
+## D10 — Search index: keyword search (FTS5) as a cache outside the vault
+
+- **Date / by:** 2026-10-01, Claude while building K2; open to change
+- **Status:** accepted
+- **Decision:** Bookshelf search is SQLite FTS5 (porter stemming, unicode, diacritics folded) in
+  `data/bookshelf-index.db`, next to the vault, never inside it. It is a **cache** (BookShelf I3):
+  delete it and the hub rebuilds it from the notes; `POST /api/vault/reindex` rebuilds on demand.
+  Ranking is BM25 with weights title 10 · tags 5 · body 1. Every query word must match, as a whole
+  (stemmed) word or as a prefix. Archived notes are left out unless asked for.
+- **Why:** stdlib-only, fast (≤ 12 ms on 2,006 notes), works with no model running (BookShelf I6).
+- **Costs / not yet:** this is keyword search, not the meaning-based search BookShelf's DESIGN §6 asks
+  for. Semantic search needs an embedding model and BookShelf's `Embedder` seam (its open decision 11.6)
+  — revisit before Ask (K11) or briefing packs (K8), which benefit most. Screened-sensitive content
+  (I4) can't reach the index from Sage OS writes once K4 screens before disk; files a user drops in
+  directly are indexed as they are.
+- **Revisit if:** keyword results miss notes the user expects (e.g. synonyms), or the vault grows past
+  ~20k notes (re-measure indexing time).
+
 ---
 
 ## Proposed, awaiting the user

@@ -22,6 +22,7 @@ class Config:
     poll: dict[str, float] = field(default_factory=lambda: {
         "board": 5, "gpu": 3, "health": 2, "safety": 1, "sessions": 30, "vault": 5})
     vault: Path = ROOT / "data" / "vault"         # [bookshelf] vault (D6)
+    vault_index: Path = ROOT / "data" / "bookshelf-index.db"   # [bookshelf] index: a rebuildable cache (D10)
     pinned_profiles: list[str] = field(default_factory=lambda: ["default"])
     hidden_profiles: list[str] = field(default_factory=list)
     profile_labels: dict[str, str] = field(default_factory=dict)
@@ -48,9 +49,13 @@ def load(path: Path | None = None) -> Config:
         store = Path(hub["store"])
         cfg.store = store if store.is_absolute() else ROOT / store
     cfg.keep_events = int(hub.get("keep_events", cfg.keep_events))
-    if "vault" in raw.get("bookshelf", {}):
-        vault = Path(raw["bookshelf"]["vault"])
+    shelf = raw.get("bookshelf", {})
+    if "vault" in shelf:
+        vault = Path(shelf["vault"])
         cfg.vault = vault if vault.is_absolute() else ROOT / vault
+    if "index" in shelf:
+        index = Path(shelf["index"])
+        cfg.vault_index = index if index.is_absolute() else ROOT / index
     if "home" in hermes:
         cfg.hermes_home = Path(hermes["home"])
     cfg.gateway = hermes.get("gateway", cfg.gateway).rstrip("/")

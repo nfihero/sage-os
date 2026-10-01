@@ -35,6 +35,7 @@ hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS withou
 
 [bookshelf]
 vault = "data/vault"        # the knowledge base (DECISIONS D6); relative to the sage-os folder
+index = "data/bookshelf-index.db"   # search index: a cache, safe to delete (D10)
 
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before

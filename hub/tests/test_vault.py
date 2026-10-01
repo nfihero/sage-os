@@ -5,7 +5,7 @@ from sage_os_hub import app as app_module
 from sage_os_hub.adapters.vault import VaultAdapter
 from sage_os_hub.app import create_app
 from sage_os_hub.config import Config
-from sage_os_hub.knowledge import Vault
+from sage_os_hub.knowledge import SearchIndex, Vault
 from sage_os_hub.knowledge.vault import parse_note
 
 A = "01J9ZQ4V6R8T2M3N5P7Q9S1W3Y"
@@ -110,18 +110,19 @@ def test_adapter_publishes_only_on_change(tmp_path):
 
         def event(self, kind, source, type_, data, *, persist=True, ts=None):
             self.events.append(type_)
-    rec, v = Rec(), Vault(tmp_path)
-    a = VaultAdapter(rec, v, 5)
+    rec, v = Rec(), Vault(tmp_path / "vault")
+    v.ensure()
+    a = VaultAdapter(rec, v, SearchIndex(tmp_path / "index.db"), 5)
     a.poll(); a.poll()
-    write(tmp_path, "n.md", note())
+    write(tmp_path / "vault", "n.md", note())
     a.poll()
-    assert len(rec.panels) == 2 and rec.events == ["vault.changed"]
+    assert rec.panels[-1]["indexed"] == 1 and len(rec.panels) == 2 and rec.events == ["vault.changed"]
 
 
 def test_routes(tmp_path, monkeypatch):
     opened = []
     monkeypatch.setattr(app_module, "open_folder", opened.append)
-    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault",
+    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db",
                  claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
     app = create_app(cfg, start_adapters=False)
     write(tmp_path / "vault", "Finance/dcf.md", note())

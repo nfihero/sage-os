@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { get, post } from "../api";
-import type { NoteFull, NoteMeta, VaultPanel } from "../types";
+import type { NoteFull, NoteMeta, SearchResult, VaultPanel } from "../types";
 
-/** The Bookshelf reader (K1): every note in the vault, read-only. Writes arrive with K3 via the inbox. */
+/** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
 export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onClose: () => void }) {
   const [fetched, setFetched] = useState<VaultPanel | null>(null);
   const vault = panel ?? fetched;
@@ -13,6 +13,9 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
   const [archived, setArchived] = useState(false);
   const [onlyProblems, setOnlyProblems] = useState(false);
   const [openErr, setOpenErr] = useState<string | null>(null);
+  const [hits, setHits] = useState<SearchResult | null>(null);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
+  const searching = q.trim().length > 0;
 
   useEffect(() => {
     if (!panel) get<VaultPanel>("/api/vault").then(setFetched).catch(() => {});
@@ -21,12 +24,21 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
     return () => window.removeEventListener("keydown", esc);
   }, []);
 
+  // Search as you type (debounced); re-run when the vault changes so results stay current.
+  useEffect(() => {
+    if (!searching) { setHits(null); setSearchErr(null); return; }
+    let alive = true;
+    const t = setTimeout(() => {
+      get<SearchResult>(`/api/vault/search?q=${encodeURIComponent(q)}&archived=${archived}`)
+        .then((r) => { if (alive) { setHits(r); setSearchErr(null); } })
+        .catch((e) => alive && setSearchErr(String(e.message ?? e)));
+    }, 150);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q, archived, vault?.indexed, vault?.notes]);
+
   const notes = vault?.notes ?? [];
-  const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return notes.filter((n) => (archived || !n.archived) && (!onlyProblems || n.problems.length > 0) &&
-      (!needle || [n.title, n.path, ...n.tags].some((s) => s.toLowerCase().includes(needle))));
-  }, [notes, q, archived, onlyProblems]);
+  const shown = useMemo(() => notes.filter((n) => (archived || !n.archived) && (!onlyProblems || n.problems.length > 0)),
+    [notes, archived, onlyProblems]);
   const groups = useMemo(() => {
     const g = new Map<string, NoteMeta[]>();
     for (const n of [...shown].sort((a, b) => a.title.localeCompare(b.title))) g.set(n.folder, [...(g.get(n.folder) ?? []), n]);
@@ -60,16 +72,17 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className={`flex min-h-0 flex-col border-cyan/20 md:w-[330px] md:shrink-0 md:border-r ${current ? "hidden md:flex" : "flex flex-1 md:flex-none"}`}>
             <div className="flex items-center gap-2 border-b border-cyan/20 p-2">
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter titles, paths, tags…"
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes…" aria-label="Search notes"
                 className="min-w-0 flex-1 border border-cyan/35 bg-void/80 px-2 py-1 text-[12.5px] text-ink outline-none placeholder:text-mute focus:border-cyan" />
               <label className="flex items-center gap-1 text-[11px] text-mute" title="Archive holds retired notes; nothing is deleted">
                 <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} /> archive
               </label>
             </div>
             <div className="panel-body text-[12.5px]">
-              {vault && vault.count === 0 && <EmptyVault onOpen={openVault} />}
-              {vault && vault.count > 0 && shown.length === 0 && <div className="text-mute">No notes match.</div>}
-              {groups.map(([folder, list]) => (
+              {vault && vault.count === 0 && !searching && <EmptyVault onOpen={openVault} />}
+              {searching && <SearchResults hits={hits} err={searchErr} current={ref} onPick={setRef} />}
+              {!searching && vault && vault.count > 0 && shown.length === 0 && <div className="text-mute">No notes match.</div>}
+              {!searching && groups.map(([folder, list]) => (
                 <div key={folder} className="mb-2">
                   <div className="display mb-1 text-[10px] text-cyan/80">{folder || "vault root"} <span className="text-mute">{list.length}</span></div>
                   {list.map((n) => (
@@ -93,6 +106,38 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
       </div>
     </div>
   );
+}
+
+function SearchResults({ hits, err, current, onPick }: {
+  hits: SearchResult | null; err: string | null; current: string | null; onPick: (ref: string) => void;
+}) {
+  if (err) return <div className="text-red">{err}</div>;
+  if (!hits) return <div className="text-mute">searching…</div>;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="text-[11px] text-mute">{hits.results.length === 0 ? "Nothing in your notes matches."
+        : hits.results.length >= 30 ? "top 30 matches" : `${hits.results.length} match${hits.results.length === 1 ? "" : "es"}`} · {hits.ms} ms</div>
+      {hits.results.map((h) => (
+        <button key={h.ref} onClick={() => onPick(h.ref)}
+          className={`border-l-2 py-1 pl-2 text-left ${h.ref === current ? "border-cyan bg-cyan/10" : "border-transparent hover:border-cyan/40"}`}>
+          <div className="flex items-baseline gap-1.5">
+            <span className="min-w-0 flex-1 truncate text-ink">{h.title}</span>
+            <span className="shrink-0 text-[10px] text-mute">{h.archived ? "archive" : h.folder || "root"}</span>
+          </div>
+          <div className="line-clamp-2 text-[11.5px] text-ink/65"><Snippet text={h.snippet} /></div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The index marks matches with \x02 ... \x03; render them as highlights without any HTML parsing. */
+function Snippet({ text }: { text: string }) {
+  return <>{text.split("\x02").map((part, i) => {
+    if (i === 0) return <span key={i}>{part}</span>;
+    const [hit, rest = ""] = part.split("\x03");
+    return <span key={i}><mark className="bg-cyan/25 text-ink">{hit}</mark>{rest}</span>;
+  })}</>;
 }
 
 function EmptyVault({ onOpen }: { onOpen: () => void }) {

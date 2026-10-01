@@ -183,9 +183,19 @@ class Vault:
                     by_uid[n.uid] = n
         return notes
 
-    def summary(self) -> dict:
+    def read_body(self, rel: str) -> str | None:
+        """A note's body (frontmatter stripped), or None if it is gone or outside the vault."""
+        p = (self.root / rel).resolve()
+        if self.root.resolve() not in p.parents:
+            return None
+        try:
+            return split_frontmatter(p.read_text(encoding="utf-8", errors="replace"))[1]
+        except OSError:
+            return None
+
+    def summary(self, notes: list[Note] | None = None) -> dict:
         """The Bookshelf panel: every note's metadata (no bodies), links resolved to titles."""
-        notes = self.scan()
+        notes = self.scan() if notes is None else notes
         titles = {n.uid: n.title for n in notes if n.uid}
         rows = []
         for n in notes:
