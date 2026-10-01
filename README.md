@@ -5,9 +5,11 @@ knowledge base: your choice of local and cloud models, conversations and topics 
 one place, kanban boards for your workflows, and a built-in knowledge base that makes your AI agents
 your own.
 
-**Today (v0.3.0):** Claude Code (cloud) and Hermes (local models) side by side, one approvals inbox,
-the Hermes kanban board, live GPU/safety status. The Bookshelf knowledge base, more programs and
-multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 · local only.
+**Today (v0.4.0):** Claude Code (cloud) and Hermes (local models) side by side through a connector
+layer any agent or OpenAI-compatible model server can plug into, one approvals inbox, the Hermes kanban
+board, live GPU/safety status, and a read-only Bookshelf reader over the vault. Bookshelf search and
+writes, more programs and multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 ·
+local only.
 
 | Read | For |
 |---|---|

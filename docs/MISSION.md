@@ -17,14 +17,14 @@ do the volume, a wise mentor plans and reviews, and nothing important happens wi
 
 ## What Sage OS is
 
-| Pillar | What it does | State (v0.3.0) |
+| Pillar | What it does | State (v0.4.0) |
 |---|---|---|
-| **Your choice of models** | Local models (llama.cpp via Hermes) and cloud models side by side, picked per agent or task | Partly: Claude (cloud) + Hermes local models today; other cloud providers exist in Hermes but aren't surfaced in Sage OS |
-| **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes; other programs planned (Phase 6 adapters, imports) |
+| **Your choice of models** | Local models (llama.cpp via Hermes) and cloud models side by side, picked per agent or task | Partly: Claude (cloud) + Hermes local models; since v0.4.0 any OpenAI-compatible server can be connected and its models listed (`[[models]]`), but not yet picked per agent or task (H1) |
+| **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes as connectors (v0.4.0); other programs plug in through the same interface (A4, Phase 6) |
 | **Kanban workflows** | Boards for different workflows, worked by agents, unblocked by you | Partly: one Hermes board shown; multiple workflow boards planned |
 | **Agent hub** | Claude Code (cloud) and Hermes (local) in one workspace: chat panes, live board, GPU lane, sessions | Built (Phases 1–2) |
 | **Approvals inbox and safety** | Every risky action from any agent lands in one inbox; guards (write guard, guardian) stay independent of the UI and can't be overridden from it | Built for Claude; Hermes and kanban paths untested live |
-| **Bookshelf** (built-in knowledge base) | Makes the agents *yours*: plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Planned (see ROADMAP) |
+| **Bookshelf** (built-in knowledge base) | Makes the agents *yours*: plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Started: read-only reader over the vault (K1, v0.4.0); search, approvals and agent tools next (K2–K11) |
 | **Orchestration and review** | Claude delegates to local agents and reviews what they hand back | Planned (Phases 4–5) |
 
 ## Who it's for

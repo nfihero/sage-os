@@ -5,7 +5,16 @@ and were never snapshotted; their entries record what was built and verified on 
 recoverable commits. Format: [Keep a Changelog](https://keepachangelog.com/), versions follow semver
 while pre-1.0.
 
+**Versioning (from 0.4.0, user request 1 Oct 2026):** every roadmap step that passes its gate is
+released as its own minor version (0.x.0) with an entry here and a local git tag `v0.x.0`; docs-only
+changes are patch versions (0.x.y). Each entry names the gate result. Tags are pushed only when the
+user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when built.
+
 ## [Unreleased]
+
+## [0.4.0] — 2026-10-01
+
+Gates: A1 pass (30 Sep) · K1 pass (1 Oct). Checks: pytest 32/32, UI build clean, smoke 16/16.
 
 ### Added
 - **Connectors (architecture step A1):** `AgentConnector` and `ModelProvider` interfaces in

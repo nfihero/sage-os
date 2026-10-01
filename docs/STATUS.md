@@ -1,8 +1,8 @@
 # Sage OS — status
 
-**Version 0.3.0 · 30 Sep 2026.** Checked today: `pytest` 16/16, `npm run build` clean, hub `/api/smoke`
-12/12, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
-chat 3/3 turns.
+**Version 0.4.0 · 1 Oct 2026.** Checked today: `pytest` 32/32, `npm run build` clean, hub `/api/smoke`
+16/16, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
+chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 ## Works
 

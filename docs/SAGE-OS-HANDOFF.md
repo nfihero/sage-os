@@ -40,7 +40,8 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.3.0 | `pytest` 16/16 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 12/12 |
+| Hub (FastAPI) + UI (React) | **works**, v0.4.0 (1 Oct) | `pytest` 32/32 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 16/16 |
+| Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
 | Hermes chat pane (gateway sessions API) | **works** incl. multi-turn | 3-turn test today, turns 2–3 in 0.9 s (needs the hub's runtime pin, §7 #9) |
@@ -163,7 +164,7 @@ agents should reach it only through these surfaces, never through its files dire
 4. **Claude can't yet act on Hermes** except via `Bash` + `hermes` CLI with per-command approval (fleet MCP tools are Phase 4).
 5. **Two inbox paths untested live:** Hermes approval requests, kanban reply-and-unblock.
 6. **Desk-only:** no remote access, no app login (Phase 3); the hub has no auth beyond localhost binding.
-7. **No remote, no CI, no backups** of the Sage OS repo; first commit only now.
+7. **No CI**; the private remote `nfihero/sage-os` is pushed only on request, so local commits and tags can be ahead of it.
 8. **Stale alias scripts** `swift.bat`, `coder.bat`, `guardian.bat` in `~\.local\bin` point at deleted Hermes profiles; `swift.bat` shadows the real `swift` command name.
 9. Usage meter shows "OK" rather than a % until a window nears its limit (CLI behaviour).
 10. Phone layout is a first pass, never tested on a real phone.
