@@ -46,7 +46,7 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 ## D3 — Vault: new, local, not on Google Drive
 
 - **Date / by:** 2026-09-30, user (facts); location proposed by Claude
-- **Status:** accepted (location `C:\Users\you\SageVault` is **proposed**, confirm at K1)
+- **Status:** accepted; location superseded by D6, Drive indexing not adopted (D7)
 - **Facts from the user:** there is no main vault today; no vault is synced by Google Drive; the
   user's personal files are synced by Drive (`G:\`).
 - **Decision:** start a fresh Sage OS vault on local disk. Existing notes (`Obsidian Vault`,
@@ -95,13 +95,46 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Note:** clearing is destructive — do it only as an explicit step with the user's go-ahead, and
   first note any task output worth keeping (e.g. the budget-tracker parser, task `t_549737c1`).
 
+## D6 — The vault lives inside Sage OS's own data folder
+
+- **Date / by:** 2026-09-30, user (Claude chose the exact path)
+- **Status:** accepted. Supersedes D3's proposed `C:\Users\you\SageVault`.
+- **Decision:** the vault is part of the app's files: **`sage-os\data\vault\`**, next to `hub.db`.
+  `data/` is already git-ignored, so notes never enter the code repo. The path is a `config.toml`
+  setting (`vault = "data/vault"`, relative to the sage-os folder like `store`), not hard-coded.
+- **"Open vault" button** in the Bookshelf view opens the folder in Explorer, so the user always knows
+  where the notes are. (BookShelf's lesson: a contained vault in a hidden app folder left users
+  unsure where their data was.) Interpreted as "show the folder", not "switch to another vault" —
+  BookShelf removed its folder picker on purpose (its HANDOFF §4.1); revisit if a vault switcher is
+  wanted.
+- **Costs / notes:** a reinstall or a fresh clone that deletes `data/` would delete the vault — the
+  git backup (D7, idea 8) covers this for the user. For a shippable product, app data should move to
+  a per-user folder (e.g. `%LOCALAPPDATA%\SageOS\`) so updates can never touch it; the config setting
+  makes that a one-line change.
+- **Future: in-app markdown editor** — considered, not planned yet. If built, edits made in the app
+  are human edits (allowed by BookShelf's I7 intent) but must still go through the single writer and
+  journal (I2, I9) so they're undoable.
+
+## D7 — Bookshelf integration ideas adopted from P1
+
+- **Date / by:** 2026-09-30, user
+- **Status:** accepted
+- **Adopted:** 1 shared team memory · 2 briefing packs · 3 work becomes knowledge · 5 roles with
+  per-agent trust levels · 6 one inbox for note proposals · 8 git-backed vault (**for the user's own
+  install only**; a shippable product needs its own backup design, undecided) · 9 BookShelf's safety
+  rules · 10 Ask with citations (later).
+- **Not adopted for now:** 4 playbooks as notes · 7 Drive as an indexed source library (`G:\` stays
+  read-only to agents and outside the vault).
+- **Revisit if:** environment-setup work needs shared how-tos (idea 4), or agents keep needing Drive
+  documents they can't search (idea 7).
+
 ---
 
 ## Proposed, awaiting the user
 
-### P1 — Bookshelf integration ideas (30 Sep 2026)
+### P1 — Bookshelf integration ideas (30 Sep 2026) — resolved by D7
 
-Pick which to adopt; adopted ones become numbered decisions.
+Kept for the wording of each idea; see D7 for which were adopted.
 
 1. **Shared team memory.** All agents read one vault through the same tools (search, read, propose);
    per-agent memory files fold into it.

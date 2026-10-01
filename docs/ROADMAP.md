@@ -21,18 +21,23 @@ on 30 Sep 2026 with the Bookshelf track.
 
 The BookShelf project (`nfihero/BookShelf`) is **retired**. It is the **spec**, not the code: its
 DESIGN.md, invariants I1–I9 and vault format are carried over, and the module is rebuilt as a Python
-package inside this repo (DECISIONS D2). New local vault, not on Drive; `G:\` is a read-only source
-(D3). Integration ideas awaiting selection: DECISIONS P1.
+package inside this repo (DECISIONS D2). The vault lives in the app's data folder,
+`data/vault/` (D6); `G:\` stays read-only and outside it. Adopted ideas: D7.
 
 | Step | Scope | Gate |
 |---|---|---|
-| K1 | Vault format + read: markdown with YAML frontmatter, uid identity, no absolute paths (I8); pick the canonical vault | Sage OS lists and renders notes from the vault |
+| K1 | Vault format + read: markdown with YAML frontmatter, uid identity, no absolute paths (I8); vault at `data/vault/` (config setting); Bookshelf view with an **Open vault** button (Explorer) | Sage OS lists and renders notes from the vault; the button opens the folder |
 | K2 | Search: SQLite FTS5 index rebuilt from files (vault stays the source of truth, I3) | A query returns ranked notes in < 300 ms |
 | K3 | Propose → approve → commit: agents propose, the **Sage OS inbox** approves, a single writer applies with a SQLite journal and batch undo (I1, I2, I9) | An agent's proposal lands only after approval; undo restores bytes exactly |
 | K4 | Screening before disk (I4) | A proposal containing a key is refused before anything is written |
 | K5 | MCP server for agents: `search_notes`, `read_note`, `propose_note`, `list_proposals`; `origin: agent` + agent id provenance | Claude and Hermes both read and propose through MCP |
 | K6 | Import existing vaults (Obsidian Vault, llm-vault) with structure preserved | Existing notes searchable in Sage OS |
-| K7 | Review at scale: batch approvals, per-agent trust levels | A 20-note librarian run is approved in one decision |
+| K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
+| K8 | Briefing packs: relevant notes injected before a task or chat (D7 idea 2; needs K2) | An agent's first reply uses a fact that exists only in the vault |
+| K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
+| K10 | Git-backed vault: each approved batch is a commit; push to a private remote only on request (D7 idea 8; personal install only) | Undo and `git log` agree after an approve/undo cycle |
+| K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
+| later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
 Suggested interleave: K1–K3 before Phase 4, so the fleet tools and the knowledge tools share one MCP
 surface; Phase 3 can run in parallel.

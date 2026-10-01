@@ -45,8 +45,8 @@ chat 3/3 turns.
 
 ## Next
 
-1. Pick the Bookshelf integration ideas (`DECISIONS.md` P1), then A1 + K1–K3. Home, language and
-   vault are decided (D2, D3); architecture direction recorded (D4).
+1. A1 + K1–K3. Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+   D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
 
