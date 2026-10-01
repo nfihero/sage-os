@@ -2,9 +2,10 @@
 
 ## Mission
 
-**Give one person a calm control room for a team of AI agents and a knowledge base that grows with
-them — where the agents do the volume, a wise mentor plans and reviews, and nothing important happens
-without the human's say.**
+**An AI agent hub with a personal, growing knowledge base.** Use your choice of local and cloud models,
+connect the conversations and topics from many programs in one place, run workflows on kanban boards,
+and build a knowledge base that makes your AI agents your own — with a calm control room where agents
+do the volume, a wise mentor plans and reviews, and nothing important happens without your say.
 
 ## The problem
 
@@ -18,9 +19,12 @@ without the human's say.**
 
 | Pillar | What it does | State (v0.3.0) |
 |---|---|---|
+| **Your choice of models** | Local models (llama.cpp via Hermes) and cloud models side by side, picked per agent or task | Partly: Claude (cloud) + Hermes local models today; other cloud providers exist in Hermes but aren't surfaced in Sage OS |
+| **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes; other programs planned (Phase 6 adapters, imports) |
+| **Kanban workflows** | Boards for different workflows, worked by agents, unblocked by you | Partly: one Hermes board shown; multiple workflow boards planned |
 | **Agent hub** | Claude Code (cloud) and Hermes (local) in one workspace: chat panes, live board, GPU lane, sessions | Built (Phases 1–2) |
 | **Approvals inbox and safety** | Every risky action from any agent lands in one inbox; guards (write guard, guardian) stay independent of the UI and can't be overridden from it | Built for Claude; Hermes and kanban paths untested live |
-| **Bookshelf** (knowledge base) | BookShelf's idea folded in: plain-markdown knowledge that agents read and *propose* to, with human approval, journaled undo, secret screening | Planned (see ROADMAP) |
+| **Bookshelf** (built-in knowledge base) | Makes the agents *yours*: plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Planned (see ROADMAP) |
 | **Orchestration and review** | Claude delegates to local agents and reviews what they hand back | Planned (Phases 4–5) |
 
 ## Who it's for

@@ -22,6 +22,10 @@ system · **planned** = not built.
   the human approves what matters. Phase 2 (today) gives chat + approvals; Claude *orchestrating*
   Hermes is Phase 4 (planned).
 - **Users:** one today. Not multi-user, not hosted. Name rationale: `docs/MISSION.md`.
+- **Public framing (GitHub description, 30 Sep 2026):** "an AI agent hub with a personal, growing
+  knowledge base" — choice of local and cloud models, conversations from many programs in one hub,
+  kanban boards per workflow, a built-in knowledge base. Most of that is roadmap (see §2 and
+  `docs/ROADMAP.md`, hub-breadth track H1–H4); don't read the description as current capability.
 - **Product direction (user, 30 Sep 2026):** fold **BookShelf's idea** — an approval-gated personal
   knowledge base kept as plain markdown — **into Sage OS as a built-in module ("Bookshelf")**, and treat
   Sage OS as a **potential full product**, not only a personal dashboard. The Swift code is not reused;

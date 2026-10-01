@@ -1,8 +1,13 @@
 # Sage OS
 
-`SAGE//OS` — *Semi-Autonomous Agent Ground Environment.* One local workspace where Claude Code and
-local Hermes agents work as a team you can see and steer, with one inbox for everything that needs
-you, and (planned) a Bookshelf knowledge base that grows with them. **v0.3.0** · Windows 11 · local only.
+`SAGE//OS` — *Semi-Autonomous Agent Ground Environment.* An AI agent hub with a personal, growing
+knowledge base: your choice of local and cloud models, conversations and topics from many programs in
+one place, kanban boards for your workflows, and a built-in knowledge base that makes your AI agents
+your own.
+
+**Today (v0.3.0):** Claude Code (cloud) and Hermes (local models) side by side, one approvals inbox,
+the Hermes kanban board, live GPU/safety status. The Bookshelf knowledge base, more programs and
+multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 · local only.
 
 | Read | For |
 |---|---|

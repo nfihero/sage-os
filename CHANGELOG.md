@@ -5,6 +5,13 @@ and were never snapshotted; their entries record what was built and verified on 
 recoverable commits. Format: [Keep a Changelog](https://keepachangelog.com/), versions follow semver
 while pre-1.0.
 
+## [Unreleased]
+
+### Changed
+- Docs: broadened product framing to match the GitHub description (agent hub with a personal,
+  growing knowledge base; choice of local and cloud models; many programs in one hub; workflow kanban
+  boards). Roadmap gains a hub-breadth track (H1–H4).
+
 ## [0.3.0] — 2026-09-30
 
 ### Added

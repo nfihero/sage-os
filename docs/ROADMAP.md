@@ -35,6 +35,15 @@ vault format are carried over; the implementation is rebuilt in Sage OS's stack 
 Suggested interleave: K1–K3 before Phase 4, so the fleet tools and the knowledge tools share one MCP
 surface; Phase 3 can run in parallel.
 
+## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
+
+| Item | Scope | Starting point |
+|---|---|---|
+| H1 Model choice | Pick local or cloud model per agent / task in the UI | Hermes already has DeepSeek and OpenRouter credentials and per-task `--model`; Claude model picker exists per session |
+| H2 Workflow boards | Several kanban boards for different workflows (school, job search, finance projects…) | Hermes kanban has `boards` support; Sage OS shows one board today |
+| H3 More programs | Bring conversations from other tools into the hub | Phase 6 adapters (ACP, A2A); Hermes can already import Claude Code / Codex sessions |
+| H4 Connected topics | Link conversations across programs by topic, feeding Bookshelf | Depends on Bookshelf K2 (search) and K5 (MCP) |
+
 ## Product track (open)
 
 Packaging, installer, non-Windows support, onboarding without Hermes pre-installed, accounts — all
