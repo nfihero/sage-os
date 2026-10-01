@@ -128,6 +128,31 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** environment-setup work needs shared how-tos (idea 4), or agents keep needing Drive
   documents they can't search (idea 7).
 
+## D8 — Chat layout: team chat + agent room; direct chats closed by default
+
+- **Date / by:** 2026-09-30, user (shape proposed by Claude)
+- **Status:** accepted; build after A1 and Phase 4 (refines Phase 6 "Rooms")
+- **Decision:** the main screen has **two chat areas**:
+  1. **Team chat** (central): the user and the agents. A **lead agent answers by default** — chosen
+     by the user in settings (the user's choice: Claude). Other agents post only when @mentioned,
+     assigned a task, or reporting a result or question.
+  2. **Agent room**: agents talk to each other (handoffs, questions, results, reviews); the user
+     watches. Messages are structured and linked to board tasks so the room reads like a log and can
+     be filtered by task. A **Step in** button moves a thread into team chat so the user can take
+     over.
+  - **Direct chats** (one user + one agent; today's Claude and Hermes panes) stay available as an
+    openable space, **closed by default**.
+  - The **inbox stays separate**; chat messages link to their inbox cards, approvals never live in
+    chat.
+- **Why:** mirrors a business team (team channel + back-office channel); one default responder
+  avoids noise and a queue of local replies behind one GPU model.
+- **Guardrails required:** per-thread turn cap, no-progress (loop) detection, per-thread usage meter;
+  messages from other agents are **untrusted input** (like web content) and can never waive an
+  approval.
+- **Open details:** where the lead-agent setting lives (global vs per board); what the agent room
+  shows while only one agent is connected; layout on a phone (Phase 3).
+- **Revisit if:** the lead agent becomes a bottleneck (e.g. routing by topic or task instead).
+
 ---
 
 ## Proposed, awaiting the user

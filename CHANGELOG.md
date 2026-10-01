@@ -18,6 +18,8 @@ while pre-1.0.
 - Docs: D6 vault inside the app's data folder (`data/vault/`) with an Open vault button; future
   markdown editor noted. D7 adopted Bookshelf ideas 1, 2, 3, 5, 6, 8 (personal only), 9, 10;
   roadmap gains K8–K11.
+- Docs: D8 chat layout — team chat with a user-chosen lead agent, agent-only room with Step in,
+  direct chats closed by default; Phase 6 updated.
 
 ## [0.3.0] — 2026-09-30
 

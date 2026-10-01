@@ -15,7 +15,7 @@ on 30 Sep 2026 with the Bookshelf track.
 | 3 | Cross-device: Tailscale Serve, app login (passkey or token), phone layout | A phone approves a request over the tailnet | Next |
 | 4 | Claude as orchestrator: fleet MCP tools (`fleet_status`, `task_create`, `task_comment`/`unblock`, `ask_agent`) | Claude delegates a task that a local agent finishes | Planned |
 | 5 | Claude as reviewer: review on `request_review`, handoff animations | One task goes through changes, then approval | Planned |
-| 6 | Rooms and outside agents: multi-agent threads, ACP and A2A adapters | — | Planned |
+| 6 | Rooms and outside agents: **team chat** (lead agent answers by default) + **agent room** (agents only, user watches, Step in) with direct chats closed by default (DECISIONS D8); ACP and A2A adapters | The user asks in team chat; the lead hands work to another agent in the agent room; the user steps in once; the result comes back to team chat | Planned |
 
 ## Bookshelf track (30 Sep 2026 — home and vault decided; step order still proposed)
 
