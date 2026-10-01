@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { get, post } from "../api";
-import type { NoteFull, NoteMeta, SearchResult, VaultPanel } from "../types";
+import type { Batch, NoteFull, NoteMeta, SearchResult, VaultPanel } from "../types";
+import { ago, useNow } from "../util";
 
 /** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
 export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onClose: () => void }) {
@@ -16,6 +17,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
   const [hits, setHits] = useState<SearchResult | null>(null);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const searching = q.trim().length > 0;
+  const [view, setView] = useState<"notes" | "history">("notes");
 
   useEffect(() => {
     if (!panel) get<VaultPanel>("/api/vault").then(setFetched).catch(() => {});
@@ -61,6 +63,10 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
             <button className={`chip amber normal-case tracking-normal ${onlyProblems ? "pulse-amber" : ""}`} onClick={() => setOnlyProblems(!onlyProblems)}
               title="Notes that don't follow the vault contract. Click to show only these.">⚠ {vault.problems} with problems</button>
           )}
+          <span className="flex gap-1">
+            <button className={`htab ${view === "notes" ? "on" : ""}`} onClick={() => setView("notes")}>NOTES</button>
+            <button className={`htab ${view === "history" ? "on" : ""}`} onClick={() => setView("history")}>HISTORY</button>
+          </span>
           <span className="ml-auto flex min-w-0 items-center gap-2">
             {vault && <span className="hidden min-w-0 truncate font-mono text-[11px] normal-case tracking-normal text-mute md:inline" title={vault.root}>{vault.root}</span>}
             <button className="chip" onClick={openVault} title="Show the vault folder in Explorer">OPEN VAULT</button>
@@ -69,7 +75,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
         </div>
         {openErr && <div className="border-b border-red/40 px-3 py-1 text-[12px] text-red">{openErr}</div>}
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className={`flex min-h-0 flex-col border-cyan/20 md:w-[330px] md:shrink-0 md:border-r ${current ? "hidden md:flex" : "flex flex-1 md:flex-none"}`}>
             <div className="flex items-center gap-2 border-b border-cyan/20 p-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes…" aria-label="Search notes"
@@ -102,8 +108,47 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
             {current ? <NoteView meta={current} onBack={() => setRef(null)} onOpen={(uid) => setRef(uid)} known={new Set(notes.map((n) => n.ref))} />
               : <div className="m-auto p-6 text-center text-[12.5px] text-mute">{vault && vault.count > 0 ? "Pick a note to read it." : ""}</div>}
           </section>
-        </div>
+        </div>}
       </div>
+    </div>
+  );
+}
+
+/** Every batch the writer applied, newest first, with exact undo (K3). */
+function History({ changed }: { changed: unknown }) {
+  const now = useNow(10000);
+  const [batches, setBatches] = useState<Batch[] | null>(null);
+  const [confirm, setConfirm] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const load = () => get<Batch[]>("/api/vault/history").then(setBatches).catch((e) => setErr(String(e.message ?? e)));
+  useEffect(() => { load(); }, [changed]);
+  const undo = async (id: number) => {
+    setErr(null); setConfirm(null);
+    try { await post(`/api/vault/batches/${id}/undo`); } catch (e) { setErr(String((e as Error).message ?? e)); }
+    load();
+  };
+  return (
+    <div className="panel-body text-[12.5px]">
+      <p className="mb-2 text-[11.5px] text-mute">Every change Sage OS made to the vault, applied only after you approved it in the inbox. Undo puts the files back exactly as they were; it refuses if a file was edited since.</p>
+      {err && <div className="mb-2 border border-red/40 bg-red/5 p-1.5 text-red">{err}</div>}
+      {batches?.length === 0 && <div className="text-mute">Nothing written yet.</div>}
+      {batches?.map((b) => (
+        <div key={b.id} className={`mb-2 border-l-2 py-1 pl-2 ${b.status === "applied" ? "border-cyan/50" : "border-mute/40 opacity-70"}`}>
+          <div className="flex flex-wrap items-baseline gap-x-2 text-[11.5px]">
+            <span className="text-cyan">#{b.id}</span>
+            <span className="text-ink">{b.agent}</span>
+            <span className="text-mute">{ago(b.finished ?? b.started, now)}</span>
+            <span className={`chip ${b.status === "applied" ? "" : "mute"}`}>{b.status.replace("_", " ")}</span>
+            {b.status === "applied" && (confirm === b.id
+              ? <span className="ml-auto flex gap-1"><button className="chip red" onClick={() => undo(b.id)}>CONFIRM UNDO</button><button className="chip mute" onClick={() => setConfirm(null)}>keep</button></span>
+              : <button className="chip ml-auto" onClick={() => setConfirm(b.id)}>UNDO</button>)}
+          </div>
+          {b.summary && <div className="text-ink/80">{b.summary}</div>}
+          <ul className="mt-0.5 font-mono text-[11px] text-ink/70">
+            {b.files.map((f) => <li key={f.path + f.op}><span className="text-mute">{f.op}</span> {f.path}</li>)}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

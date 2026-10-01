@@ -34,7 +34,7 @@ from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
-from .knowledge import SearchIndex, Vault
+from .knowledge import ProposalError, SearchIndex, Vault, Writer
 from .store import Store
 
 log = logging.getLogger("sage_os")
@@ -70,9 +70,12 @@ class Hub:
         self.vault = Vault(cfg.vault)
         self.vault.ensure()
         self.index = SearchIndex(cfg.vault_index)
+        self.writer = Writer(self.vault, cfg.vault_journal)
+        for batch in self.writer.recover():
+            log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
+        self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
-                         SafetyAdapter(self, cfg), SessionsAdapter(self, cfg),
-                         VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])]
+                         SafetyAdapter(self, cfg), SessionsAdapter(self, cfg), self.vault_adapter]
         self.inbox = Inbox(self.publish, self.event)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         self.claude = self.agents.get("claude")
@@ -129,6 +132,39 @@ class Hub:
             if key not in live:
                 self.inbox.drop(key)
 
+    # -- Bookshelf proposals -> inbox (K3) ------------------------------------------------------
+    def offer_proposal(self, p: dict, preview: list[dict] | None = None, problem: str | None = None):
+        """Put a pending proposal in the inbox. Approving it is the only way it reaches the vault (I1)."""
+        pid = p["id"]
+
+        async def resolver(choice, note):
+            if choice == "approve":
+                batch = await asyncio.to_thread(self.writer.approve, pid, note)
+                self.event("knowledge", "bookshelf", "proposal.applied",
+                           {"proposal": pid, "batch": batch["id"], "agent": p["agent"], "files": batch["files"]})
+            else:
+                await asyncio.to_thread(self.writer.reject, pid, note)
+                self.event("knowledge", "bookshelf", "proposal.rejected", {"proposal": pid, "agent": p["agent"], "note": note})
+            self.refresh_vault()
+
+        n = len(p["changes"])
+        self.inbox.add(source="bookshelf", key=f"bookshelf:{pid}",
+                       title=f"{p['agent']} proposes {n} change{'' if n == 1 else 's'} to the Bookshelf",
+                       detail=p["summary"] or "", choices=["approve", "reject"], resolver=resolver,
+                       context={"proposal_id": pid, "agent": p["agent"], "changes": preview or [], "problem": problem})
+
+    def offer_pending_proposals(self):
+        for p in self.writer.proposals("pending"):
+            try:
+                self.offer_proposal(p, self.writer.preview(p["id"]))
+            except ProposalError as exc:      # e.g. the note was edited while the hub was down
+                self.offer_proposal(p, problem=str(exc))
+
+    def refresh_vault(self):
+        """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
+        if self.loop:
+            self.loop.create_task(asyncio.to_thread(self.vault_adapter.poll))
+
     # -- lifecycle ---------------------------------------------------------------------------
     def run_smoke(self):
         results = []
@@ -179,6 +215,12 @@ class NewSession(BaseModel):
     model: str | None = None           # agents with the "model_pick" capability
 
 
+class NewProposal(BaseModel):
+    agent: str = Field(min_length=1, max_length=200)    # who proposes: claude:<session>, hermes:default:<session>, ...
+    summary: str = Field(default="", max_length=500)
+    changes: list[dict] = Field(min_length=1, max_length=50)
+
+
 class Send(BaseModel):
     text: str = Field(min_length=1, max_length=100_000)
 
@@ -198,6 +240,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         tasks = []
         if hub.claude:
             hub.claude.publish_sessions()
+        hub.offer_pending_proposals()
         if start_adapters:
             results = await asyncio.to_thread(hub.run_smoke)
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
@@ -214,6 +257,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         for a in hub.agents.values():
             await a.shutdown()
         hub.index.close()
+        hub.writer.close()
         hub.store.close()
 
     app = FastAPI(title="Sage OS hub", version=__version__, lifespan=lifespan)
@@ -281,6 +325,14 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             return hub.index.search(q, archived=archived, limit=max(1, min(limit, 100)))
         return await asyncio.to_thread(run)
 
+    @app.get("/api/vault/proposals")
+    def vault_proposals(status: str | None = None, limit: int = 100):
+        return hub.writer.proposals(status, max(1, min(limit, 500)))
+
+    @app.get("/api/vault/history")
+    def vault_history(limit: int = 100):
+        return hub.writer.history(max(1, min(limit, 500)))
+
     @app.get("/api/vault/note")
     async def vault_note(ref: str):
         note = await asyncio.to_thread(hub.vault.read, ref)
@@ -325,6 +377,27 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         except OSError as exc:
             raise HTTPException(500, f"couldn't open the vault folder: {exc}")
         return {"ok": True, "path": str(hub.vault.root)}
+
+    @app.post("/api/vault/proposals", dependencies=W)
+    async def vault_propose(body: NewProposal):
+        """Store a proposal and put it in the inbox. Nothing is written to the vault here (I1)."""
+        try:
+            p = await asyncio.to_thread(hub.writer.propose, body.agent, body.summary, body.changes)
+        except ProposalError as exc:
+            raise HTTPException(400, str(exc))
+        hub.offer_proposal(p, p.pop("preview"))
+        hub.event("knowledge", "bookshelf", "proposal.created", {"proposal": p["id"], "agent": p["agent"]})
+        return p
+
+    @app.post("/api/vault/batches/{batch_id}/undo", dependencies=W)
+    async def vault_undo(batch_id: int):
+        try:
+            b = await asyncio.to_thread(hub.writer.undo, batch_id)
+        except ProposalError as exc:
+            raise HTTPException(409, str(exc))
+        hub.event("knowledge", "bookshelf", "batch.undone", {"batch": batch_id, "files": b["files"]})
+        hub.refresh_vault()
+        return b
 
     @app.post("/api/vault/reindex", dependencies=W)
     async def vault_reindex():

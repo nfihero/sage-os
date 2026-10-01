@@ -54,6 +54,10 @@ export type NoteFull = NoteMeta & { frontmatter: Record<string, any>; body: stri
 export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[]; indexed?: number };
 export type SearchHit = { path: string; ref: string; title: string; folder: string; archived: boolean; snippet: string; score: number };
 export type SearchResult = { q: string; ms: number; results: SearchHit[] };
+export type Batch = {
+  id: number; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
+  started: number; finished: number | null; undone: number | null; files: { path: string; op: "create" | "update" | "remove" }[];
+};
 
 export type Panels = {
   board?: Board; gpu?: Gpu; health?: Health; safety?: Guard[]; sessions?: ProfileSessions[];

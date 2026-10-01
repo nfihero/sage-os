@@ -5,10 +5,11 @@ knowledge base: your choice of local and cloud models, conversations and topics 
 one place, kanban boards for your workflows, and a built-in knowledge base that makes your AI agents
 your own.
 
-**Today (v0.5.0):** Claude Code (cloud) and Hermes (local models) side by side through a connector
+**Today (v0.6.0):** Claude Code (cloud) and Hermes (local models) side by side through a connector
 layer any agent or OpenAI-compatible model server can plug into, one approvals inbox, the Hermes kanban
-board, live GPU/safety status, and Bookshelf: read and search the vault. Bookshelf writes (approved in
-the inbox), more programs and multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 ·
+board, live GPU/safety status, and Bookshelf: read and search the vault, with agent-proposed changes
+filed only after you approve them in the inbox and undoable byte for byte. Agent tools for Bookshelf,
+more programs and multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 ·
 local only.
 
 | Read | For |
@@ -49,11 +50,11 @@ guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12
 |---|---|---|
 | Claude Code pane | Claude Agent SDK, your subscription | session tabs, folder + model per session; tool requests → inbox; usage meter |
 | Hermes pane | Hermes gateway sessions API | the profile `default`, labelled "Hermes"; open, continue, start chats |
-| Inbox | Claude permissions, Hermes approvals, kanban `needs_input` | allow once / session / deny + note; reply + unblock |
+| Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |
 | Top bar | health checks, guard logs | service lights, safety chip (red only on new blocks), Bookshelf, theme, Motion |
-| Bookshelf | `data/vault` (plain markdown) | search as you type (ranked, highlighted), read notes by folder, links by uid, contract problems named; Open vault in Explorer |
+| Bookshelf | `data/vault` (plain markdown) | search as you type (ranked, highlighted), read notes by folder, links by uid, contract problems named; History with exact undo; Open vault in Explorer |
 
 Click the `SAGE//OS` logo to replay the boot sequence.
 
@@ -69,7 +70,8 @@ hub/sage_os_hub/   FastAPI app, WebSocket stream, SQLite store (data/hub.db)
                    hermes_chat.py (chat relay + approvals → inbox)
     models.py      ModelProvider: any OpenAI-compatible endpoint
   inbox.py         the approvals inbox
-  knowledge/       Bookshelf: vault reader + contract checks (D9), FTS5 search index (D10)
+  knowledge/       Bookshelf: vault reader + contract checks (D9), FTS5 search index (D10),
+                   proposals + single journaled writer with undo (D11)
 ui/src/            React + Vite + Tailwind; themes in index.css; orbs in components/Orb.tsx
 docs/              mission, status, roadmap, handoff
 config.toml        ports, Hermes paths, poll intervals, agents + model servers, Claude workspaces, profile labels

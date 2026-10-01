@@ -106,7 +106,7 @@ def test_gate_2000_notes_under_300ms(tmp_path):
 
 
 def test_routes(tmp_path):
-    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db",
+    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db", vault_journal=tmp_path / "journal.db",
                  claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
     app = create_app(cfg, start_adapters=False)
     rel, text = note("DCF formula sheet", "discounted cash flows")

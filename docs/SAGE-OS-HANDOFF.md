@@ -40,12 +40,13 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.5.0 (1 Oct) | `pytest` 39/39 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
+| Hub (FastAPI) + UI (React) | **works**, v0.6.0 (1 Oct) | `pytest` 53/53 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
 | Hermes chat pane (gateway sessions API) | **works** incl. multi-turn | 3-turn test today, turns 2–3 in 0.9 s (needs the hub's runtime pin, §7 #9) |
 | Inbox: Claude permissions | **works** | gate above |
+| Inbox: Bookshelf proposals → single writer → undo | **works** (K3) | K3 gate 1 Oct on a scratch vault: nothing written before approval; undo byte-exact (vault SHA-256 identical) |
 | Inbox: Hermes `approval.request` | **untested live** | code maps it (`hermes_chat.py`); no Hermes run has raised one through Sage OS yet |
 | Inbox: kanban `needs_input` → reply + unblock | **untested live** | card appears for blocked task `t_549737c1`; reply path (`hermes kanban comment` + `unblock`) never clicked |
 | Subscription usage meter | **works, limited** | CLI sends `rate_limit_event`; it omits `utilization` until near a limit, so UI shows "OK + reset time" |
@@ -53,7 +54,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1) + keyword search (K2)** over `data/vault`; writes come with K3 | K1/K2 gates in `docs/STATUS.md`; contract D9, index D10 |
+| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1), keyword search (K2), approved writes + exact undo (K3)** over `data/vault`; agents can't reach it through tools until K5 | gates in `docs/STATUS.md`; contract D9/D11, index D10 |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
@@ -108,7 +109,7 @@ agents should reach it only through these surfaces, never through its files dire
 |---|---|
 | Query/search or read-by-path? | **Search is required.** Agents today find notes by `grep`/`find` in the terminal (every call guardian-screened, ~1–1.5 s overhead each). Read-by-path alone would not replace that. BookShelf having no search (its B1) was the gating gap — **closed by K2** (FTS5 keyword search, v0.5.0); meaning-based search still open (D10). |
 | Do agents write knowledge? | **Yes.** Observed: Hermes acted as an Obsidian "librarian" (reorganised notes, created topic notes, added cross-links), daily runs created/updated 3–5 notes each, outlines like `SAGE-OUTLINE.md`. |
-| Per-write approval: fits or breaks? | **Fits for chat-driven writes** (Sage OS already has an inbox designed for approvals). **Breaks for background/kanban bulk writes** (a single librarian run touched dozens of files) unless batches can be approved as one unit or trust is per agent. |
+| Per-write approval: fits or breaks? | **Fits for chat-driven writes** (Sage OS already has an inbox designed for approvals). **Breaks for background/kanban bulk writes** (a single librarian run touched dozens of files) unless batches can be approved as one unit or trust is per agent. **K3 (v0.6.0):** one proposal of up to 50 changes is approved and undone as one unit; approving many proposals at once and per-agent trust are K7. |
 | Transport | **MCP first** (Claude Agent SDK and Hermes both speak MCP; Hermes has none configured yet). **HTTP/WS** for the Sage OS hub to list/approve proposals in its inbox. **Direct filesystem reads** acceptable. |
 | Volume | *Estimate from history, not measured:* per agent session 5–50 reads, 0–10 proposed writes; background librarian/daily runs 20–50 proposed writes in a burst. |
 | Latency / real-time | Reads < ~300 ms are fine (a local LLM turn is 1–30 s). Writes are async (approval). Only "real-time" need: a new proposal should reach the Sage OS inbox within ~5 s (current board poll interval). |

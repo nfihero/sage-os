@@ -12,6 +12,33 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-01
+
+Gate: K3 pass — on a 2,006-note scratch vault a proposal from `claude:cs_k3live` (create a note +
+retag another) changed nothing until *Approve & file* in the inbox; *Undo* in Bookshelf History then
+returned the whole vault to the identical SHA-256 fingerprint. Checks: pytest 53/53, UI build clean,
+smoke 17/17.
+
+### Added
+- **Bookshelf writes (K3):** agents *propose* changes (create a note, update one by uid, archive one
+  into `Archive/`); the proposal is checked and rendered first, then waits in the **inbox** with each
+  change's diff (*Approve & file* / *Reject* + note). A **single writer** applies an approved proposal
+  as one batch, journal-first with exact before/after bytes in `data/bookshelf.db` (`[bookshelf]
+  journal`); a failure part-way rolls back, and a crash is rolled back at the next start. **Undo**
+  restores a batch byte for byte and refuses if a file was edited since. Proposals against notes
+  edited after proposing are refused at approval. Pending proposals survive a hub restart.
+- Provenance: notes agents create carry `origin: agent` + `agent: <id>`; agent edits to other notes
+  add the agent to `edited_by` (vault contract v1.1, DECISIONS D11).
+- Updates rewrite only the frontmatter keys they change; comments, quoting, list style and unknown
+  keys stay byte for byte.
+- Routes `POST /api/vault/proposals`, `GET /api/vault/proposals`, `GET /api/vault/history`,
+  `POST /api/vault/batches/{id}/undo`. UI: inbox cards for proposals with per-change diffs; a
+  Bookshelf **History** tab with two-step Undo.
+
+### Fixed (during K3)
+- Two new notes with the same title in one proposal would both have been named `-2` (the second
+  overwriting the first); caught by a test before release.
+
 ## [0.5.0] — 2026-10-01
 
 Gate: K2 pass — on a 2,006-note vault every query returned ranked notes in at most 12 ms (13 ms round

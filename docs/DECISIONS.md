@@ -192,6 +192,36 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** keyword results miss notes the user expects (e.g. synonyms), or the vault grows past
   ~20k notes (re-measure indexing time).
 
+## D11 — How agents write to the vault: proposals, one writer, a journal
+
+- **Date / by:** 2026-10-01, Claude while building K3 (from BookShelf I1, I2, I9 and D2); open to change
+- **Status:** accepted. Amends D9: vault contract **v1.1** adds the optional key `edited_by`.
+- **Decision:**
+  - Agents never write files. They submit a **proposal** (1–50 changes: `create`, `update` by uid,
+    `archive` = move under `Archive/`). It is validated and rendered at once — a proposal that would
+    break the vault contract is refused and never reaches the inbox.
+  - The proposal waits in the **Sage OS inbox**; *Approve & file* is the only path to the vault (I1).
+    No HTTP route writes notes; the agent tools in K5 will offer propose/read only.
+  - A **single writer** (one lock) applies the whole proposal as one batch or nothing (I9): plan and
+    check everything, write the journal (exact before/after bytes) first, then the files via temp
+    file + atomic rename; roll back on failure; `recover()` at startup rolls back a batch a crash
+    interrupted.
+  - **Undo** is per batch and byte-exact (I2); it refuses if any file changed since, rather than
+    overwrite the user's edit. There is no redo yet.
+  - **Stale protection:** an update/archive remembers the note's SHA-256 when proposed; approval is
+    refused if the note changed since.
+  - **Provenance (replaces BookShelf I7):** created notes get `origin: agent` + `agent: <id>`; when an
+    agent edits a note that isn't its own, its id is added to `edited_by`; `origin` never changes.
+  - **Minimal edits:** an update rewrites only the frontmatter keys it changes; other lines stay
+    byte for byte. If the result wouldn't read back exactly as intended, the frontmatter is rewritten
+    whole instead (correctness over formatting).
+  - The journal (`data/bookshelf.db`) is not a cache: deleting it loses undo history and pending
+    proposals, never notes.
+- **Not yet:** secret screening before the journal and disk (K4 — until then a proposal containing a
+  secret is stored in the journal, and written if approved); agents proposing through tools (K5 —
+  today only via `POST /api/vault/proposals`); approve-with-corrections, per-item undo inside a batch,
+  batch approval across proposals and per-agent trust (K7).
+
 ---
 
 ## Proposed, awaiting the user
