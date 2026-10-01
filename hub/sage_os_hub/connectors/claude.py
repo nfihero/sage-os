@@ -21,10 +21,12 @@ from pathlib import Path
 from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKClient,
                               PermissionResultAllow, PermissionResultDeny, ResultMessage,
                               SystemMessage, TextBlock, ThinkingBlock, ToolResultBlock,
-                              ToolUseBlock, UserMessage)
+                              ToolUseBlock, UserMessage, create_sdk_mcp_server, tool)
 from claude_agent_sdk.types import RateLimitEvent, StreamEvent
 
+from .. import __version__
 from ..inbox import Inbox, future_resolver
+from ..knowledge.tools import LIST_DESC, PROPOSE_DESC, READ_DESC, SEARCH_DESC, BookshelfTools, as_text
 from .base import AgentBusy, AgentConnector, InvalidRequest, SessionNotFound
 
 log = logging.getLogger("sage_os")
@@ -39,7 +41,45 @@ orchestrator and reviewer for local Hermes agents running on an RTX 5070 Ti.
   decision is his, and keep requests specific.
 - Google Drive (G:\\) is read-only. Private bank data lives in data-private/ folders: never commit
   or upload it.
+- Bookshelf is the user's knowledge base: search_notes / read_note before answering from memory
+  about their notes; propose_note to add or change notes (they approve it in the inbox; never put
+  secrets in notes); list_proposals to see what happened to your proposals.
 """
+
+BOOKSHELF_TOOLS = [f"mcp__bookshelf__{n}" for n in ("search_notes", "read_note", "propose_note", "list_proposals")]
+
+
+def bookshelf_server(tools: BookshelfTools, agent: str):
+    """Bookshelf tools (K5) as an in-process MCP server; `agent` is fixed per Claude session."""
+    return create_sdk_mcp_server(name="bookshelf", version=__version__, tools=bookshelf_sdk_tools(tools, agent))
+
+
+def bookshelf_sdk_tools(tools: BookshelfTools, agent: str) -> list:
+    def out(result: dict) -> dict:
+        return {"content": [{"type": "text", "text": as_text(result)}]}
+
+    @tool("search_notes", SEARCH_DESC, {"type": "object", "required": ["query"], "properties": {
+        "query": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 30},
+        "include_archive": {"type": "boolean"}}})
+    async def search_notes(a):
+        return out(await tools.search(agent, a["query"], a.get("limit", 10), a.get("include_archive", False)))
+
+    @tool("read_note", READ_DESC, {"type": "object", "required": ["uid"], "properties": {"uid": {"type": "string"}}})
+    async def read_note(a):
+        return out(await tools.read(agent, a["uid"]))
+
+    @tool("propose_note", PROPOSE_DESC, {"type": "object", "required": ["changes"], "properties": {
+        "changes": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"type": "object"}},
+        "summary": {"type": "string"}}})
+    async def propose_note(a):
+        return out(await tools.propose(agent, a["changes"], a.get("summary", "")))
+
+    @tool("list_proposals", LIST_DESC, {"type": "object", "properties": {
+        "status": {"type": "string", "enum": ["pending", "applied", "rejected"]}}})
+    async def list_proposals(a):
+        return out(await tools.proposals(agent, a.get("status")))
+
+    return [search_notes, read_note, propose_note, list_proposals]
 
 
 CLI_GLOBS = [
@@ -101,7 +141,11 @@ class ClaudeSession:
             can_use_tool=self._can_use_tool, include_partial_messages=True,
             setting_sources=["user", "project", "local"],
             system_prompt={"type": "preset", "preset": "claude_code", "append": SYSTEM_APPEND},
-            disallowed_tools=["AskUserQuestion"])
+            disallowed_tools=["AskUserQuestion"],
+            # Bookshelf (K5): reads are harmless and proposals already wait in the inbox, so these
+            # four tools skip the per-call permission prompt.
+            mcp_servers={"bookshelf": bookshelf_server(self.mgr.hub.bookshelf_tools, f"claude:{self.id}")},
+            allowed_tools=BOOKSHELF_TOOLS)
 
     async def _can_use_tool(self, tool, inp, ctx):
         fut = asyncio.get_running_loop().create_future()

@@ -48,6 +48,17 @@ def _read_model_block(path: Path) -> dict[str, str]:
     return out
 
 
+def _error(r: httpx.Response) -> dict:
+    """Hermes' {"error": {"message", "code"}} body, or {} for a success or a non-JSON reply."""
+    if r.status_code < 400:
+        return {}
+    try:
+        err = r.json().get("error")
+    except ValueError:
+        return {}
+    return err if isinstance(err, dict) else {"message": str(err)}
+
+
 class HermesAPI:
     def __init__(self, gateway: str, hermes_home: Path):
         self.gateway = gateway.rstrip("/")
@@ -93,14 +104,21 @@ class HermesAPI:
         return body.get("data", body if isinstance(body, list) else [])
 
     async def create_session(self, profile: str, title: str | None = None) -> dict:
-        payload = {"source": "api_server"}
-        if title:
-            payload["title"] = title
+        """Hermes requires unique session titles, so a taken title gets a number: "Sage OS chat 2"."""
         async with httpx.AsyncClient(timeout=15) as c:
-            r = await c.post(self._url(profile, "/api/sessions"), headers=self._headers(profile), json=payload)
-            r.raise_for_status()
-            body = r.json()
-        return body.get("session", body)
+            for n in range(1, 50):
+                payload = {"source": "api_server"}
+                if title:
+                    payload["title"] = title if n == 1 else f"{title} {n}"
+                r = await c.post(self._url(profile, "/api/sessions"), headers=self._headers(profile), json=payload)
+                err = _error(r)
+                if title and err.get("code") == "invalid_title" and "in use" in err.get("message", ""):
+                    continue
+                if r.status_code >= 400:
+                    raise RuntimeError(err.get("message") or f"HTTP {r.status_code}")
+                body = r.json()
+                return body.get("session", body)
+        raise RuntimeError(f"no free session title like {title!r}")
 
     async def chat_stream(self, profile: str, session_id: str, message: str) -> AsyncIterator[tuple[str, dict]]:
         """Yields (event_name, payload) from the SSE stream until the run ends."""

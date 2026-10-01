@@ -16,7 +16,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -36,6 +36,8 @@ from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
+from .knowledge.mcp_http import build_server, mcp_path
+from .knowledge.tools import BookshelfTools
 from .store import Store
 
 log = logging.getLogger("sage_os")
@@ -78,7 +80,12 @@ class Hub:
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
                          SafetyAdapter(self, cfg), SessionsAdapter(self, cfg), self.vault_adapter]
         self.inbox = Inbox(self.publish, self.event)
+        self.bookshelf_tools = BookshelfTools(self)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
+        # Bookshelf over MCP (K5): Claude gets an in-process server per session; every other agent
+        # gets a Streamable HTTP endpoint whose path fixes the agent id.
+        self.mcp = {a.id: build_server(self.bookshelf_tools, a.id, cfg.port)
+                    for a in self.agents.values() if a.vendor != "claude-code"}
         self.claude = self.agents.get("claude")
         self.providers = build_providers(cfg)
         self.smoke_results: list[dict] = []
@@ -161,10 +168,32 @@ class Hub:
             except ProposalError as exc:      # e.g. the note was edited while the hub was down
                 self.offer_proposal(p, problem=str(exc))
 
-    def hold_screened(self, body, exc, preview: list[dict]):
+    async def submit_proposal(self, agent: str, summary: str, changes: list) -> dict:
+        """The one way a proposal enters Sage OS (HTTP route and agent tools alike).
+        -> {"status": "pending", "proposal"} | {"status": "held", "message"} | {"status": "refused", "error"}"""
+        try:
+            p = await asyncio.to_thread(self.writer.propose, agent, summary, changes)
+        except SensitiveContent as exc:
+            # The event says who, where and what kind -- never the content (I4). If the agent name
+            # itself tripped the screen, it isn't recorded either.
+            who = "(withheld)" if exc.where == "the agent name" else agent
+            self.event("knowledge", "bookshelf", "proposal.screened", {"agent": who, "where": exc.where, "category": exc.category})
+            try:
+                preview = await asyncio.to_thread(self.writer.render, agent, summary, changes)
+            except ProposalError as invalid:          # not worth holding: it couldn't be filed anyway
+                return {"status": "refused", "error": f"{exc} Also: {invalid}"}
+            self.hold_screened(agent, summary, changes, exc, preview)
+            return {"status": "held", "message": f"{exc} It is held for the user's review; only they can save it anyway."}
+        except ProposalError as exc:
+            return {"status": "refused", "error": str(exc)}
+        self.offer_proposal(p, p.pop("preview"))
+        self.event("knowledge", "bookshelf", "proposal.created", {"proposal": p["id"], "agent": p["agent"]})
+        return {"status": "pending", "proposal": p}
+
+    def hold_screened(self, agent: str, summary: str, changes: list, exc, preview: list[dict]):
         """K4 manual override: a screened proposal waits in the inbox, in memory only (never on disk),
         until the user rejects it or chooses "Save anyway". A hub restart drops it."""
-        who = "(withheld)" if exc.where == "the agent name" else body.agent
+        who = "(withheld)" if exc.where == "the agent name" else agent
         key = f"held:{uuid.uuid4().hex[:10]}"
 
         async def resolver(choice, note):
@@ -172,7 +201,7 @@ class Hub:
             if choice != "save_anyway":
                 self.event("knowledge", "bookshelf", "proposal.held_rejected", info)
                 return
-            p = await asyncio.to_thread(lambda: self.writer.propose(body.agent, body.summary, body.changes, override=exc.category))
+            p = await asyncio.to_thread(lambda: self.writer.propose(agent, summary, changes, override=exc.category))
             self.event("knowledge", "bookshelf", "proposal.override", info | {"proposal": p["id"]})
             try:
                 batch = await asyncio.to_thread(self.writer.approve, p["id"], note)
@@ -207,6 +236,9 @@ class Hub:
                 results += [{"adapter": a.id, "check": c, "ok": ok, "detail": d} for c, ok, d in a.smoke()]
             except Exception as exc:
                 results.append({"adapter": a.id, "check": "smoke", "ok": False, "detail": repr(exc)})
+        for agent_id in self.mcp:
+            results.append({"adapter": "bookshelf", "check": f"MCP endpoint for {agent_id}", "ok": True,
+                            "detail": f"http://{self.cfg.host}:{self.cfg.port}{mcp_path(agent_id)}/"})
         lead = self.cfg.lead_agent
         results.append({"adapter": "agents", "check": "lead agent connected", "ok": lead in self.agents,
                         "detail": lead if lead in self.agents else f"{lead!r} is not among {sorted(self.agents)}"})
@@ -266,6 +298,9 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @asynccontextmanager
     async def lifespan(app):
         hub.loop = asyncio.get_running_loop()
+        mcp_stack = AsyncExitStack()
+        for _, manager in hub.mcp.values():
+            await mcp_stack.enter_async_context(manager.run())
         tasks = []
         if hub.claude:
             hub.claude.publish_sessions()
@@ -285,6 +320,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             t.cancel()
         for a in hub.agents.values():
             await a.shutdown()
+        await mcp_stack.aclose()
         hub.index.close()
         hub.writer.close()
         hub.store.close()
@@ -371,7 +407,11 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.get("/api/agents")
     def agents():
-        return {"lead": cfg.lead_agent, "agents": [a.info() for a in hub.agents.values()]}
+        def mcp_info(a):
+            if a.id in hub.mcp:
+                return {"bookshelf_mcp": f"http://{cfg.host}:{cfg.port}{mcp_path(a.id)}/"}
+            return {"bookshelf_mcp": "in-process"} if a.vendor == "claude-code" else {}
+        return {"lead": cfg.lead_agent, "agents": [a.info() | mcp_info(a) for a in hub.agents.values()]}
 
     @app.get("/api/models")
     async def models():
@@ -410,25 +450,12 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.post("/api/vault/proposals", dependencies=W)
     async def vault_propose(body: NewProposal):
         """Store a proposal and put it in the inbox. Nothing is written to the vault here (I1)."""
-        try:
-            p = await asyncio.to_thread(hub.writer.propose, body.agent, body.summary, body.changes)
-        except SensitiveContent as exc:
-            # The event says who, where and what kind -- never the content (I4). If the agent name
-            # itself tripped the screen, it isn't recorded either.
-            who = "(withheld)" if exc.where == "the agent name" else body.agent
-            hub.event("knowledge", "bookshelf", "proposal.screened", {"agent": who, "where": exc.where, "category": exc.category})
-            try:
-                preview = await asyncio.to_thread(hub.writer.render, body.agent, body.summary, body.changes)
-            except ProposalError as invalid:          # not worth holding: it couldn't be filed anyway
-                raise HTTPException(400, f"{exc} Also: {invalid}")
-            hub.hold_screened(body, exc, preview)
-            return JSONResponse({"status": "held", "detail": f"{exc} It is held for the user's review; only they can save it anyway."},
-                                status_code=202)
-        except ProposalError as exc:
-            raise HTTPException(400, str(exc))
-        hub.offer_proposal(p, p.pop("preview"))
-        hub.event("knowledge", "bookshelf", "proposal.created", {"proposal": p["id"], "agent": p["agent"]})
-        return p
+        r = await hub.submit_proposal(body.agent, body.summary, body.changes)
+        if r["status"] == "held":
+            return JSONResponse({"status": "held", "detail": r["message"]}, status_code=202)
+        if r["status"] == "refused":
+            raise HTTPException(400, r["error"])
+        return r["proposal"]
 
     @app.post("/api/vault/batches/{batch_id}/undo", dependencies=W)
     async def vault_undo(batch_id: int):
@@ -518,6 +545,9 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             pass
         finally:
             hub.subscribers.discard(q)
+
+    for agent_id, (mcp_app, _) in hub.mcp.items():
+        app.mount(mcp_path(agent_id), mcp_app)
 
     dist = ROOT / "ui" / "dist"
     if dist.is_dir():

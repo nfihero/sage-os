@@ -97,3 +97,27 @@ def test_config_parses_agents_and_refuses_inline_keys(tmp_path):
     bad.write_text('[[models]]\nid = "x"\nbase_url = "http://h/v1"\napi_key = "sk-oops"\n', encoding="utf-8")
     with pytest.raises(ValueError, match="environment variable"):
         load(bad)
+
+
+def test_hermes_session_titles_must_be_unique(tmp_path, monkeypatch):
+    """Hermes refuses a taken title; the connector numbers it instead of failing every '+ new chat'."""
+    import asyncio
+    import httpx
+    from sage_os_hub.connectors import hermes_api
+    taken = {"Sage OS chat"}
+
+    def handler(request):
+        title = json.loads(request.content).get("title")
+        if title == "boom":
+            return httpx.Response(400, json={"error": {"message": "model not configured", "code": "bad"}})
+        if title in taken:
+            return httpx.Response(400, json={"error": {"message": f"Title already in use by session x", "code": "invalid_title"}})
+        taken.add(title)
+        return httpx.Response(200, json={"session": {"id": "api_1", "title": title}})
+    real = httpx.AsyncClient
+    monkeypatch.setattr(hermes_api.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    api = hermes_api.HermesAPI("http://hermes.test", tmp_path)
+    assert asyncio.run(api.create_session("default", "Sage OS chat"))["title"] == "Sage OS chat 2"
+    assert asyncio.run(api.create_session("default", "Sage OS chat"))["title"] == "Sage OS chat 3"
+    with pytest.raises(RuntimeError, match="model not configured"):            # Hermes' own message, not "400"
+        asyncio.run(api.create_session("default", "boom"))
