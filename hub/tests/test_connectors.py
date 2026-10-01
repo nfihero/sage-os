@@ -20,7 +20,7 @@ def fake_hermes(home, *, key=True, pinned=True):
 
 
 def make(tmp_path, **kw):
-    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", claude_workspaces=[str(tmp_path)],
+    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", claude_workspaces=[str(tmp_path)],
                  profile_labels={"default": "Hermes"}, **kw)
     return create_app(cfg, start_adapters=False)
 
@@ -65,7 +65,7 @@ def test_hermes_smoke_names_missing_key_and_pin(tmp_path):
     bare = tmp_path / "bare"
     bare.mkdir()
     fake_hermes(bare, key=False, pinned=False)
-    app = create_app(Config(hermes_home=bare, store=bare / "hub.db", claude_workspaces=[str(bare)]), start_adapters=False)
+    app = create_app(Config(hermes_home=bare, store=bare / "hub.db", vault=bare / "vault", claude_workspaces=[str(bare)]), start_adapters=False)
     ok = {r["check"]: r["ok"] for r in app.state.hub.run_smoke() if r["adapter"] == "hermes:default"}
     assert ok == {"default API key readable": False, "default model pinned per turn": False}
 

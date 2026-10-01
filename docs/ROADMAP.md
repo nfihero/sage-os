@@ -26,7 +26,7 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 
 | Step | Scope | Gate |
 |---|---|---|
-| K1 | Vault format + read: markdown with YAML frontmatter, uid identity, no absolute paths (I8); vault at `data/vault/` (config setting); Bookshelf view with an **Open vault** button (Explorer) | Sage OS lists and renders notes from the vault; the button opens the folder |
+| K1 | Vault format + read: markdown with YAML frontmatter, uid identity, no absolute paths (I8); vault at `data/vault/` (config setting); Bookshelf view with an **Open vault** button (Explorer) | Sage OS lists and renders notes from the vault; the button opens the folder — **pass** (1 Oct) |
 | K2 | Search: SQLite FTS5 index rebuilt from files (vault stays the source of truth, I3) | A query returns ranked notes in < 300 ms |
 | K3 | Propose → approve → commit: agents propose, the **Sage OS inbox** approves, a single writer applies with a SQLite journal and batch undo (I1, I2, I9) | An agent's proposal lands only after approval; undo restores bytes exactly |
 | K4 | Screening before disk (I4) | A proposal containing a key is refused before anything is written |

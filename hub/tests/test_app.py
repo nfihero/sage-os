@@ -8,7 +8,7 @@ from sage_os_hub.config import Config
 
 
 def make(tmp_path):
-    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", claude_workspaces=[str(tmp_path)])
+    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", claude_workspaces=[str(tmp_path)])
     return create_app(cfg, start_adapters=False)
 
 

@@ -44,10 +44,20 @@ export type ClaudeSessionInfo = {
 export type ClaudePanel = { sessions: ClaudeSessionInfo[]; cli: string | null; workspaces: string[]; logged_in: boolean | null };
 export type ChatItem = { id: number | string; ts: number; kind: string; data: any };
 
+export type NoteLink = { uid: string; title: string | null };
+export type NoteMeta = {
+  ref: string; path: string; folder: string; title: string; uid: string | null; type: string | null;
+  status: string | null; origin: string | null; agent: string | null; created: string | null; updated: string | null;
+  tags: string[]; links: NoteLink[]; archived: boolean; problems: string[]; size: number; mtime: number;
+};
+export type NoteFull = NoteMeta & { frontmatter: Record<string, any>; body: string; source: string };
+export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[] };
+
 export type Panels = {
   board?: Board; gpu?: Gpu; health?: Health; safety?: Guard[]; sessions?: ProfileSessions[];
   inbox?: InboxItem[]; claude?: ClaudePanel; claude_usage?: Record<string, UsageWindow>;
   hermes_runs?: Record<string, { run_id: string | null; profile: string }>;
+  vault?: VaultPanel;
 };
 
 export type TaskDetail = {

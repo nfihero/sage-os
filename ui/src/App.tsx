@@ -13,6 +13,7 @@ import Handoffs, { handoff, ORB } from "./components/Handoffs";
 import ScreenFx from "./components/ScreenFx";
 import BootScreen from "./components/BootScreen";
 import { SafetyDrawer, SafetyToast, useSafety } from "./components/Safety";
+import Bookshelf from "./components/Bookshelf";
 
 type Tab = "claude" | "local" | "inbox" | "board" | "system";
 type Area = "claude" | "local" | "inbox" | "board" | "gpu";
@@ -41,6 +42,7 @@ export default function App() {
   const wide = useMedia("(min-width: 1500px)");
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("claude");
+  const [shelf, setShelf] = useState(false);
   const { panels } = hub;
   const safety = useSafety(panels.safety ?? []);
   const inbox = panels.inbox ?? [];
@@ -100,7 +102,7 @@ export default function App() {
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} />
+        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col p-2">
@@ -141,6 +143,7 @@ export default function App() {
       </div>
       <SafetyDrawer open={safety.open} safety={panels.safety ?? []} events={hub.events} onClose={safety.close} onOpenTask={setOpenTask} />
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
+      {shelf && <Bookshelf panel={panels.vault} onClose={() => setShelf(false)} />}
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
     </>
   );

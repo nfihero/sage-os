@@ -33,6 +33,9 @@ hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS withou
 # kind = "local"            # local | cloud
 # api_key_env = "OLLAMA_API_KEY"
 
+[bookshelf]
+vault = "data/vault"        # the knowledge base (DECISIONS D6); relative to the sage-os folder
+
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before
 # running commands or editing files; answers come from the Sage OS inbox.

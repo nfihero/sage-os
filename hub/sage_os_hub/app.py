@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
+import sys
 import webbrowser
 import logging
 import time
+from pathlib import Path
 from contextlib import asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
@@ -26,15 +29,25 @@ from .adapters.kanban import KanbanAdapter
 from .adapters.safety import SafetyAdapter
 from .adapters.sessions import SessionsAdapter
 from .adapters.system import GpuAdapter, HealthAdapter
+from .adapters.vault import VaultAdapter
 from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
+from .knowledge import Vault
 from .store import Store
 
 log = logging.getLogger("sage_os")
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
 LOCAL_ORIGIN_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def open_folder(path: Path) -> None:
+    """Show a folder in the desktop's file manager (Explorer on Windows)."""
+    if os.name == "nt":
+        os.startfile(path)
+    else:
+        subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
 
 
 def _local_origin(origin: str | None) -> bool:
@@ -54,8 +67,11 @@ class Hub:
         self.subscribers: set[asyncio.Queue] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
         self.kanban = KanbanAdapter(self, cfg.hermes_home, cfg.poll["board"])
+        self.vault = Vault(cfg.vault)
+        self.vault.ensure()
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
-                         SafetyAdapter(self, cfg), SessionsAdapter(self, cfg)]
+                         SafetyAdapter(self, cfg), SessionsAdapter(self, cfg),
+                         VaultAdapter(self, self.vault, cfg.poll["vault"])]
         self.inbox = Inbox(self.publish, self.event)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         self.claude = self.agents.get("claude")
@@ -251,6 +267,17 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     def ping():
         return {"ok": True, "version": __version__}
 
+    @app.get("/api/vault")
+    async def vault():
+        return await asyncio.to_thread(hub.vault.summary)
+
+    @app.get("/api/vault/note")
+    async def vault_note(ref: str):
+        note = await asyncio.to_thread(hub.vault.read, ref)
+        if note is None:
+            raise HTTPException(404, "no such note in the vault")
+        return note
+
     @app.get("/api/agents")
     def agents():
         return {"lead": cfg.lead_agent, "agents": [a.info() for a in hub.agents.values()]}
@@ -279,6 +306,16 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         return await agent_history(f"hermes:{profile}", sid)
 
     # -- writes ----------------------------------------------------------------------------------
+    @app.post("/api/vault/open", dependencies=W)
+    def vault_open():
+        # Only ever the configured vault: the browser can't name a path to open.
+        hub.vault.ensure()
+        try:
+            open_folder(hub.vault.root)
+        except OSError as exc:
+            raise HTTPException(500, f"couldn't open the vault folder: {exc}")
+        return {"ok": True, "path": str(hub.vault.root)}
+
     @app.post("/api/agents/{agent_id}/sessions", dependencies=W)
     async def agent_new(agent_id: str, body: NewSession):
         with agent_errors():

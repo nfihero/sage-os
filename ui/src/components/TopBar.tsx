@@ -13,9 +13,11 @@ const SERVICES = [
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
+  onBookshelf: () => void;
 }) {
+  const vault = hub.panels.vault;
   const now = useNow(1000);
   const h = hub.panels.health;
   const failed = hub.smoke.filter((s) => !s.ok);
@@ -57,6 +59,10 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         )}
         <SafetyChip safety={hub.panels.safety ?? []} unseen={unseen} onClick={onSafety} />
         <span className={`chip ${inboxCount ? "amber pulse-amber" : "mute"}`} title="Items waiting for you in the inbox">INBOX <span className="font-dot text-[15px] leading-none">{inboxCount}</span></span>
+        <button className="chip" onClick={onBookshelf} data-testid="bookshelf-open"
+          title={vault ? `Bookshelf: ${vault.count} notes${vault.problems ? `, ${vault.problems} with problems` : ""}` : "Bookshelf"}>
+          BOOKSHELF <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>
+        </button>
         <select value={theme.theme} onChange={(e) => theme.setTheme(e.target.value as Theme)} title="Theme"
           className="border border-cyan/35 bg-void px-1 py-0.5 text-[10.5px] uppercase text-cyan">
           {THEMES.map((t) => <option key={t} value={t}>{t}</option>)}

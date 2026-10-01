@@ -50,7 +50,8 @@ guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12
 | Inbox | Claude permissions, Hermes approvals, kanban `needs_input` | allow once / session / deny + note; reply + unblock |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |
-| Top bar | health checks, guard logs | service lights, safety chip (red only on new blocks), theme, Motion |
+| Top bar | health checks, guard logs | service lights, safety chip (red only on new blocks), Bookshelf, theme, Motion |
+| Bookshelf | `data/vault` (plain markdown) | read notes by folder, links by uid, contract problems named; Open vault in Explorer |
 
 Click the `SAGE//OS` logo to replay the boot sequence.
 
@@ -66,6 +67,7 @@ hub/sage_os_hub/   FastAPI app, WebSocket stream, SQLite store (data/hub.db)
                    hermes_chat.py (chat relay + approvals → inbox)
     models.py      ModelProvider: any OpenAI-compatible endpoint
   inbox.py         the approvals inbox
+  knowledge/       Bookshelf: vault reader + contract checks (DECISIONS D9)
 ui/src/            React + Vite + Tailwind; themes in index.css; orbs in components/Orb.tsx
 docs/              mission, status, roadmap, handoff
 config.toml        ports, Hermes paths, poll intervals, agents + model servers, Claude workspaces, profile labels

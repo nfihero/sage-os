@@ -153,6 +153,27 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   shows while only one agent is connected; layout on a phone (Phase 3).
 - **Revisit if:** the lead agent becomes a bottleneck (e.g. routing by topic or task instead).
 
+## D9 — Vault contract v1
+
+- **Date / by:** 2026-10-01, Claude while building K1 (from BookShelf DESIGN §11 + D2); open to change
+- **Status:** accepted. Changes to it are breaking changes for existing vaults — version them.
+- **Contract:** BookShelf's vault contract carried over, with these Sage OS changes:
+  - Notes are `<slug>.md` (lowercase ASCII, hyphens) with YAML frontmatter. **Required:** `uid` (ULID,
+    immutable identity), `title`, `created`, `updated`, `type`, `status`, `origin`. **Optional:** `tags`,
+    `links` (a list of uids), `attachments`, `source`. Unknown keys pass through untouched.
+  - `origin` is one of `human`, `imported`, `scanned`, `captured`, **`agent`**; `origin: agent` also
+    requires `agent: <id>` (e.g. `claude:<session>`, `hermes:default:<session>`) — D2's replacement for
+    BookShelf's I7.
+  - `Attachments/` holds originals and is not scanned for notes; `Archive/` holds retired notes (listed
+    as archived, nothing is deleted); folders starting with `.` are ignored, so Obsidian's `.obsidian/`
+    and a future `.bookshelf/` (rules, taxonomy — BookShelf's `.llm-wiki/`, renamed) can live inside.
+  - No absolute paths anywhere in frontmatter or links (I8).
+- **Reading rules (K1):** notes that break the contract are **listed with their problems named**, never
+  hidden or silently fixed. The UI addresses a note by its uid; only a note without a valid, unique uid
+  falls back to its vault-relative path. Images and wikilinks render as plain text for now (no
+  attachment serving yet; BookShelf's open question 11.1, wikilinks vs uids, is still open).
+- **The app writes no notes on its own** — `ensure()` creates only `Archive/` and `Attachments/`.
+
 ---
 
 ## Proposed, awaiting the user

@@ -15,6 +15,12 @@ while pre-1.0.
   (`lead`, `claude`, `hermes`), routes `GET /api/agents`, `GET /api/models` and
   `/api/agents/{id}/sessions/...`; per-agent smoke checks (Hermes API key, per-turn model pin, lead
   agent connected). Old `/api/claude/...` and `/api/hermes/...` routes kept for the current panes.
+- **Bookshelf reader (K1):** vault at `data/vault` (`[bookshelf] vault`), created with only `Archive/` and
+  `Attachments/`. `knowledge/` reads notes and checks them against vault contract v1 (DECISIONS D9);
+  a watcher republishes the vault when files change. Top-bar BOOKSHELF opens a reader (folders,
+  filter, rendered/source view, links by uid, agent-written label, contract problems) with an
+  **Open vault** button. Routes `GET /api/vault`, `GET /api/vault/note?ref=`, `POST /api/vault/open`
+  (opens only the configured folder). New dependency: PyYAML.
 
 ### Changed
 - Docs: broadened product framing to match the GitHub description (agent hub with a personal,

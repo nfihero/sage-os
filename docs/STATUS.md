@@ -15,6 +15,7 @@ chat 3/3 turns.
 | Claude Code pane | Agent SDK on the user's subscription; session tabs, folder + model per session; streamed replies; interrupt |
 | Hermes pane | gateway sessions API; open/continue/start chats; tool progress; stop; multi-turn via the hub's runtime pin |
 | Connectors (A1) | agents (Claude Code, Hermes profiles) and model servers (any OpenAI-compatible endpoint) behind one interface; set in `config.toml` `[agents]` / `[[models]]`; `GET /api/agents`, `GET /api/models`, `/api/agents/{id}/sessions/...`; smoke checks per agent |
+| Bookshelf reader (K1) | vault at `data/vault` (`[bookshelf] vault`); top-bar BOOKSHELF opens a reader — notes by folder, filter, rendered markdown or source, links resolved by uid, agent-written notes labelled, contract problems listed; new or edited files appear within ~5 s; **Open vault** shows the folder in Explorer. Read-only until K3 |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Subscription usage | 5-hour / 7-day windows from the CLI's `rate_limit_event` (shows "OK" until near a limit) |
 | Visuals | phosphor theme (+ Tron, eDEX amber), WebGL agent orbs with bloom, handoff arcs, Doto dot-matrix accents, boot screen, constant scanlines/grain, S-trail icon, Motion setting |
@@ -30,7 +31,7 @@ chat 3/3 turns.
 
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
-- **Bookshelf knowledge module** (K1–K7 in ROADMAP)
+- **Bookshelf** beyond reading: search, propose/approve/undo, screening, agent tools (K2–K11)
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
@@ -46,7 +47,7 @@ chat 3/3 turns.
 
 ## Next
 
-1. K1–K3 (A1 done 30 Sep). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+1. K2–K3 (A1 done 30 Sep, K1 done 1 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
    D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
@@ -65,4 +66,5 @@ chat 3/3 turns.
 | 2 | Answering it in the inbox releases Claude | pass — *Allow once* clicked; file written |
 | 2 | Deny with a note | pass — nothing written; note reached Claude verbatim |
 | 2 | Write routes refuse requests without the header | pass — HTTP 403, covered by tests |
+| K1 | Sage OS lists and renders notes from the vault; the button opens the folder | pass — scratch vault of 6 notes listed and rendered (table, code, links by uid, agent label, 3 problems named on a broken note); a file added while open appeared without reload; on the real hub Open vault opened Explorer at `data\vault`; pytest 32/32; smoke 16/16 |
 | A1 | Claude and Hermes panes work unchanged through the connector interfaces | pass — new Claude session (Haiku) replied via Bash; a Write request reached the inbox, *Deny + note* blocked it and the note reached Claude; Hermes answered 2 turns; pytest 22/22; smoke 15/15 |

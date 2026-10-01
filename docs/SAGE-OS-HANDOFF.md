@@ -52,7 +52,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **none** | hub stores only its events and Claude transcripts |
+| Knowledge layer of its own | **Bookshelf K1 (1 Oct): read-only vault reader** at `data/vault`; writes come with K3 | see `DECISIONS.md` D9, `docs/STATUS.md` |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
