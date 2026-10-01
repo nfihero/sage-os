@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Sage OS: a light cycle whose trail writes an S (for Sage), with sage leaves budding along it -->
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.25" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- sage leaf: soft oval with a rounded tip and a midrib; base at the origin, pointing +x -->
+    <g id="leaf">
+      <path d="M0 0 C2.5 -4.6 8.5 -5 11 -0.8 C8.5 3.2 2.5 3.4 0 0 Z" fill="#3dff8b"/>
+      <path d="M1 -0.1 C4 -0.9 7 -1 9.6 -0.8" fill="none" stroke="#031008" stroke-width=".75" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <rect width="64" height="64" rx="13" fill="#031008"/>
+  <g filter="url(#glow)">
+    <!-- the S-shaped light trail -->
+    <path d="M9 13 C40 11 43 27 31 31 C19 35 16 47 35 47" fill="none" stroke="#3dff8b" stroke-width="3.2" stroke-linecap="round"/>
+    <!-- leaves rooted on the curve (points computed on the trail's Bezier segments) -->
+    <use href="#leaf" transform="translate(32 16.2) rotate(-42)"/>
+    <use href="#leaf" transform="translate(37 26.2) rotate(18)"/>
+    <use href="#leaf" transform="translate(21.9 38.4) rotate(158)"/>
+    <!-- the cycle: slim wedge body behind two tall wheels, nose past the front wheel -->
+    <path d="M33 47.5 L36 43.5 C39 41.8 44 41 49 40.6 C54 40.4 58 42 61.5 46 L60.5 47.5 Z"
+          fill="#0b3d20" stroke="#3dff8b" stroke-width="1.7" stroke-linejoin="round"/>
+    <circle cx="40" cy="49" r="5.4" fill="#031008" stroke="#3dff8b" stroke-width="2.3"/>
+    <circle cx="55" cy="49" r="5.4" fill="#031008" stroke="#3dff8b" stroke-width="2.3"/>
+    <circle cx="40" cy="49" r="1.6" fill="#3dff8b"/>
+    <circle cx="55" cy="49" r="1.6" fill="#3dff8b"/>
+  </g>
+</svg>

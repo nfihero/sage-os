@@ -1,0 +1,36 @@
+# Sage OS hub configuration. Phase 1 is read-only: nothing here grants write access.
+
+[hub]
+host = "127.0.0.1"          # never 0.0.0.0 -- remote access goes through Tailscale Serve (Phase 3)
+port = 8787
+store = "data/hub.db"       # relative to the sage-os folder
+keep_events = 5000          # persisted events kept for catch-up
+
+[hermes]
+home = "C:/Users/you/AppData/Local/hermes"
+gateway = "http://127.0.0.1:8642"
+router = "http://127.0.0.1:18434"
+sidecar = "http://127.0.0.1:18435"
+
+[poll]                      # seconds
+board = 5
+gpu = 3
+health = 5                  # every check is an access-log line in Hermes' agent.log
+safety = 1
+sessions = 30
+
+[claude]
+# Folders a Claude session may start in (first is the default). Claude still asks before
+# running commands or editing files; answers come from the Sage OS inbox.
+workspaces = [
+  "C:/Users/you/hermes-workspace",
+  "C:/Users/you/hermes-workspace/budget-tracker",
+  "C:/Users/you/sage-os",
+  "C:/Users/you/claude-workspace",
+]
+
+[ui]
+pinned_profiles = ["default"]
+hidden_profiles = ["sage"]             # retired 30 Sep 2026 (archived); hidden until Hermes deletes it
+profile_labels = { default = "Hermes" }  # shown in the UI; Hermes' own profile id stays "default"
+safety_feed_size = 200

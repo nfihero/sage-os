@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+/* Colour tokens. Utility names are historical: `cyan` = the accent (local agents), `orange` =
+   Claude, `amber` = needs-you. Each theme below redefines them, so every utility recolours. */
+@theme {
+  --color-void: #010703;
+  --color-panel: rgba(2, 13, 6, 0.86);
+  --color-cyan: #3dff8b;
+  --color-cyan-dim: #1f8a4c;
+  --color-orange: #ff9e40;
+  --color-amber: #ffe14d;
+  --color-red: #ff5a5a;
+  --color-green: #9dffc4;
+  --color-ink: #c9ffdb;
+  --color-mute: #4c8660;
+  --font-display: "Rajdhani", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root[data-theme="tron"] {
+  --color-void: #02050a; --color-panel: rgba(3, 12, 20, 0.84);
+  --color-cyan: #00e5ff; --color-cyan-dim: #0a7f93; --color-orange: #ff7a1a; --color-amber: #ffc400;
+  --color-red: #ff3355; --color-green: #39ff9c; --color-ink: #cfefff; --color-mute: #5d7f8f;
+  --font-display: "Orbitron", ui-sans-serif, sans-serif;
+}
+:root[data-theme="amber"] {
+  --color-void: #080502; --color-panel: rgba(16, 9, 4, 0.86);
+  --color-cyan: #f0a868; --color-cyan-dim: #8a5a30; --color-orange: #8fd8ff; --color-amber: #fff07a;
+  --color-red: #ff5f4f; --color-green: #ffd3a0; --color-ink: #f6dcc4; --color-mute: #8a6a52;
+}
+
+:root { color-scheme: dark; --a: var(--color-cyan); --c: var(--color-orange); --n: var(--color-amber); }
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: var(--color-void); color: var(--color-ink);
+  font-family: var(--font-mono); font-size: 13px; -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+::selection { background: color-mix(in oklab, var(--a) 35%, transparent); }
+
+/* ---- background: reactive dot grid (canvas) + faint vignette ---- */
+.dotgrid { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, color-mix(in oklab, var(--color-void) 85%, transparent) 100%); }
+
+/* ---- constant screen texture: scanlines, film grain, rolling refresh bar ---- */
+.fx { position: fixed; inset: 0; z-index: 58; pointer-events: none; overflow: hidden; }
+.fx-lines { position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px); }
+.fx-grain { position: absolute; inset: -80px; opacity: .055; animation: fx-grain .7s steps(7) infinite; }
+@keyframes fx-grain {
+  0% { transform: translate(0, 0); } 14% { transform: translate(-34px, 22px); } 28% { transform: translate(27px, -38px); }
+  42% { transform: translate(-18px, 44px); } 57% { transform: translate(43px, 12px); } 71% { transform: translate(-44px, -24px); }
+  85% { transform: translate(14px, 36px); } 100% { transform: translate(0, 0); }
+}
+.fx-roll { position: absolute; left: 0; right: 0; top: -30vh; height: 24vh;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--a) 5%, transparent) 55%, color-mix(in oklab, var(--a) 8%, transparent) 62%, transparent);
+  animation: fx-roll 9s linear infinite; }
+@keyframes fx-roll { to { transform: translateY(160vh); } }
+html { background: #000; }
+
+/* ---- HUD panels: thin frame, corner brackets, notched title tabs (eDEX-style) ---- */
+.panel {
+  position: relative; background: var(--color-panel); backdrop-filter: blur(4px);
+  border: 1px solid color-mix(in oklab, var(--a) 22%, transparent);
+  box-shadow: inset 0 0 30px color-mix(in oklab, var(--a) 5%, transparent);
+  display: flex; flex-direction: column; min-height: 0; flex: 1 1 0%;
+  animation: panel-in .5s cubic-bezier(.2,.8,.2,1) both;
+}
+.panel::before, .panel::after { content: ""; position: absolute; width: 12px; height: 12px; pointer-events: none; }
+.panel::before { left: -1px; top: -1px; border-left: 2px solid var(--a); border-top: 2px solid var(--a); }
+.panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--a); border-bottom: 2px solid var(--a); }
+.panel.claude { border-color: color-mix(in oklab, var(--c) 30%, transparent); box-shadow: inset 0 0 30px color-mix(in oklab, var(--c) 5%, transparent); }
+.panel.claude::before, .panel.claude::after { border-color: var(--c); }
+@keyframes panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.panel-head {
+  display: flex; align-items: center; gap: .6rem; min-height: 30px; padding: 0 .7rem 0 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--a) 28%, transparent);
+  font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--a);
+}
+.panel.claude .panel-head { color: var(--c); border-color: color-mix(in oklab, var(--c) 30%, transparent); }
+/* The first title in a head becomes a filled, notched tab. */
+.panel-head > .tab, .htab {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 1.4rem 0 .9rem; white-space: nowrap;
+  font-family: var(--font-display); font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+}
+.panel-head > .tab { background: var(--a); color: var(--color-void);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+.panel.claude .panel-head > .tab { background: var(--c); }
+.htab { color: var(--color-mute); position: relative; margin-left: -8px;
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  background: color-mix(in oklab, var(--a) 6%, transparent); transition: background .2s, color .2s; }
+.htab:hover { color: var(--color-ink); background: color-mix(in oklab, var(--a) 14%, transparent); }
+.htab.on { color: var(--color-void); background: var(--a); }
+.panel.claude .htab { background: color-mix(in oklab, var(--c) 7%, transparent); }
+.panel.claude .htab:hover { background: color-mix(in oklab, var(--c) 16%, transparent); }
+.panel.claude .htab.on { background: var(--c); color: var(--color-void); }
+.htab.empty { color: color-mix(in oklab, var(--color-mute) 70%, transparent); font-weight: 500; }
+
+.kicker { display: flex; justify-content: space-between; padding: 0 2px 3px; font-family: var(--font-display);
+  font-size: 10px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--color-mute); }
+.kicker::before { content: ""; }
+
+.panel-body { flex: 1; min-height: 0; overflow: auto; padding: .6rem .8rem; }
+.panel-body::-webkit-scrollbar { width: 5px; height: 5px; }
+.panel-body::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--a) 30%, transparent); }
+
+.glow-cyan { color: var(--a); text-shadow: 0 0 8px color-mix(in oklab, var(--a) 70%, transparent); }
+.glow-orange { color: var(--c); text-shadow: 0 0 8px color-mix(in oklab, var(--c) 70%, transparent); }
+.display { font-family: var(--font-display); letter-spacing: .12em; font-weight: 600; }
+.readout { font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; }
+/* dot-matrix face for big numerals (clock); fixed-width digits so it doesn't jitter */
+.font-dot { font-family: "Doto", var(--font-mono); font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+
+/* orb slot size follows the Claude pane's width */
+.orb-host { --orb: 112px; }
+@container (min-width: 640px) { .orb-host aside { --orb: 220px; } }
+
+/* ---- lights & pulses ---- */
+.light { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.light.up { background: var(--color-green); box-shadow: 0 0 8px var(--color-green); }
+.light.down { background: var(--color-red); box-shadow: 0 0 10px var(--color-red); animation: blink 1s steps(2) infinite; }
+.light.idle { background: color-mix(in oklab, var(--color-mute) 50%, transparent); }
+@keyframes blink { 50% { opacity: .35; } }
+
+.pulse-amber { animation: amberp 1.6s ease-in-out infinite; }
+@keyframes amberp {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in oklab, var(--n) 55%, transparent), 0 0 6px color-mix(in oklab, var(--n) 25%, transparent); }
+  50% { box-shadow: 0 0 0 1px var(--n), 0 0 18px color-mix(in oklab, var(--n) 60%, transparent); }
+}
+.pulse-cyan { animation: cyanp 2s ease-in-out infinite; }
+@keyframes cyanp {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in oklab, var(--a) 45%, transparent); }
+  50% { box-shadow: 0 0 0 1px var(--a), 0 0 16px color-mix(in oklab, var(--a) 45%, transparent); }
+}
+.streaming { box-shadow: 0 0 24px color-mix(in oklab, var(--a) 30%, transparent); }
+
+/* ---- task cards ---- */
+.card {
+  border: 1px solid color-mix(in oklab, var(--a) 20%, transparent);
+  background: color-mix(in oklab, var(--a) 4%, transparent); padding: .45rem .6rem;
+  cursor: pointer; transition: border-color .2s, background .2s, transform .2s;
+}
+.card:hover { border-color: color-mix(in oklab, var(--a) 75%, transparent); background: color-mix(in oklab, var(--a) 9%, transparent); }
+.card.blocked { border-color: color-mix(in oklab, var(--n) 80%, transparent); }
+.chip {
+  display: inline-flex; align-items: center; gap: .3rem; padding: 0 .45rem; font-size: 10.5px; white-space: nowrap;
+  border: 1px solid color-mix(in oklab, var(--a) 38%, transparent); color: var(--a);
+}
+.chip.orange { border-color: color-mix(in oklab, var(--c) 50%, transparent); color: var(--c); }
+.chip.amber { border-color: color-mix(in oklab, var(--n) 60%, transparent); color: var(--n); }
+.chip.red { border-color: color-mix(in oklab, var(--color-red) 60%, transparent); color: var(--color-red); }
+.chip.mute { border-color: color-mix(in oklab, var(--color-mute) 45%, transparent); color: var(--color-mute); }
+button.chip { transition: background .15s; }
+button.chip:hover { background: color-mix(in oklab, currentColor 12%, transparent); }
+
+/* ---- light-cycle trail ---- */
+.cycle {
+  position: absolute; height: 2px; pointer-events: none; z-index: 5;
+  background: linear-gradient(90deg, transparent, var(--a));
+  box-shadow: 0 0 8px var(--a), 0 0 18px color-mix(in oklab, var(--a) 60%, transparent);
+  animation: cycle 1.1s cubic-bezier(.6, 0, .3, 1) forwards;
+}
+.cycle.reverse { background: linear-gradient(270deg, transparent, var(--a)); animation-name: cycle-rev; }
+@keyframes cycle { 0% { clip-path: inset(0 100% 0 0); opacity: 1; } 70% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { opacity: 0; } }
+@keyframes cycle-rev { 0% { clip-path: inset(0 0 0 100%); opacity: 1; } 70% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { opacity: 0; } }
+
+/* ---- dot-matrix gauges ---- */
+.vram-bar { height: 10px; position: relative;
+  background-image: radial-gradient(circle, color-mix(in oklab, var(--a) 22%, transparent) 1px, transparent 1.5px);
+  background-size: 5px 5px; }
+.vram-fill { position: absolute; inset: 0 auto 0 0; transition: width .6s cubic-bezier(.2,.8,.2,1);
+  background-image: radial-gradient(circle, var(--a) 1.3px, transparent 1.8px); background-size: 5px 5px;
+  filter: drop-shadow(0 0 4px color-mix(in oklab, var(--a) 70%, transparent)); }
+.vram-fill.hot { background-image: radial-gradient(circle, var(--n) 1.3px, transparent 1.8px); }
+
+/* ---- chat ---- */
+.chat-in { animation: chat-in .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes chat-in { from { opacity: 0; transform: translateY(4px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+.md { color: var(--color-ink); overflow-wrap: anywhere; }
+.md p { margin: .35em 0; }
+.md ul, .md ol { margin: .35em 0 .35em 1.3em; list-style: revert; }
+.md code { font-family: var(--font-mono); background: color-mix(in oklab, var(--a) 9%, transparent); padding: 0 .25em; font-size: .92em; }
+.md pre { background: color-mix(in oklab, var(--color-void) 90%, transparent); border: 1px solid color-mix(in oklab, var(--a) 20%, transparent); padding: .6em .8em; overflow-x: auto; margin: .5em 0; }
+.md pre code { background: none; padding: 0; }
+.md h1, .md h2, .md h3 { font-family: var(--font-display); letter-spacing: .08em; color: var(--a); margin: .7em 0 .3em; font-size: 1.05em; }
+.md-orange h1, .md-orange h2, .md-orange h3 { color: var(--c); }
+.md a { color: var(--a); text-decoration: underline; }
+.md table { border-collapse: collapse; margin: .5em 0; font-size: .92em; }
+.md th, .md td { border: 1px solid color-mix(in oklab, var(--a) 22%, transparent); padding: .2em .5em; }
+.md blockquote { border-left: 2px solid color-mix(in oklab, var(--a) 45%, transparent); padding-left: .7em; color: var(--color-mute); }
+.caret { display: inline-block; width: .55em; height: 1em; background: var(--a); vertical-align: text-bottom; margin-left: 2px; animation: blink 1s steps(2) infinite; }
+.md-orange .caret { background: var(--c); }
+.dots::after { content: ""; animation: dots 1.2s steps(4) infinite; }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+
+/* ---- boot sequence ---- */
+.boot { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; cursor: pointer;
+  background: radial-gradient(ellipse at center, color-mix(in oklab, var(--a) 7%, var(--color-void)) 0%, var(--color-void) 70%);
+  transition: opacity .45s ease, filter .45s ease; }
+.boot-out { opacity: 0; filter: blur(6px) brightness(1.6); }
+.boot-line { animation: boot-line .18s steps(4) both; }
+@keyframes boot-line { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+:root.reduce-motion .boot-line { animation: none; }
+
+/* ---- drawers & toasts ---- */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); z-index: 45; transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+.drawer.open { transform: none; }
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 46; max-width: min(420px, calc(100vw - 32px)); animation: panel-in .35s both; }
+
+/* Reduced motion is an app setting (top bar); "auto" follows the OS. */
+:root.reduce-motion .pulse-amber, :root.reduce-motion .pulse-cyan, :root.reduce-motion .light.down,
+:root.reduce-motion .cycle, :root.reduce-motion .panel, :root.reduce-motion .chat-in,
+:root.reduce-motion .fx-grain, :root.reduce-motion .fx-roll { animation: none !important; }
+:root.reduce-motion .fx-roll { display: none; }

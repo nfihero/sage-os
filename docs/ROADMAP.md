@@ -1,0 +1,41 @@
+# Sage OS — roadmap
+
+Each phase is usable on its own and ends at a **gate**: a check that proves it works before the next
+starts. No dates; the order is the plan. Source: the design doc
+([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
+on 30 Sep 2026 with the Bookshelf track.
+
+## Agent hub track
+
+| Phase | Scope | Gate | Status |
+|---|---|---|---|
+| 1 | Read-only dashboard: board, GPU lane, health, safety feed, sessions, theme | All six Phase 1 checks pass | **Done** (29 Sep) |
+| 2 | Chat panes (Claude Code, Hermes) + approvals inbox | A Claude permission prompt reaches the inbox and is answered there | **Done** (29 Sep) |
+| 2.5 | Visual pass: phosphor theme, agent orbs, handoff arcs, boot screen, screen texture, icon | User sign-off | **Done** (30 Sep), iterating on taste |
+| 3 | Cross-device: Tailscale Serve, app login (passkey or token), phone layout | A phone approves a request over the tailnet | Next |
+| 4 | Claude as orchestrator: fleet MCP tools (`fleet_status`, `task_create`, `task_comment`/`unblock`, `ask_agent`) | Claude delegates a task that a local agent finishes | Planned |
+| 5 | Claude as reviewer: review on `request_review`, handoff animations | One task goes through changes, then approval | Planned |
+| 6 | Rooms and outside agents: multi-agent threads, ACP and A2A adapters | — | Planned |
+
+## Bookshelf track (proposed 30 Sep 2026 — order and scope need the user's confirmation)
+
+BookShelf (`nfihero/BookShelf`) is the **spec**, not the code: its DESIGN.md, invariants I1–I9 and
+vault format are carried over; the implementation is rebuilt in Sage OS's stack (proposed: Python).
+
+| Step | Scope | Gate |
+|---|---|---|
+| K1 | Vault format + read: markdown with YAML frontmatter, uid identity, no absolute paths (I8); pick the canonical vault | Sage OS lists and renders notes from the vault |
+| K2 | Search: SQLite FTS5 index rebuilt from files (vault stays the source of truth, I3) | A query returns ranked notes in < 300 ms |
+| K3 | Propose → approve → commit: agents propose, the **Sage OS inbox** approves, a single writer applies with a SQLite journal and batch undo (I1, I2, I9) | An agent's proposal lands only after approval; undo restores bytes exactly |
+| K4 | Screening before disk (I4) | A proposal containing a key is refused before anything is written |
+| K5 | MCP server for agents: `search_notes`, `read_note`, `propose_note`, `list_proposals`; `origin: agent` + agent id provenance | Claude and Hermes both read and propose through MCP |
+| K6 | Import existing vaults (Obsidian Vault, llm-vault) with structure preserved | Existing notes searchable in Sage OS |
+| K7 | Review at scale: batch approvals, per-agent trust levels | A 20-note librarian run is approved in one decision |
+
+Suggested interleave: K1–K3 before Phase 4, so the fleet tools and the knowledge tools share one MCP
+surface; Phase 3 can run in parallel.
+
+## Product track (open)
+
+Packaging, installer, non-Windows support, onboarding without Hermes pre-installed, accounts — all
+undecided until the audience is defined (see `MISSION.md`).
