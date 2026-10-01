@@ -30,7 +30,8 @@ chat 3/3 turns.
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
 - **Bookshelf knowledge module** (K1–K7 in ROADMAP)
-- Packaging/installer, CI, remote repository
+- Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
+- Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
 ## Known issues (ranked)
 
@@ -38,13 +39,14 @@ chat 3/3 turns.
 2. The Hermes runtime pin relies on Hermes internals and disables `fallback_model`; re-test after updates.
 3. One GPU model at a time; local turns queue; 20–30 s per model swap.
 4. Claude can only reach Hermes via `Bash` + CLI with approval until Phase 4.
-5. No remote/backup of this repo; no CI.
+5. No CI; the private remote is pushed only on request.
 6. Stale alias scripts `swift.bat`, `coder.bat`, `guardian.bat` in `~\.local\bin` (deleted Hermes profiles).
 7. Usage meter has no percentage until near a limit.
 
 ## Next
 
-1. Decide the Bookshelf questions (`SAGE-OS-HANDOFF.md` §9), then K1–K3.
+1. Pick the Bookshelf integration ideas (`DECISIONS.md` P1), then A1 + K1–K3. Home, language and
+   vault are decided (D2, D3); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
 

@@ -6,6 +6,10 @@ section says what was checked. Read with `docs/STATUS.md` (built / broken / next
 `docs/ROADMAP.md` (phases). BookShelf's own primer is `docs/HANDOFF.md` in its repo, read for this
 document (its §6 already sketches the integration from BookShelf's side).
 
+**Update 30 Sep 2026 (later):** BookShelf is retired as a project; its idea is rebuilt inside Sage OS.
+Decisions made after this primer was written live in **`docs/DECISIONS.md`** (D1–D5) and override
+anything here that conflicts.
+
 Legend: **works** = exercised end to end · **untested live** = code exists, never run against the real
 system · **planned** = not built.
 
@@ -49,7 +53,7 @@ system · **planned** = not built.
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
 | Knowledge layer of its own | **none** | hub stores only its events and Claude transcripts |
-| Git | first commit made with this doc; **no remote**, no CI | `git log` before: "no commits yet" |
+| Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
 
@@ -148,6 +152,8 @@ agents should reach it only through these surfaces, never through its files dire
 | 14 | `claude.exe` path `%APPDATA%\Claude\…`; login via `/login` | **Packages path + `auth login`** | MSIX virtualisation; slash commands don't run in the SDK. |
 | 15 | Services launched from tool shells | **Detached via WMI** | They were killed at turn end (explained several "sidecar down" episodes). |
 | 16 | Use BookShelf's Swift `WikiCore` as the backend (via an MCP server over it) — the plan in BookShelf's HANDOFF §6 | **Rebuild the knowledge core in Sage OS's stack** (proposed: Python); BookShelf's docs + invariants are the spec | User direction 30 Sep 2026. Removes the Windows/Swift mismatch; costs the type-level I1 guarantee (replaced by a process boundary, §5). |
+| 17 | BookShelf as a separate macOS product that Sage OS integrates with | **BookShelf retired; rebuilt as a Python package inside `sage-os`** (DECISIONS D2) | User, 30 Sep 2026: one product. |
+| 18 | Hermes as the required local agent layer (#10) | **Hermes is one optional connector; Sage OS owns board, inbox, Bookshelf, safety policy; no custom llama.cpp runtime** (DECISIONS D4) | "Connect whatever AI you use" fails if Hermes is mandatory; Hermes update churn. |
 
 ## 8. Known issues and blockers (most → least blocking for the user)
 
@@ -164,9 +170,9 @@ agents should reach it only through these surfaces, never through its files dire
 
 ## 9. Open questions before Sage OS and BookShelf can be joined
 
-1. **Language and home of the rebuilt core:** Python inside the `sage-os` repo (e.g. `knowledge/` package + MCP server), or a separate repo? And does the macOS BookShelf app keep living as a reader/reviewer of the same vault format, or is it retired? (unknown — needs confirmation from the user)
-2. **Which vault becomes canonical:** `Obsidian Vault`, `llm-vault`, or BookShelf's managed knowledge base — and are existing notes imported (BookShelf's Obsidian importer)?
-3. **Is any vault synced by Google Drive?** Drive sync + BookShelf's atomic renames/journal could fight. (unknown — needs confirmation from the user)
+1. ~~Language and home of the rebuilt core~~ **Answered (D2):** Python package inside `sage-os`; the macOS BookShelf app is retired.
+2. ~~Which vault becomes canonical~~ **Answered (D3):** none exists; start a new local vault and import existing notes through approval.
+3. ~~Is any vault synced by Google Drive?~~ **Answered (D3):** no; personal files on `G:\` are Drive-synced and stay read-only to agents.
 4. **Where does review happen** — Sage OS inbox (proposals as inbox cards), BookShelf's review UI, or both? Batch approval and per-agent trust levels?
 5. **Which agents may propose writes:** Claude only, Hermes too, kanban workers?
 6. **Agent provenance format:** accept `origin: agent` + `agent: claude:<session> | hermes:default:<session>`?

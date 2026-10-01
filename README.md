@@ -13,7 +13,8 @@ multiple workflow boards are on the [roadmap](docs/ROADMAP.md). Windows 11 · lo
 |---|---|
 | [docs/MISSION.md](docs/MISSION.md) | Why it exists, pillars, principles, why "Sage" |
 | [docs/STATUS.md](docs/STATUS.md) | What works, what's untested, known issues, next |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and gates; the Bookshelf track |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and gates; the Bookshelf and architecture tracks |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what was decided, why, costs, when to revisit |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [docs/SAGE-OS-HANDOFF.md](docs/SAGE-OS-HANDOFF.md) | Context primer for a fresh session: architecture, agent model, knowledge-backend contract, reversed decisions, open questions |
 | [Design doc](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899) | Original design (architecture, UI, phases) |

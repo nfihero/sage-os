@@ -17,10 +17,12 @@ on 30 Sep 2026 with the Bookshelf track.
 | 5 | Claude as reviewer: review on `request_review`, handoff animations | One task goes through changes, then approval | Planned |
 | 6 | Rooms and outside agents: multi-agent threads, ACP and A2A adapters | — | Planned |
 
-## Bookshelf track (proposed 30 Sep 2026 — order and scope need the user's confirmation)
+## Bookshelf track (30 Sep 2026 — home and vault decided; step order still proposed)
 
-BookShelf (`nfihero/BookShelf`) is the **spec**, not the code: its DESIGN.md, invariants I1–I9 and
-vault format are carried over; the implementation is rebuilt in Sage OS's stack (proposed: Python).
+The BookShelf project (`nfihero/BookShelf`) is **retired**. It is the **spec**, not the code: its
+DESIGN.md, invariants I1–I9 and vault format are carried over, and the module is rebuilt as a Python
+package inside this repo (DECISIONS D2). New local vault, not on Drive; `G:\` is a read-only source
+(D3). Integration ideas awaiting selection: DECISIONS P1.
 
 | Step | Scope | Gate |
 |---|---|---|
@@ -34,6 +36,22 @@ vault format are carried over; the implementation is rebuilt in Sage OS's stack 
 
 Suggested interleave: K1–K3 before Phase 4, so the fleet tools and the knowledge tools share one MCP
 surface; Phase 3 can run in parallel.
+
+## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
+
+Goal: Sage OS owns the core (board, inbox, Bookshelf, safety policy, shared tools); agents and models
+plug in through connectors; Hermes becomes optional. No custom llama.cpp runtime.
+
+| Step | Scope | Gate |
+|---|---|---|
+| A1 | Sage OS interfaces for **model providers** (any OpenAI-compatible endpoint) and **agent connectors**; move the existing Claude and Hermes code behind them | Claude and Hermes panes work unchanged through the new interfaces |
+| A2 | Bookshelf K1–K3 as Sage OS's own (see track above) | — |
+| A3 | **Sage OS task board** any agent can work from; Hermes kanban becomes an optional source. Current Hermes kanban contents may be cleared (D5) | A task created in Sage OS is finished by an agent and approved in the inbox, with Hermes kanban unused |
+| A4 | A second local agent connector, proving Hermes is optional (candidates to verify on Windows first) | Same task runs on two different local agents |
+| A5 | Environment setup: optional `llama-server` install/manage wizard (model download, GPU-fit settings) | A machine with no local AI gets a working local model through Sage OS |
+
+Open checks before A3/A4: which agent tools work reliably on Windows; what the Hermes kanban does
+that a Sage OS board must match.
 
 ## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
 

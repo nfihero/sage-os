@@ -11,6 +11,10 @@ while pre-1.0.
 - Docs: broadened product framing to match the GitHub description (agent hub with a personal,
   growing knowledge base; choice of local and cloud models; many programs in one hub; workflow kanban
   boards). Roadmap gains a hub-breadth track (H1–H4).
+- Docs: new decision log `docs/DECISIONS.md` (D1–D5 + proposed Bookshelf ideas P1): personal-scale
+  multi-agent team goal; BookShelf retired and rebuilt as a Python package in this repo; new local
+  vault, Drive read-only; agents and models plug in, Sage OS owns the core, no custom llama.cpp
+  runtime; Hermes kanban contents disposable. Roadmap gains an architecture track (A1–A5).
 
 ## [0.3.0] — 2026-09-30
 
