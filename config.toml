@@ -19,6 +19,20 @@ health = 5                  # every check is an access-log line in Hermes' agent
 safety = 1
 sessions = 30
 
+[agents]                    # connectors (DECISIONS D4): agents plug in, none is required
+lead = "claude"             # answers team chat by default (D8; used from Phase 6)
+claude = true               # Claude Code via the Agent SDK
+hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS without Hermes chat
+
+# Extra OpenAI-compatible model servers (the Hermes llama.cpp router is added automatically while
+# Hermes is connected). Keys come from an environment variable named by api_key_env, never this file.
+# [[models]]
+# id = "ollama"
+# label = "Ollama"
+# base_url = "http://127.0.0.1:11434/v1"
+# kind = "local"            # local | cloud
+# api_key_env = "OLLAMA_API_KEY"
+
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before
 # running commands or editing files; answers come from the Sage OS inbox.

@@ -16,7 +16,7 @@ def write_routes(app):
     for r in app.routes:
         methods = (getattr(r, "methods", None) or set()) - {"GET", "HEAD"}
         if methods:
-            yield r.path.replace("{sid}", "x").replace("{profile}", "sage").replace("{item_id}", "x")
+            yield r.path.replace("{sid}", "x").replace("{profile}", "sage").replace("{item_id}", "x").replace("{agent_id}", "claude")
 
 
 def test_every_write_route_needs_the_header(tmp_path):

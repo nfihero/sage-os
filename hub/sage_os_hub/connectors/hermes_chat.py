@@ -9,7 +9,7 @@ import asyncio
 import logging
 
 from .hermes_api import HermesAPI
-from .inbox import Inbox
+from ..inbox import Inbox
 
 log = logging.getLogger("sage_os")
 CHOICE_LABELS = {"once": "allow_once", "session": "allow_session", "always": "allow_always", "deny": "deny"}

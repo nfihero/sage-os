@@ -14,6 +14,7 @@ chat 3/3 turns.
 | Safety | guardian + write-guard decisions; hidden drawer, red chip + toast only on new blocks |
 | Claude Code pane | Agent SDK on the user's subscription; session tabs, folder + model per session; streamed replies; interrupt |
 | Hermes pane | gateway sessions API; open/continue/start chats; tool progress; stop; multi-turn via the hub's runtime pin |
+| Connectors (A1) | agents (Claude Code, Hermes profiles) and model servers (any OpenAI-compatible endpoint) behind one interface; set in `config.toml` `[agents]` / `[[models]]`; `GET /api/agents`, `GET /api/models`, `/api/agents/{id}/sessions/...`; smoke checks per agent |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Subscription usage | 5-hour / 7-day windows from the CLI's `rate_limit_event` (shows "OK" until near a limit) |
 | Visuals | phosphor theme (+ Tron, eDEX amber), WebGL agent orbs with bloom, handoff arcs, Doto dot-matrix accents, boot screen, constant scanlines/grain, S-trail icon, Motion setting |
@@ -45,7 +46,7 @@ chat 3/3 turns.
 
 ## Next
 
-1. A1 + K1–K3. Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+1. K1–K3 (A1 done 30 Sep). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
    D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
@@ -64,3 +65,4 @@ chat 3/3 turns.
 | 2 | Answering it in the inbox releases Claude | pass — *Allow once* clicked; file written |
 | 2 | Deny with a note | pass — nothing written; note reached Claude verbatim |
 | 2 | Write routes refuse requests without the header | pass — HTTP 403, covered by tests |
+| A1 | Claude and Hermes panes work unchanged through the connector interfaces | pass — new Claude session (Haiku) replied via Bash; a Write request reached the inbox, *Deny + note* blocked it and the note reached Claude; Hermes answered 2 turns; pytest 22/22; smoke 15/15 |

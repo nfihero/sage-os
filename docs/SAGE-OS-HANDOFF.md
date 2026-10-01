@@ -61,8 +61,8 @@ system · **planned** = not built.
 browser (127.0.0.1:8787) ──WS /ws + REST──► hub (FastAPI, Python 3.14)
                                                ├─ adapters (poll, read-only): kanban.db · state.db · router /models
                                                │   · nvidia-smi/psutil · guardian + write-guard logs
-                                               ├─ ClaudeManager ──► Claude Agent SDK ──► claude.exe (Desktop app's) ──► Anthropic
-                                               ├─ HermesChat ─────► Hermes gateway :8642 (sessions API, SSE)
+                                               ├─ ClaudeConnector ► Claude Agent SDK ──► claude.exe (Desktop app's) ──► Anthropic
+                                               ├─ HermesConnector ► Hermes gateway :8642 (sessions API, SSE)   [connectors/, A1]
                                                ├─ hermes CLI ─────► kanban comment / unblock (writes)
                                                └─ Inbox (in memory) · Store (SQLite data/hub.db)
 Hermes (separate install, %LOCALAPPDATA%\hermes): gateway :8642 → llama.cpp router :18434 (1 model on GPU)
@@ -84,7 +84,7 @@ Hermes (separate install, %LOCALAPPDATA%\hermes): gateway :8642 → llama.cpp ro
 
 | | Claude Code | Hermes |
 |---|---|---|
-| Defined by | Agent SDK options in `claude_agent.py` (Claude Code preset system prompt + Sage OS append) | Hermes profile **`default`** (only profile): `config.yaml`, `SOUL.md`, skills, memories |
+| Defined by | Agent SDK options in `connectors/claude.py` (Claude Code preset system prompt + Sage OS append) | Hermes profile **`default`** (only profile): `config.yaml`, `SOUL.md`, skills, memories |
 | Model | user's subscription; per-session model pick (default/Opus/Sonnet/Haiku) | local; default Qwen3.6-35B-A3B; one model resident (`models_max: 1`) |
 | Invoked | Claude pane → `POST /api/claude/sessions/{id}/send` → `ClaudeSDKClient` | Hermes pane → gateway sessions API (SSE); kanban dispatcher spawns workers; Hermes Desktop; cron |
 | Tools | Claude Code's built-ins; `setting_sources` user+project+local; `AskUserQuestion` disabled | Hermes toolsets (terminal **local** backend, file tools, kanban, browser …) |

@@ -24,7 +24,8 @@ from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKCli
                               ToolUseBlock, UserMessage)
 from claude_agent_sdk.types import RateLimitEvent, StreamEvent
 
-from .inbox import Inbox, future_resolver
+from ..inbox import Inbox, future_resolver
+from .base import AgentBusy, AgentConnector, InvalidRequest, SessionNotFound
 
 log = logging.getLogger("sage_os")
 
@@ -78,7 +79,7 @@ def summarize_input(tool: str, inp: dict) -> str:
 
 
 class ClaudeSession:
-    def __init__(self, mgr: "ClaudeManager", row: dict):
+    def __init__(self, mgr: "ClaudeConnector", row: dict):
         self.mgr, self.row = mgr, row
         self.client: ClaudeSDKClient | None = None
         self.task: asyncio.Task | None = None
@@ -132,7 +133,7 @@ class ClaudeSession:
 
     async def send(self, text: str):
         if self.task and not self.task.done():
-            raise RuntimeError("Claude is still working on the previous message")
+            raise AgentBusy("Claude is still working on the previous message")
         self.mgr.item(self.id, "user", {"text": text})
         self.task = asyncio.create_task(self._run(text))
 
@@ -220,7 +221,10 @@ class ClaudeSession:
                 pass
 
 
-class ClaudeManager:
+class ClaudeConnector(AgentConnector):
+    id, label, kind, vendor = "claude", "Claude Code", "cloud", "claude-code"
+    capabilities = frozenset({"chat", "interrupt", "approvals", "history", "workspaces", "model_pick"})
+
     def __init__(self, hub, inbox: Inbox, workspaces: list[str]):
         self.hub, self.inbox, self.workspaces = hub, inbox, workspaces
         self.cli = find_cli()
@@ -246,6 +250,19 @@ class ClaudeManager:
             self.publish_sessions()
         return state
 
+    def info(self) -> dict:
+        return super().info() | {"cli_found": bool(self.cli), "logged_in": self.logged_in}
+
+    def smoke(self):
+        return [("claude.exe found", bool(self.cli),
+                 self.cli or "install the Claude desktop app or set SAGE_OS_CLAUDE_CLI")]
+
+    def background(self):
+        return [self.watch_auth()]
+
+    def pane(self, session_id: str) -> str:
+        return f"claude:{session_id}"
+
     async def watch_auth(self):
         """Re-check often while logged out, so the banner clears soon after `auth login`."""
         while True:
@@ -260,10 +277,10 @@ class ClaudeManager:
 
     def item(self, sid: str, kind: str, data: dict):
         it = self.hub.store.add_chat_item(sid, kind, data)
-        self.hub.publish({"t": "chat", "pane": f"claude:{sid}", "op": "item", "item": it})
+        self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "item", "item": it})
 
     def delta(self, sid: str, text: str):
-        self.hub.publish({"t": "chat", "pane": f"claude:{sid}", "op": "delta", "text": text})
+        self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "delta", "text": text})
 
     def rate_limit(self, info):
         kind = info.rate_limit_type or "unknown"
@@ -282,7 +299,7 @@ class ClaudeManager:
     def create(self, title: str | None, cwd: str | None, model: str | None) -> dict:
         cwd = cwd or self.workspaces[0]
         if not Path(cwd).is_dir():
-            raise ValueError(f"not a folder: {cwd}")
+            raise InvalidRequest(f"not a folder: {cwd}")
         now = time.time()
         row = {"id": f"cs_{uuid.uuid4().hex[:10]}", "title": title or "New session", "cwd": cwd,
                "model": model or None, "sdk_session_id": None, "created": now, "updated": now,
@@ -293,8 +310,11 @@ class ClaudeManager:
 
     def get(self, sid: str) -> ClaudeSession:
         if sid not in self.sessions:
-            raise KeyError(sid)
+            raise SessionNotFound(sid)
         return self.sessions[sid]
+
+    async def create_session(self, title: str | None = None, **options) -> dict:
+        return self.create(title, options.get("cwd"), options.get("model"))
 
     async def send(self, sid: str, text: str):
         s = self.get(sid)
@@ -303,6 +323,12 @@ class ClaudeManager:
         s.row["updated"] = time.time()
         self.save(s.row)
         await s.send(text)
+
+    async def interrupt(self, sid: str):
+        await self.get(sid).interrupt()
+
+    async def history(self, sid: str) -> list[dict]:
+        return self.hub.store.chat_items(sid)
 
     async def shutdown(self):
         for s in self.sessions.values():

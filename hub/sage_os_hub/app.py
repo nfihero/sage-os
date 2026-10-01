@@ -1,8 +1,9 @@
 """Sage OS hub: FastAPI app, WebSocket event stream, adapters, chat and the approvals inbox.
 
-Reads come from adapters polling Hermes' files read-only. Writes (Phase 2) go only through
-public surfaces: the Claude Agent SDK, Hermes' gateway API and the `hermes` CLI. Every write
-route requires the X-Sage-OS header, a local Host and a local Origin. Run: python -m sage_os_hub
+Reads come from adapters polling Hermes' files read-only. Agents and model servers plug in
+through connectors (connectors/, DECISIONS D4); writes go only through their public surfaces --
+the Claude Agent SDK, Hermes' gateway API -- and the `hermes` CLI for the kanban board. Every
+write route requires the X-Sage-OS header, a local Host and a local Origin. Run: python -m sage_os_hub
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import os
 import webbrowser
 import logging
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -25,10 +26,9 @@ from .adapters.kanban import KanbanAdapter
 from .adapters.safety import SafetyAdapter
 from .adapters.sessions import SessionsAdapter
 from .adapters.system import GpuAdapter, HealthAdapter
-from .claude_agent import ClaudeManager
 from .config import ROOT, Config, load
-from .hermes_api import HermesAPI
-from .hermes_chat import HermesChat
+from .connectors import build_agents, build_providers
+from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .inbox import Inbox
 from .store import Store
 
@@ -57,9 +57,9 @@ class Hub:
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
                          SafetyAdapter(self, cfg), SessionsAdapter(self, cfg)]
         self.inbox = Inbox(self.publish, self.event)
-        self.hermes_api = HermesAPI(cfg.gateway, cfg.hermes_home)
-        self.hermes_chat = HermesChat(self, self.hermes_api, self.inbox)
-        self.claude = ClaudeManager(self, self.inbox, cfg.claude_workspaces)
+        self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
+        self.claude = self.agents.get("claude")
+        self.providers = build_providers(cfg)
         self.smoke_results: list[dict] = []
         self.started = time.time()
         usage = self.store.load_panels().get("claude_usage")
@@ -120,8 +120,14 @@ class Hub:
                 results += [{"adapter": a.name, "check": c, "ok": ok, "detail": d} for c, ok, d in a.smoke()]
             except Exception as exc:
                 results.append({"adapter": a.name, "check": "smoke", "ok": False, "detail": repr(exc)})
-        results.append({"adapter": "claude", "check": "claude.exe found", "ok": bool(self.claude.cli),
-                        "detail": self.claude.cli or "install the Claude desktop app or set SAGE_OS_CLAUDE_CLI"})
+        for a in self.agents.values():
+            try:
+                results += [{"adapter": a.id, "check": c, "ok": ok, "detail": d} for c, ok, d in a.smoke()]
+            except Exception as exc:
+                results.append({"adapter": a.id, "check": "smoke", "ok": False, "detail": repr(exc)})
+        lead = self.cfg.lead_agent
+        results.append({"adapter": "agents", "check": "lead agent connected", "ok": lead in self.agents,
+                        "detail": lead if lead in self.agents else f"{lead!r} is not among {sorted(self.agents)}"})
         self.smoke_results = results
         for r in results:
             if not r["ok"]:
@@ -133,7 +139,8 @@ class Hub:
         return {"panels": self.panels | {"inbox": self.inbox.items()}, "smoke": self.smoke_results,
                 "events": recent,
                 "hub": {"version": __version__, "read_only": False, "started": self.started,
-                        "pinned_profiles": self.cfg.pinned_profiles}}
+                        "pinned_profiles": self.cfg.pinned_profiles, "lead_agent": self.cfg.lead_agent,
+                        "agents": [a.info() for a in self.agents.values()]}}
 
 
 RESYNC = {"t": "resync"}
@@ -149,18 +156,14 @@ def _offer(q: asyncio.Queue, msg):
 
 
 # -- request bodies ------------------------------------------------------------------------------
-class NewClaudeSession(BaseModel):
+class NewSession(BaseModel):
     title: str | None = None
-    cwd: str | None = None
-    model: str | None = None
+    cwd: str | None = None             # agents with the "workspaces" capability
+    model: str | None = None           # agents with the "model_pick" capability
 
 
 class Send(BaseModel):
     text: str = Field(min_length=1, max_length=100_000)
-
-
-class NewHermesSession(BaseModel):
-    title: str | None = None
 
 
 class Decision(BaseModel):
@@ -176,11 +179,12 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     async def lifespan(app):
         hub.loop = asyncio.get_running_loop()
         tasks = []
-        hub.claude.publish_sessions()
+        if hub.claude:
+            hub.claude.publish_sessions()
         if start_adapters:
             results = await asyncio.to_thread(hub.run_smoke)
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
-            tasks.append(asyncio.create_task(hub.claude.watch_auth(), name="claude-auth"))
+            tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
             bad = [r for r in results if not r["ok"]]
             url = f"http://{cfg.host}:{cfg.port}"
             log.info("READY  %s  (smoke: %d/%d checks ok%s)  Ctrl+C to stop", url, len(results) - len(bad),
@@ -190,7 +194,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         yield
         for t in tasks:
             t.cancel()
-        await hub.claude.shutdown()
+        for a in hub.agents.values():
+            await a.shutdown()
         hub.store.close()
 
     app = FastAPI(title="Sage OS hub", version=__version__, lifespan=lifespan)
@@ -203,6 +208,24 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             raise HTTPException(403, "write requests must come from the Sage OS UI")
 
     W = [Depends(local_write)]
+
+    def agent(agent_id: str) -> AgentConnector:
+        if agent_id not in hub.agents:
+            raise HTTPException(404, f"no agent {agent_id!r} is connected")
+        return hub.agents[agent_id]
+
+    @contextmanager
+    def agent_errors():
+        try:
+            yield
+        except SessionNotFound:
+            raise HTTPException(404, "no such session")
+        except AgentBusy as exc:
+            raise HTTPException(409, str(exc))
+        except InvalidRequest as exc:
+            raise HTTPException(400, str(exc))
+        except AgentError as exc:
+            raise HTTPException(502, str(exc))
 
     # -- reads -----------------------------------------------------------------------------------
     @app.get("/api/state")
@@ -228,62 +251,75 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     def ping():
         return {"ok": True, "version": __version__}
 
+    @app.get("/api/agents")
+    def agents():
+        return {"lead": cfg.lead_agent, "agents": [a.info() for a in hub.agents.values()]}
+
+    @app.get("/api/models")
+    async def models():
+        async def one(p):
+            try:
+                return p.info() | {"models": await p.models(), "error": None}
+            except Exception as exc:
+                return p.info() | {"models": [], "error": f"{type(exc).__name__}: {exc}"}
+        return {"providers": await asyncio.gather(*(one(p) for p in hub.providers.values()))}
+
+    @app.get("/api/agents/{agent_id}/sessions/{sid}/history")
+    async def agent_history(agent_id: str, sid: str):
+        with agent_errors():
+            return await agent(agent_id).history(sid)
+
+    # Pre-A1 routes, still used by the Claude and Hermes panes; same connector calls.
     @app.get("/api/claude/sessions/{sid}/items")
-    def claude_items(sid: str):
-        return hub.store.chat_items(sid)
+    async def claude_items(sid: str):
+        return await agent_history("claude", sid)
 
     @app.get("/api/hermes/{profile}/sessions/{sid}/messages")
     async def hermes_messages(profile: str, sid: str):
-        try:
-            return await hub.hermes_api.messages(profile, sid)
-        except Exception as exc:
-            raise HTTPException(502, f"Hermes: {exc}")
+        return await agent_history(f"hermes:{profile}", sid)
 
     # -- writes ----------------------------------------------------------------------------------
+    @app.post("/api/agents/{agent_id}/sessions", dependencies=W)
+    async def agent_new(agent_id: str, body: NewSession):
+        with agent_errors():
+            return await agent(agent_id).create_session(body.title, cwd=body.cwd, model=body.model)
+
+    @app.post("/api/agents/{agent_id}/sessions/{sid}/send", dependencies=W)
+    async def agent_send(agent_id: str, sid: str, body: Send):
+        with agent_errors():
+            await agent(agent_id).send(sid, body.text)
+        return {"ok": True}
+
+    @app.post("/api/agents/{agent_id}/sessions/{sid}/interrupt", dependencies=W)
+    async def agent_interrupt(agent_id: str, sid: str):
+        with agent_errors():
+            await agent(agent_id).interrupt(sid)
+        return {"ok": True}
+
+    # Pre-A1 routes, still used by the Claude and Hermes panes; same connector calls.
     @app.post("/api/claude/sessions", dependencies=W)
-    def claude_new(body: NewClaudeSession):
-        try:
-            return hub.claude.create(body.title, body.cwd, body.model)
-        except ValueError as exc:
-            raise HTTPException(400, str(exc))
+    async def claude_new(body: NewSession):
+        return await agent_new("claude", body)
 
     @app.post("/api/claude/sessions/{sid}/send", dependencies=W)
     async def claude_send(sid: str, body: Send):
-        try:
-            await hub.claude.send(sid, body.text)
-        except KeyError:
-            raise HTTPException(404, "no such session")
-        except RuntimeError as exc:
-            raise HTTPException(409, str(exc))
-        return {"ok": True}
+        return await agent_send("claude", sid, body)
 
     @app.post("/api/claude/sessions/{sid}/interrupt", dependencies=W)
     async def claude_interrupt(sid: str):
-        try:
-            await hub.claude.get(sid).interrupt()
-        except KeyError:
-            raise HTTPException(404, "no such session")
-        return {"ok": True}
+        return await agent_interrupt("claude", sid)
 
     @app.post("/api/hermes/{profile}/sessions", dependencies=W)
-    async def hermes_new(profile: str, body: NewHermesSession):
-        try:
-            return await hub.hermes_api.create_session(profile, body.title)
-        except Exception as exc:
-            raise HTTPException(502, f"Hermes: {exc}")
+    async def hermes_new(profile: str, body: NewSession):
+        return await agent_new(f"hermes:{profile}", body)
 
     @app.post("/api/hermes/{profile}/sessions/{sid}/send", dependencies=W)
     async def hermes_send(profile: str, sid: str, body: Send):
-        try:
-            await hub.hermes_chat.send(profile, sid, body.text)
-        except RuntimeError as exc:
-            raise HTTPException(409, str(exc))
-        return {"ok": True}
+        return await agent_send(f"hermes:{profile}", sid, body)
 
     @app.post("/api/hermes/{profile}/sessions/{sid}/stop", dependencies=W)
     async def hermes_stop(profile: str, sid: str):
-        await hub.hermes_chat.stop(profile, sid)
-        return {"ok": True}
+        return await agent_interrupt(f"hermes:{profile}", sid)
 
     @app.post("/api/inbox/{item_id}", dependencies=W)
     async def inbox_decide(item_id: str, body: Decision):

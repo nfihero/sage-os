@@ -26,6 +26,12 @@ class Config:
     profile_labels: dict[str, str] = field(default_factory=dict)
     safety_feed_size: int = 200
     claude_workspaces: list[str] = field(default_factory=lambda: [str(Path.home() / "hermes-workspace")])
+    # [agents]: which connectors run (D4) and who answers team chat by default (D8)
+    lead_agent: str = "claude"
+    claude_enabled: bool = True
+    hermes_profiles: list[str] = field(default_factory=lambda: ["default"])
+    # [[models]]: extra OpenAI-compatible endpoints ({id, label, base_url, kind, api_key_env})
+    model_providers: list[dict] = field(default_factory=list)
 
 
 def load(path: Path | None = None) -> Config:
@@ -52,4 +58,15 @@ def load(path: Path | None = None) -> Config:
     cfg.profile_labels = dict(ui.get("profile_labels", cfg.profile_labels))
     cfg.safety_feed_size = int(ui.get("safety_feed_size", cfg.safety_feed_size))
     cfg.claude_workspaces = list(raw.get("claude", {}).get("workspaces", cfg.claude_workspaces))
+    agents = raw.get("agents", {})
+    cfg.lead_agent = agents.get("lead", cfg.lead_agent)
+    cfg.claude_enabled = bool(agents.get("claude", cfg.claude_enabled))
+    cfg.hermes_profiles = list(agents.get("hermes", cfg.hermes_profiles))
+    for m in raw.get("models", []):
+        if not m.get("id") or not m.get("base_url"):
+            raise ValueError(f"config.toml [[models]] entry needs id and base_url: {m}")
+        if "api_key" in m:
+            raise ValueError(f"config.toml [[models]] {m['id']}: put the key in an environment variable "
+                             "and name it with api_key_env; keys don't belong in this file")
+    cfg.model_providers = [dict(m) for m in raw.get("models", [])]
     return cfg

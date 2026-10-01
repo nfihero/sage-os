@@ -59,13 +59,16 @@ Click the `SAGE//OS` logo to replay the boot sequence.
 ```
 hub/sage_os_hub/   FastAPI app, WebSocket stream, SQLite store (data/hub.db)
   adapters/        kanban · system (gpu + health) · safety · sessions (read-only pollers)
-  claude_agent.py  Claude sessions + permission callback → inbox
-  hermes_api.py    Hermes gateway client (incl. the runtime pin)
-  hermes_chat.py   Hermes chat relay + approvals → inbox
+  connectors/      agents and model servers behind one interface (DECISIONS D4)
+    base.py        AgentConnector interface + errors
+    claude.py      Claude Code sessions + permission callback → inbox
+    hermes.py      each Hermes profile as an agent; hermes_api.py (gateway client, runtime pin),
+                   hermes_chat.py (chat relay + approvals → inbox)
+    models.py      ModelProvider: any OpenAI-compatible endpoint
   inbox.py         the approvals inbox
 ui/src/            React + Vite + Tailwind; themes in index.css; orbs in components/Orb.tsx
 docs/              mission, status, roadmap, handoff
-config.toml        ports, Hermes paths, poll intervals, Claude workspaces, profile labels
+config.toml        ports, Hermes paths, poll intervals, agents + model servers, Claude workspaces, profile labels
 ```
 
 ## Safety properties

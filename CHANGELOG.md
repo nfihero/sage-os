@@ -7,6 +7,15 @@ while pre-1.0.
 
 ## [Unreleased]
 
+### Added
+- **Connectors (architecture step A1):** `AgentConnector` and `ModelProvider` interfaces in
+  `hub/sage_os_hub/connectors/`; Claude Code and each Hermes profile are now connectors, and the
+  Hermes llama.cpp router plus any `[[models]]` entry are model providers (keys only from environment
+  variables or Hermes' own file, never config or the browser). New `config.toml` `[agents]` section
+  (`lead`, `claude`, `hermes`), routes `GET /api/agents`, `GET /api/models` and
+  `/api/agents/{id}/sessions/...`; per-agent smoke checks (Hermes API key, per-turn model pin, lead
+  agent connected). Old `/api/claude/...` and `/api/hermes/...` routes kept for the current panes.
+
 ### Changed
 - Docs: broadened product framing to match the GitHub description (agent hub with a personal,
   growing knowledge base; choice of local and cloud models; many programs in one hub; workflow kanban
