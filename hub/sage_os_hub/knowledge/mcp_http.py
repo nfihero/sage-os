@@ -10,7 +10,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
-from .tools import INSTRUCTIONS, LIST_DESC, PROPOSE_DESC, READ_DESC, SEARCH_DESC, BookshelfTools, as_text
+from .tools import (INSTRUCTIONS, LIST_DESC, PROPOSE_DESC, READ_DESC, READ_SOURCE_DESC, SEARCH_DESC,
+                    SEARCH_SOURCES_DESC, BookshelfTools, as_text)
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
 PROPOSES = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False)
@@ -36,6 +37,14 @@ def build_server(tools: BookshelfTools, agent: str, port: int):
     @server.tool(name="propose_note", description=PROPOSE_DESC, annotations=PROPOSES)
     async def propose_note(changes: list[dict], summary: str = "") -> str:
         return as_text(await tools.propose(agent, changes, summary))
+
+    @server.tool(name="search_sources", description=SEARCH_SOURCES_DESC, annotations=READ_ONLY)
+    async def search_sources(query: str, limit: int = 10) -> str:
+        return as_text(await tools.search_sources(agent, query, limit))
+
+    @server.tool(name="read_source", description=READ_SOURCE_DESC, annotations=READ_ONLY)
+    async def read_source(source: str, path: str, offset: int = 0) -> str:
+        return as_text(await tools.read_source(agent, source, path, offset))
 
     @server.tool(name="list_proposals", description=LIST_DESC, annotations=READ_ONLY)
     async def list_proposals(status: str | None = None) -> str:

@@ -54,6 +54,14 @@ export type NoteFull = NoteMeta & { frontmatter: Record<string, any>; body: stri
 export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[]; indexed?: number };
 export type SearchHit = { path: string; ref: string; title: string; folder: string; archived: boolean; snippet: string; score: number };
 export type SearchResult = { q: string; ms: number; results: SearchHit[] };
+export type SourceInfo = {
+  name: string; path: string; copy: string; include: string[]; files: number; indexed: number;
+  last_sync: number | null; last_stats: { copied: number; unchanged: number; removed: number; private_content: number; errors: number; skipped: number } | null;
+  skipped: { path: string; reason: string }[]; syncing: boolean; progress?: { done: number; total: number };
+};
+export type SourcesPanel = { sources: SourceInfo[] };
+export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number };
+export type SourceDoc = { source: string; path: string; size: number; status: string; note: string | null; chars: number; offset: number; text: string; more: boolean };
 export type Batch = {
   id: number; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
   started: number; finished: number | null; undone: number | null; files: { path: string; op: "create" | "update" | "remove" }[];
@@ -64,6 +72,7 @@ export type Panels = {
   inbox?: InboxItem[]; claude?: ClaudePanel; claude_usage?: Record<string, UsageWindow>;
   hermes_runs?: Record<string, { run_id: string | null; profile: string }>;
   vault?: VaultPanel;
+  sources?: SourcesPanel;
 };
 
 export type TaskDetail = {

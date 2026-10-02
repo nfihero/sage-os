@@ -169,7 +169,7 @@ def test_name_collisions_get_a_suffix(w):
 
 def make(tmp_path):
     cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db",
-                 vault_journal=tmp_path / "journal.db", claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
+                 vault_journal=tmp_path / "journal.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
     return create_app(cfg, start_adapters=False)
 
 

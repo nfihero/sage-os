@@ -34,9 +34,14 @@ _ASSIGN = re.compile(r"(?i)\b(?:password|passwd|pwd|passphrase|pin|secret|api[_ 
 # API_SERVER_KEY=... in env-file style: upper case only, so SQL's primary_key = id doesn't trip it
 _ENV = re.compile(r"\b[A-Z0-9_]*_(?:KEY|TOKEN|SECRET|PASSWORD)\s*=\s*[\"']?([^\s\"'`,;]{8,})")
 _CODE = re.compile(r"[(\[{$]|^(?:os|process|env|config|settings|self|this)\.")
-_CARD = re.compile(r"(?<![\d-])(?:\d[ -]?){12,18}\d(?![\d-])")
+# Long numbers next to a decimal point are decimals, not cards or IDs: spreadsheets store values like
+# 99.9999999999999, whose fraction digits pass the Luhn/Verhoeff checks often enough to matter.
+_NOT_DECIMAL_BEFORE = r"(?<![\d-])(?<!\d[.,])"
+_NOT_DECIMAL_AFTER = r"(?![\d-])(?![.,]\d)"
+_CARD = re.compile(_NOT_DECIMAL_BEFORE + r"(?:\d[ -]?){12,18}\d" + _NOT_DECIMAL_AFTER)
 _SSN = re.compile(r"(?<![\d-])(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}(?![\d-])")
-_AADHAAR = re.compile(r"(?<!\d)(?<!\d )[2-9]\d{3} \d{4} \d{4}(?!\d)(?! \d)|(?<!\d)[2-9]\d{11}(?!\d)")
+_AADHAAR = re.compile(r"(?<!\d)(?<!\d )[2-9]\d{3} \d{4} \d{4}(?!\d)(?! \d)|"
+                      + _NOT_DECIMAL_BEFORE + r"[2-9]\d{11}" + _NOT_DECIMAL_AFTER)
 _IBAN = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\b")
 
 

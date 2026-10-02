@@ -40,7 +40,7 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.7.0 (1 Oct) | `pytest` 95/95 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 17/17 |
+| Hub (FastAPI) + UI (React) | **works**, v0.8.0 (1 Oct) | `pytest` 157/157 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
@@ -55,7 +55,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **Bookshelf (1 Oct): read (K1), keyword search (K2), approved writes + exact undo (K3), secret screening (K4)** over `data/vault`; agents can't reach it through tools until K5 | gates in `docs/STATUS.md`; contract D9/D11, index D10 |
+| Knowledge layer of its own | **Bookshelf (1 Oct): read, search, approved writes + exact undo, screening, agent tools (K1–K5), source library of chosen Drive folders (S1)** | gates in `docs/STATUS.md`; D9–D12, D15, D16 |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
@@ -90,7 +90,7 @@ Hermes (separate install, %LOCALAPPDATA%\hermes): gateway :8642 → llama.cpp ro
 | Defined by | Agent SDK options in `connectors/claude.py` (Claude Code preset system prompt + Sage OS append) | Hermes profile **`default`** (only profile): `config.yaml`, `SOUL.md`, skills, memories |
 | Model | user's subscription; per-session model pick (default/Opus/Sonnet/Haiku) | local; default Qwen3.6-35B-A3B; one model resident (`models_max: 1`) |
 | Invoked | Claude pane → `POST /api/claude/sessions/{id}/send` → `ClaudeSDKClient` | Hermes pane → gateway sessions API (SSE); kanban dispatcher spawns workers; Hermes Desktop; cron |
-| Tools | Claude Code's built-ins; `setting_sources` user+project+local; `AskUserQuestion` disabled | Hermes toolsets (terminal **local** backend, file tools, kanban, browser …) |
+| Tools | Claude Code's built-ins + Bookshelf MCP tools (in-process, pre-allowed); `setting_sources` user+project+local; `AskUserQuestion` disabled | Hermes toolsets (terminal **local** backend, file tools, kanban, browser …) + Bookshelf over MCP (`mcp_servers.bookshelf` → `/mcp/hermes/default/`) |
 | Permissions | Claude Code `default` mode; anything not pre-allowed → `can_use_tool` → **Sage OS inbox** (allow once / for session / deny + note) | `pre_tool_call` hooks: **write guard** (Drive `G:\` read-only, protected dirs, writes only under 5 roots) + **guardian** (granite screens every terminal command, fail-closed); Hermes approvals |
 | Isolation | cwd chosen from 4 configured folders; **not sandboxed** (filesystem/network as the user, behind prompts) | **not sandboxed** (Docker retired 19–21 Sep); hooks are the boundary |
 | Concurrency | one turn per session; several sessions can run at once (no global cap) | one run per chat pane; kanban `max_in_progress: 1`; all local turns serialise on one GPU model |
@@ -111,14 +111,14 @@ agents should reach it only through these surfaces, never through its files dire
 | Query/search or read-by-path? | **Search is required.** Agents today find notes by `grep`/`find` in the terminal (every call guardian-screened, ~1–1.5 s overhead each). Read-by-path alone would not replace that. BookShelf having no search (its B1) was the gating gap — **closed by K2** (FTS5 keyword search, v0.5.0); meaning-based search still open (D10). |
 | Do agents write knowledge? | **Yes.** Observed: Hermes acted as an Obsidian "librarian" (reorganised notes, created topic notes, added cross-links), daily runs created/updated 3–5 notes each, outlines like `SAGE-OUTLINE.md`. |
 | Per-write approval: fits or breaks? | **Fits for chat-driven writes** (Sage OS already has an inbox designed for approvals). **Breaks for background/kanban bulk writes** (a single librarian run touched dozens of files) unless batches can be approved as one unit or trust is per agent. **K3 (v0.6.0):** one proposal of up to 50 changes is approved and undone as one unit; approving many proposals at once and per-agent trust are K7. |
-| Transport | **MCP first** (Claude Agent SDK and Hermes both speak MCP; Hermes has none configured yet). **HTTP/WS** for the Sage OS hub to list/approve proposals in its inbox. **Direct filesystem reads** acceptable. |
+| Transport | **MCP** — built in K5 (D16): in-process for Claude, Streamable HTTP for Hermes. **HTTP/WS** for the Sage OS hub to list/approve proposals in its inbox. **Direct filesystem reads** acceptable. |
 | Volume | *Estimate from history, not measured:* per agent session 5–50 reads, 0–10 proposed writes; background librarian/daily runs 20–50 proposed writes in a burst. |
 | Latency / real-time | Reads < ~300 ms are fine (a local LLM turn is 1–30 s). Writes are async (approval). Only "real-time" need: a new proposal should reach the Sage OS inbox within ~5 s (current board poll interval). |
 | Identity / auth | No user auth today (localhost only; Phase 3 adds Tailscale + passkey or token, undecided). Agents **are** distinguishable: `claude:<session>`, `hermes:default:<session>`, `kanban:<task>/<run>` — usable as BookShelf's proposed `origin: agent` + agent id. Who owns auth between the two projects: unknown — needs confirmation from the user. |
 | Local-only? | **Local-only by principle.** No hosted component. Phase 3 reaches the same PC over a private tailnet. |
 | Implementation language | **User direction (30 Sep 2026): don't reuse BookShelf's Swift; rebuild the knowledge core in Sage OS's own stack.** Proposed: **Python**, matching the hub — runs natively on this Windows PC, stdlib SQLite FTS5 gives search (BookShelf's B1) for free, official MCP Python SDK, shares the hub's venv/tests. BookShelf becomes the *spec* (DESIGN.md, invariants I1–I9, vault format), not the code. Final choice of language and of repo (inside `sage-os` vs separate) — needs confirmation from the user. |
 | Carrying BookShelf's invariants into Python | I1 (no write without approval) is **type-enforced in Swift** (`ApprovedChange.init` is `internal`); Python has no access control, so enforce it by **process boundary**: agents get only an MCP server with read + `propose_*` tools; the single writer process applies a change only with an approval token minted by the review path (Sage OS inbox). I2 journal → SQLite table with before/after blobs (also fixes BookShelf's single-writer JSON journal). I4 screening and I8 uid links port directly. I5 (core imports no UI framework) holds naturally. |
-| Existing knowledge stores | `C:\Users\you\Obsidian Vault` (8 topic folders: Inbox, Career, Finance, AI_Technology, Skills, Projects, Companies, Daily), `C:\Users\you\llm-vault` (Zettelkasten-style: 00-inbox … 90-system; origin unknown — needs confirmation from the user), Hermes memories/skills, Google Drive `G:\` (read-only source documents). |
+| Existing knowledge stores | `C:\Users\you\Obsidian Vault` (8 topic folders: Inbox, Career, Finance, AI_Technology, Skills, Projects, Companies, Daily), `C:\Users\you\llm-vault` (Zettelkasten-style: 00-inbox … 90-system; origin unknown — needs confirmation from the user), Hermes memories/skills, Google Drive `G:\` (read-only; chosen folders copied and indexed as the `drive` source since 1 Oct, D15). |
 
 ## 6. Environment constraints (cost a fresh session time otherwise)
 

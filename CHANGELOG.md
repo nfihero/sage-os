@@ -12,6 +12,38 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-01
+
+Bundles two roadmap steps, because K5 was never released on its own: **K5** (Bookshelf tools for
+agents) and **S1** (source library). Gates: K5 pass — Claude and Hermes each searched, read and
+proposed through MCP on the real hub; S1 pass — 499 files from the chosen Drive folders copied and
+indexed in 4½ min with Drive untouched (0 files modified), 9 private-looking files held back, a query
+answered in 3.7 ms. Checks: pytest 157/157, UI build clean, smoke 18/18.
+
+### Added
+- **Bookshelf tools for agents (K5, DECISIONS D16):** `search_notes`, `read_note`, `propose_note`,
+  `list_proposals` (and the source tools below). Claude gets them as an in-process MCP server in
+  every Sage OS session (agent id `claude:<session>`, no permission prompt: proposals already wait in
+  the inbox); other agents over MCP Streamable HTTP at `/mcp/<vendor>/<name>/`, the path fixing the
+  agent id. Hermes `default` is connected (`mcp_servers.bookshelf` in its `config.yaml`, backup
+  `config.yaml.bak-pre-bookshelf-mcp`). A note that looks sensitive returns metadata but not text.
+- **Source library (S1, DECISIONS D15):** read-only copies of chosen folders in `data/sources/<name>`
+  (`[[sources]]` in config.toml), synced one way on demand, text extracted (PDF via pypdf, Word,
+  PowerPoint, Excel, notebooks, HTML, code, transcripts) into `data/sources-index.db`. Private-looking
+  files are never copied: by name (tax return, W-2, pay stub, passport, statements…) or by content
+  (K4 screener); they're listed by path only. Bookshelf **Sources** tab: sync status, Sync now, Open
+  copy, the left-out list, search, and a text reader; agents get `search_sources` / `read_source`.
+  First source: Google Drive coursework, resumes and the MacBook folders.
+- New dependency: pypdf.
+
+### Fixed
+- Hermes refuses duplicate session titles, so every "+ new chat" after the first failed with a 502;
+  titles are now numbered ("Sage OS chat 2") and Hermes' own error message is shown.
+- (during S1) Spreadsheet cells were glued together and decimal fractions (e.g. `99.9999999999999`)
+  passed the card/ID checksums, holding back 36 coursework files as "private"; cells are now
+  tab-separated, digit runs next to a decimal point are ignored, and an extractor version forces
+  re-extraction when this changes.
+
 ### Changed
 - Copy pass with the no-ai-slop skill: README intro and "Today" paragraph untangled; MISSION drops
   filler em dashes, a "not X but Y" line and a colon reveal; UI text no longer promises shipped work

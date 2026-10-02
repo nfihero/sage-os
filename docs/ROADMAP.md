@@ -30,7 +30,8 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K2 | Search: SQLite FTS5 index rebuilt from files (vault stays the source of truth, I3) | A query returns ranked notes in < 300 ms — **pass** (1 Oct, ≤ 12 ms on 2,006 notes; v0.5.0) |
 | K3 | Propose → approve → commit: agents propose, the **Sage OS inbox** approves, a single writer applies with a SQLite journal and batch undo (I1, I2, I9) | An agent's proposal lands only after approval; undo restores bytes exactly — **pass** (1 Oct, v0.6.0) |
 | K4 | Screening before disk (I4); screened proposals held in the inbox with a manual *Save anyway* override (D12) | A proposal containing a key is refused before anything is written — **pass** (1 Oct, v0.7.0) |
-| K5 | MCP server for agents: `search_notes`, `read_note`, `propose_note`, `list_proposals`; `origin: agent` + agent id provenance | Claude and Hermes both read and propose through MCP |
+| K5 | MCP tools for agents: `search_notes`, `read_note`, `propose_note`, `list_proposals`; `origin: agent` + agent id provenance (D16) | Claude and Hermes both read and propose through MCP — **pass** (1 Oct, v0.8.0) |
+| S1 | Source library: read-only, searchable copy of chosen folders (Google Drive first), private files left out; agents search and cite (D15) | Chosen Drive folders searchable in Sage OS and by agents, Drive untouched — **pass** (1 Oct, v0.8.0) |
 | K6 | Import existing vaults (Obsidian Vault, llm-vault) with structure preserved | Existing notes searchable in Sage OS |
 | K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
 | K8 | Briefing packs: relevant notes injected before a task or chat (D7 idea 2; needs K2) | An agent's first reply uses a fact that exists only in the vault |

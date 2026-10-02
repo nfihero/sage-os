@@ -123,8 +123,8 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   per-agent trust levels · 6 one inbox for note proposals · 8 git-backed vault (**for the user's own
   install only**; a shippable product needs its own backup design, undecided) · 9 BookShelf's safety
   rules · 10 Ask with citations (later).
-- **Not adopted for now:** 4 playbooks as notes · 7 Drive as an indexed source library (`G:\` stays
-  read-only to agents and outside the vault).
+- **Not adopted for now:** 4 playbooks as notes · ~~7 Drive as an indexed source library~~ (adopted
+  on 1 Oct as the source library, D15; `G:\` itself stays read-only and outside the vault).
 - **Revisit if:** environment-setup work needs shared how-tos (idea 4), or agents keep needing Drive
   documents they can't search (idea 7).
 
@@ -280,6 +280,39 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Accepted for now:** any local process can call the hub and the MCP endpoint and claim to be an
   agent (localhost is trusted until Phase 3 adds login); Claude Code transcripts in `hub.db` can hold
   whatever the user and Claude wrote.
+
+## D15 — Source library: a read-only, searchable copy of chosen Drive folders
+
+- **Date / by:** 2026-10-01, user ("make a copy of my drive for now, as I don't have a strong vault";
+  chose a searchable source library, the folders, and to leave out card statements and photos)
+- **Status:** accepted. Reverses D7's "not adopted" for idea 7.
+- **Decision:** chosen folders of a source (first: `G:\`) are copied one way into
+  `data/sources/<name>/`, outside the vault, and their text is indexed in `data/sources-index.db`.
+  Sources are searched and cited, never edited; knowledge reaches the vault only through approved
+  proposals (I1). Drive is only read. Private-looking files are never copied (name rules plus the K4
+  content screen) and are listed by path. Media, archives, binaries and Google shortcut files
+  (`.gdoc`: their text lives online) are skipped with a reason.
+- **Costs:** a second copy (252 MB today) that drifts until the next *Sync now*; Google Docs/Sheets
+  need exporting to be included; images have no OCR yet; the name and content screens will miss some
+  private files and flag some harmless ones (today `Getting Started.xlsx` may be one).
+- **Revisit if:** sources should sync on a schedule, Google-native docs matter (export via the Drive
+  API), or scanned PDFs/images need OCR.
+
+## D16 — Agents reach Bookshelf through MCP tools, with the agent id set by Sage OS
+
+- **Date / by:** 2026-10-01, Claude building K5; the Hermes config change approved by the user
+- **Status:** accepted
+- **Decision:** one tool implementation (`knowledge/tools.py`), two transports: an in-process SDK MCP
+  server per Claude session, and a Streamable HTTP endpoint per other connector
+  (`/mcp/<vendor>/<name>/`, stateless, Host/Origin-checked). The agent id comes from the Claude session
+  or the URL path, never from the model. Reads and source reads are free; writing is `propose_note`,
+  which goes through screening and the inbox. Tool text marks note and source content as untrusted
+  data (D14). Claude's Bookshelf tools skip the permission prompt because proposals already wait for
+  the user.
+- **Costs / limits:** any local process can call an endpoint and claim to be that agent (localhost is
+  trusted until Phase 3); Hermes picks up a config change within about a minute but a broken endpoint
+  just disappears from its tool list.
+- **Revisit if:** a third agent connects (add its endpoint) or Phase 3 brings authentication.
 
 ---
 

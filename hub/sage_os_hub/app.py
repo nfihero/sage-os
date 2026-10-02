@@ -37,6 +37,7 @@ from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidReque
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
+from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .store import Store
 
@@ -94,6 +95,9 @@ class Hub:
         self.vault.ensure()
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
+        self.sources = SourceLibrary(cfg.sources_root, [
+            SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])))
+            for s in cfg.sources], cfg.sources_index)
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
@@ -246,6 +250,26 @@ class Hub:
                        choices=["reject", "save_anyway"], resolver=resolver,
                        context={"held": True, "agent": who, "where": exc.where, "category": exc.category, "changes": preview})
 
+    # -- source library (D15) -------------------------------------------------------------------
+    def publish_sources(self):
+        self.panel("sources", self.sources.summary())
+
+    async def sync_source(self, name: str) -> dict:
+        """Copy and index one source in a worker thread, publishing progress to the UI."""
+        def progress(src, done, total):
+            data = self.sources.summary()
+            for s in data["sources"]:
+                if s["name"] == src:
+                    s["progress"] = {"done": done, "total": total}
+            self.panel("sources", data)
+        self.event("knowledge", "sources", "sources.sync_started", {"source": name})
+        try:
+            stats = await asyncio.to_thread(self.sources.sync, name, progress)
+        finally:
+            self.publish_sources()
+        self.event("knowledge", "sources", "sources.synced", {"source": name, **stats})
+        return stats
+
     def refresh_vault(self):
         """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
         if self.loop:
@@ -333,6 +357,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if hub.claude:
             hub.claude.publish_sessions()
         hub.offer_pending_proposals()
+        hub.publish_sources()
         if start_adapters:
             results = await asyncio.to_thread(hub.run_smoke)
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
@@ -351,6 +376,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         await mcp_stack.aclose()
         hub.index.close()
         hub.writer.close()
+        hub.sources.close()
         hub.store.close()
 
     # No /docs, /redoc or /openapi.json: nothing to browse the API with but the UI.
@@ -427,6 +453,39 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
                 hub.index.sync(hub.vault.scan(), hub.vault.read_body)
             return hub.index.search(q, archived=archived, limit=max(1, min(limit, 100)))
         return await asyncio.to_thread(run)
+
+    @app.get("/api/sources")
+    def sources():
+        return hub.sources.summary()
+
+    @app.get("/api/sources/search")
+    async def sources_search(q: str, limit: int = 20):
+        return await asyncio.to_thread(hub.sources.search, q, limit)
+
+    @app.get("/api/sources/read")
+    async def sources_read(source: str, path: str, offset: int = 0, limit: int = 20000):
+        doc = await asyncio.to_thread(hub.sources.read, source, path, offset, limit)
+        if doc is None:
+            raise HTTPException(404, "no such source file")
+        return doc
+
+    @app.post("/api/sources/{name}/sync", dependencies=W)
+    async def sources_sync(name: str):
+        if name not in hub.sources.specs:
+            raise HTTPException(404, f"no source {name!r} in config.toml")
+        if hub.sources.syncing:
+            raise HTTPException(409, f"already syncing {hub.sources.syncing}")
+        asyncio.create_task(hub.sync_source(name))
+        return {"ok": True, "started": name}
+
+    @app.post("/api/sources/{name}/open", dependencies=W)
+    def sources_open(name: str):
+        if name not in hub.sources.specs:
+            raise HTTPException(404, f"no source {name!r} in config.toml")
+        folder = hub.sources.root / name
+        folder.mkdir(parents=True, exist_ok=True)
+        open_folder(folder)
+        return {"ok": True, "path": str(folder)}
 
     @app.get("/api/vault/proposals")
     def vault_proposals(status: str | None = None, limit: int = 100):

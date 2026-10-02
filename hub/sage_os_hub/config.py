@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +26,10 @@ class Config:
     vault: Path = ROOT / "data" / "vault"         # [bookshelf] vault (D6)
     vault_index: Path = ROOT / "data" / "bookshelf-index.db"   # [bookshelf] index: a rebuildable cache (D10)
     vault_journal: Path = ROOT / "data" / "bookshelf.db"       # [bookshelf] journal: proposals + undo history (D11)
+    # [[sources]]: read-only copies of folders, searchable by the user and agents (D15)
+    sources: list[dict] = field(default_factory=list)
+    sources_root: Path = ROOT / "data" / "sources"
+    sources_index: Path = ROOT / "data" / "sources-index.db"
     pinned_profiles: list[str] = field(default_factory=lambda: ["default"])
     hidden_profiles: list[str] = field(default_factory=list)
     profile_labels: dict[str, str] = field(default_factory=dict)
@@ -58,6 +63,10 @@ def load(path: Path | None = None) -> Config:
     if "vault" in shelf:
         vault = Path(shelf["vault"])
         cfg.vault = vault if vault.is_absolute() else ROOT / vault
+    for s in raw.get("sources", []):
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,40}", str(s.get("name", ""))) or not s.get("path"):
+            raise ValueError(f"config.toml [[sources]] needs a lower-case name (letters, digits, -) and a path: {s}")
+    cfg.sources = [dict(s) for s in raw.get("sources", [])]
     for key, attr in (("index", "vault_index"), ("journal", "vault_journal")):
         if key in shelf:
             path = Path(shelf[key])

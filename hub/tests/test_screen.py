@@ -29,7 +29,7 @@ POSITIVE = {
         "postgres://admin:hunter2pass@db.internal:5432/app", "password: Tr0ub4dor&3", "My API key = 9f8e7d6c5b4a3210",
         j("API_SERVER", "_KEY=", "f3c9a1b2d4e5f6a7"),
     ],
-    CARD: ["card 4111 1111 1111 1111 exp 12/28", "5500-0000-0000-0004"],
+    CARD: ["card 4111 1111 1111 1111 exp 12/28", "5500-0000-0000-0004", "card 4111 1111 1111 1111.", "4111111111111111"],
     GOV_ID: ["SSN 123-45-6789", "Aadhaar 2341 2341 2346"],
     BANK: ["IBAN GB82 WEST 1234 5698 7654 32"],
 }
@@ -40,6 +40,8 @@ NEGATIVE = [
     "order 4111 1111 1111 1112", "ref 2341 2341 2345", "I use sk-learn and scikit-image.",
     "See https://example.com/a:b and git@github.com:nfihero/sage-os.git", "The secret to DCF is the terminal value.",
     "Set API_SERVER_KEY in the .env file.", "Use 1Password: password: see vault",
+    # spreadsheet decimals (regression, 1 Oct): fraction digits passed the card/Aadhaar checksums
+    "99.9999999999999", "1234.4111111111111111", "4111111111111111.5", "0,4111111111111111", "x 1.234123412346 y",
 ]
 
 
@@ -109,7 +111,7 @@ H = {"x-sage-os": "1"}
 
 def hub_cfg(tmp_path):
     return Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db",
-                  vault_journal=tmp_path / "journal.db", claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
+                  vault_journal=tmp_path / "journal.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)], claude_enabled=False, hermes_profiles=[])
 
 
 def secret_proposal(title="Router"):

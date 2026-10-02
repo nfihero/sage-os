@@ -34,7 +34,7 @@ def seed(vault):
 
 def cfg(tmp_path, port=8787, **kw):
     return Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db",
-                  vault_journal=tmp_path / "journal.db", claude_workspaces=[str(tmp_path)], port=port, **kw)
+                  vault_journal=tmp_path / "journal.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)], port=port, **kw)
 
 
 def run(coro):
@@ -128,7 +128,7 @@ def test_hermes_endpoint_end_to_end(live):
             async with ClientSession(read, write) as s:
                 await s.initialize()
                 names = {t.name for t in (await s.list_tools()).tools}
-                assert names == {"search_notes", "read_note", "propose_note", "list_proposals"}
+                assert names == {"search_notes", "read_note", "propose_note", "list_proposals", "search_sources", "read_source"}
                 found = json.loads((await s.call_tool("search_notes", {"query": "enterprise value"})).content[0].text)
                 note = json.loads((await s.call_tool("read_note", {"uid": found["results"][0]["uid"]})).content[0].text)
                 prop = json.loads((await s.call_tool("propose_note", {"changes": [

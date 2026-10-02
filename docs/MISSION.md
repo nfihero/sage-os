@@ -17,14 +17,14 @@ mentor plans and reviews, and nothing important happens without your say.
 
 ## What Sage OS is
 
-| Pillar | What it does | State (v0.7.0) |
+| Pillar | What it does | State (v0.8.0) |
 |---|---|---|
 | **Your choice of models** | Local models (llama.cpp via Hermes) and cloud models side by side, picked per agent or task | Partly: Claude (cloud) + Hermes local models; since v0.4.0 any OpenAI-compatible server can be connected and its models listed (`[[models]]`), but not yet picked per agent or task (H1) |
-| **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes as connectors (v0.4.0); other programs plug in through the same interface (A4, Phase 6) |
+| **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes as connectors (v0.4.0), both using Bookshelf through MCP tools, and your Google Drive documents searchable as a source (v0.8.0); other programs plug in through the same interface (A4, Phase 6) |
 | **Kanban workflows** | Boards for different workflows, worked by agents, unblocked by you | Partly: one Hermes board shown; multiple workflow boards planned |
 | **Agent hub** | Claude Code (cloud) and Hermes (local) in one workspace: chat panes, live board, GPU lane, sessions | Built (Phases 1–2) |
 | **Approvals inbox and safety** | Every risky action from any agent lands in one inbox; guards (write guard, guardian) stay independent of the UI and can't be overridden from it | Built for Claude and Bookshelf proposals, with secret screening and a manual *Save anyway* override (v0.7.0); Hermes and kanban paths untested live |
-| **Bookshelf** (built-in knowledge base) | Plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Partly: read, search, approved writes with exact undo, secret screening (K1–K4, v0.4.0–v0.7.0); agent tools, imports and briefing packs next (K5–K11) |
+| **Bookshelf** (built-in knowledge base) | Plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Partly: read, search, approved writes with exact undo, secret screening, agent tools, Drive source library (K1–K5 + S1, v0.4.0–v0.8.0); vault imports, batch review and briefing packs next (K6–K11) |
 | **Orchestration and review** | Claude delegates to local agents and reviews what they hand back | Planned (Phases 4–5) |
 
 ## Who it's for

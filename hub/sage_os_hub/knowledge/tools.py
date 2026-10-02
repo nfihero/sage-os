@@ -38,6 +38,14 @@ inbox; you get a proposal id back and can check the outcome later with list_prop
   {"op": "archive", "uid": "..."}   (moves the note under Archive/; nothing is deleted)
 All changes in one call are approved or rejected together. `summary` says in one line why."""
 
+SEARCH_SOURCES_DESC = """Search the user's source library: read-only copies of their documents (Google Drive:
+coursework, resumes, notes, code). Every word must match, as a whole word or prefix. Returns source, path
+and a snippet («» marks matches). Use read_source to read one. Sources can be cited (e.g. a note's
+`source:` field) but not edited."""
+
+READ_SOURCE_DESC = """Read the extracted text of one source document (from search_sources: source + path). Long
+documents come in pages: pass `offset` from the previous call when `more` is true."""
+
 LIST_DESC = """List your own Bookshelf proposals and what happened to them (pending, applied, rejected with the
 user's note). Optional status filter: pending, applied or rejected."""
 
@@ -83,6 +91,17 @@ class BookshelfTools:
             return {"status": "pending", "proposal_id": r["proposal"]["id"],
                     "message": "Waiting for the user's approval in the Sage OS inbox. Check later with list_proposals."}
         return r
+
+    async def search_sources(self, agent: str, query: str, limit: int = 10) -> dict:
+        res = await asyncio.to_thread(self.hub.sources.search, query, max(1, min(int(limit), 30)))
+        return {"query": query, "results": [r | {"snippet": _plain(r["snippet"])} for r in res["results"]],
+                "note": None if res["results"] else "Nothing in the source library matches."}
+
+    async def read_source(self, agent: str, source: str, path: str, offset: int = 0) -> dict:
+        doc = await asyncio.to_thread(self.hub.sources.read, source, path, offset, 20_000)
+        if doc is None:
+            return {"error": f"No source file {source}/{path}. Use search_sources to find one."}
+        return doc | {"caution": UNTRUSTED.replace("Note text", "Source text").replace("inside a note", "inside a source")}
 
     async def proposals(self, agent: str, status: str | None = None) -> dict:
         rows = await asyncio.to_thread(self.hub.writer.proposals, status or None, 200)

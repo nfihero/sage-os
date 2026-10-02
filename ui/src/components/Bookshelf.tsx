@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { get, post } from "../api";
-import type { Batch, NoteFull, NoteMeta, SearchResult, VaultPanel } from "../types";
+import type { Batch, NoteFull, NoteMeta, SearchResult, SourcesPanel, VaultPanel } from "../types";
+import Sources from "./Sources";
 import { ago, useNow } from "../util";
 
 /** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
-export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onClose: () => void }) {
+export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPanel; sources?: SourcesPanel; onClose: () => void }) {
   const [fetched, setFetched] = useState<VaultPanel | null>(null);
   const vault = panel ?? fetched;
   const [ref, setRef] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
   const [hits, setHits] = useState<SearchResult | null>(null);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const searching = q.trim().length > 0;
-  const [view, setView] = useState<"notes" | "history">("notes");
+  const [view, setView] = useState<"notes" | "history" | "sources">("notes");
 
   useEffect(() => {
     if (!panel) get<VaultPanel>("/api/vault").then(setFetched).catch(() => {});
@@ -66,6 +67,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
           <span className="flex gap-1">
             <button className={`htab ${view === "notes" ? "on" : ""}`} onClick={() => setView("notes")}>NOTES</button>
             <button className={`htab ${view === "history" ? "on" : ""}`} onClick={() => setView("history")}>HISTORY</button>
+            <button className={`htab ${view === "sources" ? "on" : ""}`} onClick={() => setView("sources")}>SOURCES</button>
           </span>
           <span className="ml-auto flex min-w-0 items-center gap-2">
             {vault && <span className="hidden min-w-0 truncate font-mono text-[11px] normal-case tracking-normal text-mute md:inline" title={vault.root}>{vault.root}</span>}
@@ -75,7 +77,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
         </div>
         {openErr && <div className="border-b border-red/40 px-3 py-1 text-[12px] text-red">{openErr}</div>}
 
-        {view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {view === "sources" ? <Sources panel={sources} /> : view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className={`flex min-h-0 flex-col border-cyan/20 md:w-[330px] md:shrink-0 md:border-r ${current ? "hidden md:flex" : "flex flex-1 md:flex-none"}`}>
             <div className="flex items-center gap-2 border-b border-cyan/20 p-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes…" aria-label="Search notes"
