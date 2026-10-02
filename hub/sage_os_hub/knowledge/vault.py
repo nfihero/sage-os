@@ -84,6 +84,7 @@ class Note:
     status: str | None = None
     origin: str | None = None
     agent: str | None = None           # who wrote it, when origin is "agent"
+    source: str | None = None          # vault-relative path it was built from, e.g. sources/drive/... (K6)
     created: str | None = None
     updated: str | None = None
     tags: list[str] = field(default_factory=list)
@@ -132,6 +133,7 @@ def parse_note(rel: str, text: str, size: int = 0, mtime: float = 0.0) -> tuple[
     note = Note(path=rel, folder=parts[0] if len(parts) > 1 else "", title=str(fm.get("title") or heading or stem),
                 uid=uid, type=fm.get("type") and str(fm["type"]), status=fm.get("status") and str(fm["status"]),
                 origin=origin, agent=fm.get("agent") and str(fm["agent"]),
+                source=fm.get("source") and str(fm["source"]),
                 created=jsonable(fm.get("created")), updated=jsonable(fm.get("updated")),
                 tags=_list(fm.get("tags")), links=_list(fm.get("links")), archived=parts[0] == ARCHIVE,
                 problems=problems, sensitive=screen(text), size=size, mtime=mtime)

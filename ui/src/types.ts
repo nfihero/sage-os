@@ -60,6 +60,8 @@ export type SourceInfo = {
   skipped: { path: string; reason: string }[]; syncing: boolean; progress?: { done: number; total: number };
 };
 export type SourcesPanel = { sources: SourceInfo[] };
+export type SourceCollection = { dir: string; title: string; docs: number; markdown: number; folder: string; note: string | null; status: "new" | "pending" | "built" };
+export type BuildResult = { proposed: number; notes: number; already: number; left_out: { path: string; reason: string }[]; not_sent: { collection: string; reason: string }[] };
 export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number };
 export type SourceDoc = { source: string; path: string; size: number; status: string; note: string | null; chars: number; offset: number; text: string; more: boolean };
 export type Batch = {

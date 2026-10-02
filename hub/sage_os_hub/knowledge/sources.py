@@ -54,6 +54,8 @@ class SourceSpec:
     path: Path                        # the original, read-only
     include: list[str] = field(default_factory=list)    # sub-paths to copy (empty = everything)
     exclude: list[str] = field(default_factory=list)    # sub-paths never copied
+    notes_folder: str | None = None   # vault folder for notes built from this source (K6); default: Name
+    strip: list[str] = field(default_factory=list)      # leading source folders dropped in vault paths
 
 
 # -- text extraction ------------------------------------------------------------------------------
@@ -252,6 +254,11 @@ class SourceLibrary:
                 Path(dp).rmdir()
 
     # -- reading -----------------------------------------------------------------------------------
+    def files(self, name: str) -> list[tuple[str, str]]:
+        """(relative path, status) of every file the library knows for a source."""
+        with self.lock:
+            return self.db.execute("SELECT rel, status FROM files WHERE source=? ORDER BY rel", (name,)).fetchall()
+
     def summary(self) -> dict:
         with self.lock:
             out = []

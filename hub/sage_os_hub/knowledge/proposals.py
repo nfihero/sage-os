@@ -22,6 +22,7 @@ from .screen import screen
 from .vault import ARCHIVE, ATTACHMENTS, ULID, Vault, parse_note, split_frontmatter
 
 OPS = ("create", "update", "archive")
+IMPORTER = "sage-os:importer"     # only this proposer may mark notes origin: imported (K6, D17)
 EDITABLE = ("title", "type", "status", "tags", "links")
 MAX_CHANGES, MAX_BODY, MAX_DIFF = 50, 200_000, 20_000
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -159,6 +160,12 @@ def _clean_fields(change: dict) -> dict:
             out[k] = [_text(x, k[:-1], 80) for x in v]
     if any(not ULID.match(u) for u in out.get("links", [])):
         raise ProposalError("links must be note uids (ULIDs)")
+    if "source" in change:                    # a citation: vault-relative, e.g. sources/drive/My Drive/x.pdf
+        out["source"] = _text(change["source"], "source", 500)
+    if "origin" in change:
+        if change["origin"] not in ("agent", "imported"):
+            raise ProposalError("origin can only be agent or imported")
+        out["origin"] = change["origin"]
     if "body" in change:
         if not isinstance(change["body"], str) or len(change["body"]) > MAX_BODY:
             raise ProposalError(f"body must be text up to {MAX_BODY} characters")
@@ -185,6 +192,8 @@ def normalize(changes: list) -> list[dict]:
             if not isinstance(uid, str) or not ULID.match(uid):
                 raise ProposalError(f"{op} needs the note's uid")
             fields = _clean_fields(ch) if op == "update" else {}
+            if "origin" in fields:
+                raise ProposalError("origin is set when a note is created and never changes")
             if op == "update" and not fields:
                 raise ProposalError("update changes nothing")
             out.append({"op": op, "uid": uid, **fields})
@@ -247,9 +256,12 @@ def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | 
                 i += 1
                 path = f"{ch['folder']}/{stem}-{i}.md"
             fm = {"uid": ch["uid"], "title": ch["title"], "created": now, "updated": now,
-                  "type": ch.get("type", "note"), "status": ch.get("status", "active"),
-                  "origin": "agent", "agent": agent}
-            for k in ("tags", "links"):
+                  "type": ch.get("type", "note"), "status": ch.get("status", "active")}
+            if ch.get("origin") == "imported" and agent == IMPORTER:
+                fm |= {"origin": "imported", "imported_by": agent}     # the user's own text, brought in (K6)
+            else:
+                fm |= {"origin": "agent", "agent": agent}               # anyone else writing is an agent (D11)
+            for k in ("source", "tags", "links"):
                 if ch.get(k):
                     fm[k] = ch[k]
             after = compose(fm, ch["body"])

@@ -59,7 +59,10 @@ exclude = [
   "My Drive/Private",                                # card statements: private (user, 1 Oct)
   "My Drive/Archive/Photos",                       # photos: no text (user, 1 Oct)
   "Other computers/My MacBook Air/Downloads/7z2409-mac",   # a downloaded app's manual
+  "Other computers/My MacBook Air/Documents/Card statements",   # card statements named by date: private (2 Oct)
 ]
+notes_folder = "Drive"                     # starter notes from this source go under Drive/ in the vault (K6)
+strip = ["My Drive", "Other computers"]    # dropped from vault paths: Drive/Archive/... not Drive/My Drive/Archive/...
 
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before

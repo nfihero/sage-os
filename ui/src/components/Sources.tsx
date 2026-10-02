@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { get, post } from "../api";
-import type { SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
+import type { BuildResult, SourceCollection, SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
 import { ago, useNow } from "../util";
 
 /** The source library (D15): read-only copies of chosen folders, searchable, citable, never edited. */
@@ -99,6 +99,60 @@ function SourceCard({ s }: { s: SourceInfo }) {
         </div>
       )}
       {s.include.length > 0 && <div className="mt-1.5 text-[10.5px] text-mute" title={s.include.join("\n")}>{s.include.length} folders selected in config.toml</div>}
+      {s.files > 0 && <BuildNotes name={s.name} synced={s.last_sync} />}
+    </div>
+  );
+}
+
+/** K6: start the vault from this source. Starter notes are proposals; agents draft concept notes on request. */
+function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
+  const [cols, setCols] = useState<SourceCollection[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const load = () => get<SourceCollection[]>(`/api/sources/${encodeURIComponent(name)}/collections`).then(setCols).catch(() => {});
+  useEffect(() => { load(); }, [name, synced]);
+  const build = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await post<BuildResult>(`/api/sources/${encodeURIComponent(name)}/build`);
+      const parts = [r.proposed ? `${r.notes} starter notes proposed in ${r.proposed} inbox card${r.proposed === 1 ? "" : "s"}` : "No new starter notes"];
+      if (r.already) parts.push(`${r.already} already built or waiting`);
+      if (r.left_out.length) parts.push(`${r.left_out.length} left out (${r.left_out.map((x) => x.reason).slice(0, 2).join("; ")})`);
+      if (r.not_sent.length) parts.push(`${r.not_sent.length} wait for earlier cards to be decided`);
+      setMsg({ tone: "ok", text: parts.join(" · ") + (r.proposed ? ". Approve the ones you want in the inbox." : ".") });
+    } catch (e) { setMsg({ tone: "err", text: String((e as Error).message ?? e) }); }
+    setBusy(false); load();
+  };
+  const draft = async (c: SourceCollection) => {
+    setMsg(null);
+    try {
+      const r = await post<{ agent: string; title: string }>(`/api/sources/${encodeURIComponent(name)}/draft`, { folder: c.dir });
+      setMsg({ tone: "ok", text: `${r.agent} is drafting concept notes for ${r.title} in the chat "Bookshelf: draft notes for ${r.title}". Its proposals arrive in the inbox.` });
+    } catch (e) { setMsg({ tone: "err", text: String((e as Error).message ?? e) }); }
+  };
+  const fresh = cols?.filter((c) => c.status === "new").length ?? 0;
+  return (
+    <div className="mt-2 border-t border-cyan/15 pt-2">
+      <div className="display mb-1 text-[10px] text-cyan/80">Build notes from this source</div>
+      <p className="text-[11.5px] text-ink/75">Starter notes: your markdown files as notes, plus one index note per folder of documents. Everything arrives in the inbox for you to approve.</p>
+      <button className="chip mt-1.5" disabled={busy || fresh === 0} onClick={build}
+        title={fresh === 0 ? "Every collection is already built or waiting in the inbox" : "Propose starter notes for every collection not built yet"}>
+        {busy ? "PROPOSING…" : `PROPOSE STARTER NOTES${fresh ? ` (${fresh})` : ""}`}
+      </button>
+      {msg && <div className={`mt-1 text-[11.5px] ${msg.tone === "err" ? "text-red" : "text-ink/80"}`}>{msg.text}</div>}
+      {cols && cols.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1">
+          {cols.map((c) => (
+            <div key={c.dir} className="flex items-baseline gap-1.5 text-[11.5px]">
+              <span className="min-w-0 flex-1 truncate text-ink/85" title={`${c.dir || "(source root)"} → ${c.folder}`}>{c.title}</span>
+              <span className="shrink-0 text-[10px] text-mute">{c.docs} docs{c.markdown ? ` · ${c.markdown} md` : ""}</span>
+              <span className={`chip shrink-0 ${c.status === "built" ? "" : c.status === "pending" ? "amber" : "mute"}`}>{c.status === "built" ? "in vault" : c.status === "pending" ? "in inbox" : "new"}</span>
+              <button className="chip shrink-0" disabled={c.docs === 0} onClick={() => draft(c)}
+                title="Ask an agent (Hermes by default, free and local) to read these documents and propose concept notes that cite them">DRAFT</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

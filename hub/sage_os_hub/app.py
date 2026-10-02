@@ -37,6 +37,8 @@ from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidReque
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
+from .knowledge.builder import NoteBuilder
+from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .store import Store
@@ -96,8 +98,10 @@ class Hub:
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
         self.sources = SourceLibrary(cfg.sources_root, [
-            SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])))
+            SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
+                       s.get("notes_folder"), list(s.get("strip", [])))
             for s in cfg.sources], cfg.sources_index)
+        self.builder = NoteBuilder(self.vault, self.sources)
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
@@ -270,6 +274,74 @@ class Hub:
         self.event("knowledge", "sources", "sources.synced", {"source": name, **stats})
         return stats
 
+    # -- notes from sources (K6, D17) ---------------------------------------------------------------
+    async def pending_sources(self) -> set[str]:
+        return {c["source"] for p in await asyncio.to_thread(self.writer.proposals, "pending", 1000)
+                for c in p["changes"] if c.get("source")}
+
+    async def collections(self, name: str) -> list[dict]:
+        cols = await asyncio.to_thread(self.builder.collections, name)
+        notes = {n.source: n.ref for n in await asyncio.to_thread(self.vault.scan) if n.source}
+        pending = await self.pending_sources()
+        spec = self.sources.specs[name]
+        out = []
+        for c in cols:
+            src = f"sources/{name}/{c.dir}".rstrip("/")
+            out.append({"dir": c.dir, "title": c.title, "docs": len(c.docs), "markdown": len(c.markdown),
+                        "folder": self.builder.vault_folder(spec, c.dir),
+                        "note": notes.get(src), "status": "built" if src in notes else "pending" if src in pending else "new"})
+        return out
+
+    async def build_notes(self, name: str) -> dict:
+        """Propose starter notes for a source, one proposal per collection (never written until approved)."""
+        planned = await asyncio.to_thread(self.builder.starter_plan, name, await self.pending_sources())
+        sent, not_sent = [], []
+        for prop in planned["proposals"]:
+            r = await self.submit_proposal(IMPORTER, prop["summary"], prop["changes"])
+            if r["status"] == "pending":
+                sent.append({"collection": prop["collection"], "proposal": r["proposal"]["id"], "notes": len(prop["changes"])})
+            else:
+                not_sent.append({"collection": prop["collection"], "reason": r.get("error") or r.get("message")})
+                if "already waiting" in str(r.get("error")):      # inbox cap: the rest waits for the next run
+                    not_sent += [{"collection": q["collection"], "reason": "waiting for earlier proposals to be decided"}
+                                 for q in planned["proposals"][planned["proposals"].index(prop) + 1:]]
+                    break
+        self.event("knowledge", "bookshelf", "notes.starter_proposed", {"source": name, "proposals": len(sent)})
+        return {"proposed": len(sent), "notes": sum(x["notes"] for x in sent), "already": planned["already"],
+                "left_out": planned["left_out"], "not_sent": not_sent, "proposals": sent}
+
+    async def draft_notes(self, name: str, folder: str, agent_id: str | None = None) -> dict:
+        """Ask an agent to read one collection and propose concept notes that cite it (K6 layer 2)."""
+        agent_id = agent_id or ("hermes:default" if "hermes:default" in self.agents else self.cfg.lead_agent)
+        if agent_id not in self.agents:
+            raise ValueError(f"no agent {agent_id!r} is connected")
+        cols = {c.dir: c for c in await asyncio.to_thread(self.builder.collections, name)}
+        if folder not in cols:
+            raise KeyError(folder)
+        c, spec = cols[folder], self.sources.specs[name]
+        index_note = {n.source: n.uid for n in await asyncio.to_thread(self.vault.scan)
+                      if n.source and n.uid}.get(f"sources/{name}/{c.dir}".rstrip("/"))
+        listed = "\n".join(f"- {d}" for d in c.docs[:40]) + (f"\n- … and {len(c.docs) - 40} more" if len(c.docs) > 40 else "")
+        links = f', and "links": ["{index_note}"] (the collection note)' if index_note else ""
+        prompt = (
+            f"Draft concept notes for the user's Bookshelf from one collection of their own documents.\n\n"
+            f"Collection: \"{c.title}\" ({len(c.docs)} documents) in the \"{name}\" source. Documents "
+            f"(source=\"{name}\", path as listed):\n{listed}\n\n"
+            f"1. Use your Bookshelf tool read_source (source \"{name}\", the paths above) on the documents that matter "
+            f"most; read at least three.\n"
+            f"2. Call propose_note once with 3 to 6 \"create\" changes: folder \"{self.builder.vault_folder(spec, c.dir)}\", a "
+            f"short concept title (a formula, method or idea from the documents), a markdown body that explains it in "
+            f"your own words using only what the documents say and ends with a \"Sources\" list of the documents you "
+            f"used, \"source\" set to \"sources/{name}/<main document path>\", 2-4 tags{links}.\n"
+            f"3. Don't invent facts, numbers or examples that aren't in the documents, and never include personal "
+            f"details or secrets.\n"
+            f"4. Reply with the proposal id and the note titles. The user approves or rejects them in the Sage OS inbox.")
+        connector = self.agents[agent_id]
+        session = await connector.create_session(f"Bookshelf: draft notes for {c.title}")
+        await connector.send(session["id"], prompt)
+        self.event("knowledge", "bookshelf", "notes.draft_started", {"source": name, "collection": c.dir, "agent": agent_id})
+        return {"agent": agent_id, "session": session["id"], "collection": c.dir, "title": c.title}
+
     def refresh_vault(self):
         """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
         if self.loop:
@@ -332,6 +404,11 @@ class NewProposal(BaseModel):
     agent: str = Field(min_length=1, max_length=200)    # who proposes: claude:<session>, hermes:default:<session>, ...
     summary: str = Field(default="", max_length=500)
     changes: list[dict] = Field(min_length=1, max_length=50)
+
+
+class DraftRequest(BaseModel):
+    folder: str = Field(max_length=1000)                 # a collection's source folder ("" = source root)
+    agent: str | None = Field(default=None, max_length=200)
 
 
 class Send(BaseModel):
@@ -477,6 +554,31 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             raise HTTPException(409, f"already syncing {hub.sources.syncing}")
         asyncio.create_task(hub.sync_source(name))
         return {"ok": True, "started": name}
+
+    @app.get("/api/sources/{name}/collections")
+    async def sources_collections(name: str):
+        if name not in hub.sources.specs:
+            raise HTTPException(404, f"no source {name!r} in config.toml")
+        return await hub.collections(name)
+
+    @app.post("/api/sources/{name}/build", dependencies=W)
+    async def sources_build(name: str):
+        if name not in hub.sources.specs:
+            raise HTTPException(404, f"no source {name!r} in config.toml")
+        return await hub.build_notes(name)
+
+    @app.post("/api/sources/{name}/draft", dependencies=W)
+    async def sources_draft(name: str, body: DraftRequest):
+        if name not in hub.sources.specs:
+            raise HTTPException(404, f"no source {name!r} in config.toml")
+        try:
+            return await hub.draft_notes(name, body.folder, body.agent)
+        except KeyError:
+            raise HTTPException(404, "no such collection")
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        except AgentError as exc:
+            raise HTTPException(502, str(exc))
 
     @app.post("/api/sources/{name}/open", dependencies=W)
     def sources_open(name: str):
