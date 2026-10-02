@@ -134,7 +134,7 @@ export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
           {cur ? (
             <ChatView items={items} live={live} busy={busy} tone="orange" banner={banner}
               placeholder="Ask Claude to plan, review, or work… (Enter to send, Shift+Enter for a new line)"
-              disabled={!panel?.cli ? "claude.exe not found — install the Claude desktop app" : null}
+              disabled={!panel?.cli ? "claude.exe not found. Install the Claude desktop app." : null}
               onSend={async (t) => {
                 if (/^\/(login|logout)/i.test(t.trim())) { setLoginHint(true); throw new Error("Slash commands like /login don't run here: use the terminal command shown above."); }
                 await post(`/api/claude/sessions/${cur.id}/send`, { text: t });

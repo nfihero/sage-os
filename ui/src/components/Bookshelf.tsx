@@ -61,7 +61,7 @@ export default function Bookshelf({ panel, onClose }: { panel?: VaultPanel; onCl
           <span className="text-mute normal-case tracking-normal">{vault ? `${vault.count} note${vault.count === 1 ? "" : "s"}` : "loading…"}</span>
           {vault && vault.problems > 0 && (
             <button className={`chip amber normal-case tracking-normal ${onlyProblems ? "pulse-amber" : ""}`} onClick={() => setOnlyProblems(!onlyProblems)}
-              title="Notes that don't follow the vault contract. Click to show only these.">⚠ {vault.problems} with problems</button>
+              title="Notes that don't match the note format (missing fields, bad uid, absolute paths…). Click to show only these.">⚠ {vault.problems} with problems</button>
           )}
           <span className="flex gap-1">
             <button className={`htab ${view === "notes" ? "on" : ""}`} onClick={() => setView("notes")}>NOTES</button>
@@ -190,7 +190,7 @@ function EmptyVault({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="flex flex-col gap-2 text-[12.5px] text-ink/80">
       <div className="display text-[11px] text-cyan">The vault is empty</div>
-      <p>Notes are plain markdown files in this folder. Sage OS never writes them on its own: they arrive as agent proposals you approve in the inbox (coming in K3), through imports (K6), or as files you add yourself.</p>
+      <p>Notes are plain markdown files in this folder. Sage OS never writes one on its own. Agents propose notes and you approve them in the inbox, or you add files here yourself.</p>
       <button className="chip self-start" onClick={onOpen}>OPEN VAULT</button>
     </div>
   );
@@ -235,7 +235,7 @@ function NoteView({ meta, onBack, onOpen, known }: { meta: NoteMeta; onBack: () 
         )}
         {meta.problems.length > 0 && (
           <div className="mb-3 border border-amber/50 bg-amber/5 p-2 text-[12px]">
-            <div className="display mb-1 text-[10px] text-amber">Doesn't follow the vault contract</div>
+            <div className="display mb-1 text-[10px] text-amber">Doesn't match the note format</div>
             <ul className="list-disc pl-4 text-amber">{meta.problems.map((p) => <li key={p}>{p}</li>)}</ul>
           </div>
         )}

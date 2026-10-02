@@ -12,6 +12,12 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Changed
+- Copy pass with the no-ai-slop skill: README intro and "Today" paragraph untangled; MISSION drops
+  filler em dashes, a "not X but Y" line and a colon reveal; UI text no longer promises shipped work
+  as future ("coming in K3", "arrives in Phase 2"), says "note format" instead of "vault contract",
+  and loses its prose em dashes. `config.toml` header no longer claims Phase 1 is read-only.
+
 ### Security (vibe-security audit, 1 Oct; DECISIONS D14)
 - **High — fixed:** any `*.ts.net` origin was trusted, so a page published with Tailscale Funnel could
   open the hub's WebSocket and read its state (inbox, transcripts, note diffs). Now only localhost and

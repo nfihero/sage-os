@@ -1,4 +1,4 @@
-# Sage OS hub configuration. Phase 1 is read-only: nothing here grants write access.
+# Sage OS hub configuration. Relative paths are relative to the sage-os folder.
 
 [hub]
 host = "127.0.0.1"          # never 0.0.0.0 -- remote access goes through Tailscale Serve (Phase 3)

@@ -64,7 +64,7 @@ export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: H
         <div>
           <div className="display mb-1 text-[10px] text-mute">ON THE CARD</div>
           {routerDown ? <div className="text-red">router down</div> : active.length === 0 ? (
-            <div className="text-mute" data-testid="gpu-model">idle — no model loaded</div>
+            <div className="text-mute" data-testid="gpu-model">idle · no model loaded</div>
           ) : active.map((m) => (
             <div key={m.id} data-testid="gpu-model" className={`card cursor-default ${m.state === "loading" ? "pulse-cyan" : "streaming"}`}>
               <div className="flex items-center gap-2">

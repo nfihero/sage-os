@@ -45,7 +45,7 @@ export default function TaskDrawer({ id, onClose, onOpen }: { id: string; onClos
               {t.status === "blocked" && (
                 <Section title="Waiting on you" tone="amber">
                   <p className="whitespace-pre-wrap text-amber">{lastBlockReason(d) ?? "blocked"}</p>
-                  <p className="mt-1 break-words text-[11px] text-mute">Answering from here arrives in Phase 2. For now: Hermes Desktop kanban, or <code>hermes kanban comment {id} "…"</code> then <code>unblock</code>.</p>
+                  <p className="mt-1 break-words text-[11px] text-mute">Answer it in the inbox (Reply & unblock), in Hermes Desktop's kanban, or with <code>hermes kanban comment {id} "…"</code> then <code>unblock</code>.</p>
                 </Section>
               )}
               {t.result && <Section title="Result"><pre className="whitespace-pre-wrap">{t.result}</pre></Section>}
