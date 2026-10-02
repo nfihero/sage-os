@@ -261,6 +261,26 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   this folder.
 - **Revisit if:** pushes become routine (e.g. CI), or sessions usually start outside this folder.
 
+## D14 — Security baseline from the vibe-security audit
+
+- **Date / by:** 2026-10-01, Claude running the user's vibe-security skill (user asked for the review)
+- **Status:** accepted
+- **Threat model:** no login, hub on 127.0.0.1. Realistic attackers: a malicious web page in the
+  user's browser, another local process, and prompt injection through notes or agent output. Phase 3
+  (remote access + login) must re-run this audit.
+- **Decision:** (1) trust only localhost plus exact host names in `[hub] remote_hosts` — never a
+  wildcard; (2) strict security headers on every response, no API docs; (3) agent output and note
+  text are untrusted: no remote images in chat, notes marked as data to agents, per-agent proposal
+  caps; (4) server-side validation of every browser-supplied value that reaches a filesystem path or
+  another service (Claude workspace allowlist, Hermes session ids); (5) secret-looking text from guard
+  logs is hidden before storage, reusing the K4 screener.
+- **Not issues here:** no client-side secrets (no `VITE_` env, keys read server-side only); git
+  history clean apart from fake test fixtures; SQL is parameterised (f-strings only build column
+  names from code/schema); markdown rendering has no raw HTML.
+- **Accepted for now:** any local process can call the hub and the MCP endpoint and claim to be an
+  agent (localhost is trusted until Phase 3 adds login); Claude Code transcripts in `hub.db` can hold
+  whatever the user and Claude wrote.
+
 ---
 
 ## Proposed, awaiting the user

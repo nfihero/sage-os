@@ -12,6 +12,26 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Security (vibe-security audit, 1 Oct; DECISIONS D14)
+- **High — fixed:** any `*.ts.net` origin was trusted, so a page published with Tailscale Funnel could
+  open the hub's WebSocket and read its state (inbox, transcripts, note diffs). Now only localhost and
+  host names listed exactly in `[hub] remote_hosts` (empty until Phase 3); wildcards are refused.
+- **Medium — fixed:** no security headers — the inbox could be framed and click-jacked into *Approve*
+  or *Save anyway*. Added CSP (`frame-ancestors 'none'`, same-origin scripts/connections, no remote
+  images), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`; `/docs` and
+  `/openapi.json` removed.
+- **Medium — fixed:** agent markdown in the chat panes auto-loaded remote images (a prompt-injected
+  reply could beacon data out); now shown as `[image: …]` like Bookshelf.
+- **Medium — fixed:** note text handed to agents through Bookshelf tools is labelled as data, not
+  instructions (indirect prompt injection); Claude's system prompt says the same.
+- **Medium — fixed:** one agent could fill the inbox with proposals (300 in a burst); now at most 25
+  waiting and 10 held per agent.
+- **Low–Medium — fixed:** Claude sessions could start in any folder (e.g. `C:\Windows`) via the API;
+  now only `[claude] workspaces`. Hermes session ids from the browser went unchecked into gateway URLs
+  (`../` changed the endpoint, sent with the Hermes key); now plain ids only.
+- **Low — fixed:** guard-log commands that look like they carry a secret are hidden before they reach
+  the safety feed and `hub.db`; `.env` files ignored by git.
+
 ### Added
 - **Git guardrails for Claude Code** (`.claude/settings.json` + `.claude/hooks/git_guardrails.py`,
   user request 1 Oct): a PreToolUse hook blocks `git push`, `reset --hard`, `clean -f`, `branch -D`,

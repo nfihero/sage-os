@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatItem } from "../types";
 import { clock } from "../util";
 
 type Tone = "orange" | "cyan";
+
+/** Agent output is untrusted: images never auto-load (a prompt-injected reply could beacon data out
+ *  through an image URL), and only http(s) links are clickable, opening in a new tab. */
+const SAFE_MD: Components = {
+  img: ({ alt, src }) => <span className="text-mute" title={String(src ?? "")}>[image: {alt || "untitled"}]</span>,
+  a: ({ href, children }) => /^https?:\/\//.test(href ?? "")
+    ? <a href={href} target="_blank" rel="noreferrer noopener">{children}</a> : <span title={href}>{children}</span>,
+};
 
 /** One transcript + composer. Items are the durable history; `live` is the streaming tail. */
 export default function ChatView({ items, live, busy, tone, placeholder, onSend, onStop, disabled, banner }: {
@@ -41,7 +49,7 @@ export default function ChatView({ items, live, busy, tone, placeholder, onSend,
         onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}>
         {items.length === 0 && !live && <div className="m-auto text-mute">No messages yet.</div>}
         {items.map((it) => <div key={it.id} className="chat-in"><Item it={it} tone={tone} /></div>)}
-        {live && <div className={`md ${tone === "orange" ? "md-orange" : ""}`}><Markdown remarkPlugins={[remarkGfm]}>{live}</Markdown><span className="caret" /></div>}
+        {live && <div className={`md ${tone === "orange" ? "md-orange" : ""}`}><Markdown remarkPlugins={[remarkGfm]} components={SAFE_MD}>{live}</Markdown><span className="caret" /></div>}
         {busy && !live && <div className={`text-[12px] ${tone === "orange" ? "glow-orange" : "glow-cyan"}`}>working<span className="dots" /></div>}
       </div>
       <div className={`border-t p-2 ${tone === "orange" ? "border-orange/30" : "border-cyan/25"}`}>
@@ -77,7 +85,7 @@ function Item({ it, tone }: { it: ChatItem; tone: Tone }) {
         </div>
       );
     case "text":
-      return <div className={`md ${tone === "orange" ? "md-orange" : ""}`}><Markdown remarkPlugins={[remarkGfm]}>{d.text}</Markdown></div>;
+      return <div className={`md ${tone === "orange" ? "md-orange" : ""}`}><Markdown remarkPlugins={[remarkGfm]} components={SAFE_MD}>{d.text}</Markdown></div>;
     case "thinking":
       return (
         <button onClick={() => setOpen(!open)} className="text-left text-[12px] text-mute">

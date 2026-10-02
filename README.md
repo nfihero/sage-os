@@ -80,7 +80,13 @@ config.toml        ports, Hermes paths, poll intervals, agents + model servers, 
 ## Safety properties
 
 - Binds `127.0.0.1` only; rejects foreign `Host` headers and WebSocket origins. Remote access will go
-  through Tailscale Serve (Phase 3), never a public port.
+  through Tailscale Serve (Phase 3), never a public port, and only for host names listed exactly in
+  `[hub] remote_hosts` (no wildcards: anyone can publish a page on `*.ts.net`).
+- Security headers on every response: a strict Content-Security-Policy (same-origin scripts and
+  connections, no remote images, no framing), `X-Frame-Options: DENY`, `nosniff`, no referrer. No
+  `/docs` or `/openapi.json`.
+- Agent output is untrusted: chat markdown never auto-loads images; note text handed to agents is
+  marked as data, not instructions; one agent can have at most 25 Bookshelf proposals waiting.
 - Write routes require `X-Sage-OS: 1` plus a local Host and Origin; `hub/tests/test_app.py` checks every
   write route.
 - Bookshelf screens agent proposals for secrets before storing anything; only you can *Save anyway*

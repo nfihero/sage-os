@@ -3,6 +3,7 @@
 [hub]
 host = "127.0.0.1"          # never 0.0.0.0 -- remote access goes through Tailscale Serve (Phase 3)
 port = 8787
+# remote_hosts = []         # Phase 3: exact tailnet name(s), e.g. "sage-pc.tail1234.ts.net"; never wildcards (D14)
 store = "data/hub.db"       # relative to the sage-os folder
 keep_events = 5000          # persisted events kept for catch-up
 

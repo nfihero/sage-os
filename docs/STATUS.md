@@ -22,7 +22,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | Secret screening (K4) + *Save anyway* | proposals with secret-looking content (keys, tokens, passwords, card / ID / bank numbers) are held in the inbox in memory only, never stored; *Reject* or two-step *Save anyway*; only the category is ever shown or logged; sensitive notes' text stays out of search (🔒) |
 | Subscription usage | 5-hour / 7-day windows from the CLI's `rate_limit_event` (shows "OK" until near a limit) |
 | Visuals | phosphor theme (+ Tron, eDEX amber), WebGL agent orbs with bloom, handoff arcs, Doto dot-matrix accents, boot screen, constant scanlines/grain, S-trail icon, Motion setting |
-| Safety of the hub itself | localhost-only bind; write routes require `X-Sage-OS` + local Host/Origin; no Hermes code imported; smoke test names broken Hermes surfaces |
+| Safety of the hub itself | localhost-only bind; write routes require `X-Sage-OS` + local Host/Origin; remote hosts only by exact name; CSP + no framing + no API docs; agent output treated as untrusted (no remote images, notes marked as data, proposal caps); secret-looking guard-log commands hidden; Claude sessions only in configured workspaces; vibe-security audit 1 Oct (D14) |
 
 ## Untested live (code exists)
 

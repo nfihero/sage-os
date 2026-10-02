@@ -42,6 +42,8 @@ from .store import Store
 
 log = logging.getLogger("sage_os")
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
+MAX_PENDING_PER_AGENT = 25      # Bookshelf proposals waiting for the user, per agent
+MAX_HELD_PER_AGENT = 10         # screened (secret-looking) proposals held in memory, per agent
 LOCAL_ORIGIN_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
@@ -53,11 +55,29 @@ def open_folder(path: Path) -> None:
         subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
 
 
-def _local_origin(origin: str | None) -> bool:
+def _local_origin(origin: str | None, remote_hosts: frozenset[str] = frozenset()) -> bool:
+    """No Origin (non-browser client) or this machine, or a remote host named in config.toml.
+    Never a wildcard: anyone can publish a page on *.ts.net with Tailscale Funnel."""
     if not origin:
         return True
     host = urlparse(origin).hostname or ""
-    return host in LOCAL_ORIGIN_HOSTS or host.endswith(".ts.net")
+    return host in LOCAL_ORIGIN_HOSTS or host in remote_hosts
+
+
+def security_headers(host: str) -> dict[str, str]:
+    """Same-origin everything; nothing may frame the hub (a framed inbox could be click-jacked into
+    "Approve" or "Save anyway"); no remote images (an agent's markdown can't beacon data out)."""
+    return {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                                   "img-src 'self' data: blob:; font-src 'self' data:; "
+                                   f"connect-src 'self' ws://{host} wss://{host}; object-src 'none'; "
+                                   "base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cross-Origin-Opener-Policy": "same-origin",
+    }
 
 
 class Hub:
@@ -171,6 +191,14 @@ class Hub:
     async def submit_proposal(self, agent: str, summary: str, changes: list) -> dict:
         """The one way a proposal enters Sage OS (HTTP route and agent tools alike).
         -> {"status": "pending", "proposal"} | {"status": "held", "message"} | {"status": "refused", "error"}"""
+        waiting = sum(1 for p in await asyncio.to_thread(self.writer.proposals, "pending", 1000) if p["agent"] == agent)
+        if waiting >= MAX_PENDING_PER_AGENT:
+            return {"status": "refused", "error": f"{waiting} of your proposals are already waiting for the user. "
+                    "Wait for their decisions (list_proposals) before proposing more."}
+        held = sum(1 for i in self.inbox.items() if i["context"].get("held") and i["context"].get("agent") == agent)
+        if held >= MAX_HELD_PER_AGENT:
+            return {"status": "refused", "error": "Too many of your proposals are held for looking like they contain "
+                    "secrets. Never put secrets in notes."}
         try:
             p = await asyncio.to_thread(self.writer.propose, agent, summary, changes)
         except SensitiveContent as exc:
@@ -325,13 +353,23 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.writer.close()
         hub.store.close()
 
-    app = FastAPI(title="Sage OS hub", version=__version__, lifespan=lifespan)
+    # No /docs, /redoc or /openapi.json: nothing to browse the API with but the UI.
+    app = FastAPI(title="Sage OS hub", version=__version__, lifespan=lifespan,
+                  docs_url=None, redoc_url=None, openapi_url=None)
     app.state.hub = hub
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS + ["*.ts.net"])
+    remote = frozenset(cfg.remote_hosts)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS + sorted(remote))
+
+    @app.middleware("http")
+    async def headers(request: Request, call_next):
+        response = await call_next(request)
+        for k, v in security_headers(request.headers.get("host", "127.0.0.1")).items():
+            response.headers.setdefault(k, v)
+        return response
 
     def local_write(request: Request):
         """CSRF guard: a custom header forces a CORS preflight, which this app never grants."""
-        if request.headers.get("x-sage-os") != "1" or not _local_origin(request.headers.get("origin")):
+        if request.headers.get("x-sage-os") != "1" or not _local_origin(request.headers.get("origin"), remote):
             raise HTTPException(403, "write requests must come from the Sage OS UI")
 
     W = [Depends(local_write)]
@@ -528,7 +566,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.websocket("/ws")
     async def ws(sock: WebSocket):
-        if not _local_origin(sock.headers.get("origin")):
+        if not _local_origin(sock.headers.get("origin"), remote):
             await sock.close(code=4403)
             return
         await sock.accept()

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class Config:
     host: str = "127.0.0.1"
     port: int = 8787
+    remote_hosts: list[str] = field(default_factory=list)     # [hub] remote_hosts: exact names (Phase 3)
     store: Path = ROOT / "data" / "hub.db"
     keep_events: int = 5000
     hermes_home: Path = Path(os.path.expandvars(r"%LOCALAPPDATA%\hermes"))
@@ -46,6 +47,9 @@ def load(path: Path | None = None) -> Config:
     hub, hermes, ui = raw.get("hub", {}), raw.get("hermes", {}), raw.get("ui", {})
     cfg.host = hub.get("host", cfg.host)
     cfg.port = int(hub.get("port", cfg.port))
+    cfg.remote_hosts = [str(h).lower() for h in hub.get("remote_hosts", cfg.remote_hosts)]
+    if any("*" in h for h in cfg.remote_hosts):
+        raise ValueError("config.toml [hub] remote_hosts takes exact host names, no wildcards")
     if "store" in hub:
         store = Path(hub["store"])
         cfg.store = store if store.is_absolute() else ROOT / store

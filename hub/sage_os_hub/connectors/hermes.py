@@ -4,9 +4,20 @@ Profiles share one gateway client and one chat relay; Hermes keeps the transcrip
 """
 from __future__ import annotations
 
-from .base import AgentBusy, AgentConnector, AgentError
+import re
+
+from .base import AgentBusy, AgentConnector, AgentError, InvalidRequest
 from .hermes_api import HermesAPI
 from .hermes_chat import HermesChat
+
+SESSION_ID = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}$")
+
+
+def _sid(session_id: str) -> str:
+    """Session ids end up in Hermes gateway URLs, so only plain ids pass (no "/", no "..")."""
+    if not SESSION_ID.match(session_id) or ".." in session_id:
+        raise InvalidRequest("not a Hermes session id")
+    return session_id
 
 
 class HermesConnector(AgentConnector):
@@ -36,16 +47,18 @@ class HermesConnector(AgentConnector):
             raise AgentError(f"Hermes: {exc}") from exc
 
     async def send(self, session_id: str, text: str) -> None:
+        sid = _sid(session_id)
         try:
-            await self.chat.send(self.profile, session_id, text)
+            await self.chat.send(self.profile, sid, text)
         except RuntimeError as exc:
             raise AgentBusy(str(exc)) from exc
 
     async def interrupt(self, session_id: str) -> None:
-        await self.chat.stop(self.profile, session_id)
+        await self.chat.stop(self.profile, _sid(session_id))
 
     async def history(self, session_id: str) -> list[dict]:
+        sid = _sid(session_id)
         try:
-            return await self.api.messages(self.profile, session_id)
+            return await self.api.messages(self.profile, sid)
         except Exception as exc:
             raise AgentError(f"Hermes: {exc}") from exc

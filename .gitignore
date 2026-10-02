@@ -5,3 +5,5 @@ hub/.venv/
 ui/node_modules/
 ui/dist/
 data/
+.env
+.env.*

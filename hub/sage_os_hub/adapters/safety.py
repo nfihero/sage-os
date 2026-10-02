@@ -6,6 +6,7 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
+from ..knowledge.screen import screen
 from .base import Adapter
 
 LOGS = {"guardian": "guardian-gate.log", "write-guard": "write-guard.log"}
@@ -25,6 +26,9 @@ def _epoch(ts) -> float:
 def normalize(gate: str, rec: dict) -> dict:
     targets = rec.get("targets")
     detail = rec.get("text") or ("\n".join(map(str, targets)) if isinstance(targets, list) else targets)
+    secret = screen(str(detail or ""))      # an agent's command may carry a token: don't copy it into hub.db
+    if secret:
+        detail = f"(hidden: this command looks like it contains {secret})"
     return {"gate": gate, "event": rec.get("event", "?"), "tool": rec.get("tool"),
             "ts": _epoch(rec.get("ts")), "detail": detail or "", "reason": rec.get("reason"),
             "error": rec.get("error"), "ms": rec.get("ms"), "fail_closed": rec.get("fail_closed")}
