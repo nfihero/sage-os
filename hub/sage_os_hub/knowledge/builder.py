@@ -54,6 +54,11 @@ def _parent(rel: str) -> str:
     return "" if d == "." else re.sub(r"/src$", "", d)
 
 
+def source_path(name: str, rel: str) -> str:
+    """How notes cite a source file or folder: vault-relative, e.g. sources/drive/My Drive/x.pdf."""
+    return f"sources/{name}/{rel}".rstrip("/")
+
+
 def _clean_part(part: str) -> str:
     part = re.sub(r'[<>:"|?*\\]', "-", part).strip(" .")
     return part or "untitled"
@@ -63,6 +68,7 @@ class NoteBuilder:
     def __init__(self, vault: Vault, sources: SourceLibrary):
         self.vault, self.sources = vault, sources
         self._source_df: dict[str, tuple] = {}      # per source: word -> number of documents (for _terms)
+        self._words_cache: dict[tuple, set] = {}     # (source, file) -> its words, for one build
 
     # -- where things go -----------------------------------------------------------------------
     def vault_folder(self, spec: SourceSpec, source_dir: str) -> str:
@@ -96,9 +102,13 @@ class NoteBuilder:
         return sorted(out.values(), key=lambda c: c.dir)
 
     def built_sources(self) -> set[str]:
-        """`source:` paths already in the vault or waiting in a pending proposal."""
-        have = {n.source for n in self.vault.scan() if n.source}
-        return have
+        """`source:` paths of notes already in the vault (pending proposals are the caller's to add)."""
+        return {n.source for n in self.vault.scan() if n.source}
+
+    def candidates(self, name: str, c: Collection) -> list[str]:
+        """Source paths a collection turns into notes: its collection note (if it has documents) and
+        each markdown file."""
+        return ([source_path(name, c.dir)] if c.docs else []) + [source_path(name, rel) for rel in c.markdown]
 
     # -- starter notes -----------------------------------------------------------------------------
     def _excerpt(self, name: str, rel: str) -> str:
@@ -123,8 +133,15 @@ class NoteBuilder:
         return " / ".join(ln[:120] for ln in lines[:2])
 
     def _words(self, name: str, rel: str) -> set[str]:
-        doc = self.sources.read(name, rel, 0, 50_000) or {}
-        return {w for w in re.findall(r"[a-z]{2,}(?:-[a-z]{2,})*", doc.get("text", "").lower()) if len(w) >= 4 and w not in STOP}
+        key = (name, rel)
+        if key not in self._words_cache:
+            doc = self.sources.read(name, rel, 0, 50_000) or {}
+            self._words_cache[key] = self._tokens(doc.get("text", ""))
+        return self._words_cache[key]
+
+    @staticmethod
+    def _tokens(text: str) -> set[str]:
+        return {w for w in re.findall(r"[a-z]{2,}(?:-[a-z]{2,})*", text.lower()) if len(w) >= 4 and w not in STOP}
 
     def _terms(self, name: str, docs: list[str]) -> list[str]:
         """Words distinctive to this collection: frequent here, rare across the whole source (tf-idf on
@@ -147,8 +164,8 @@ class NoteBuilder:
 
     def collection_note(self, spec: SourceSpec, c: Collection) -> dict:
         where = c.dir or "(source root)"
-        lines = [f"Documents in `{where}` from your **{spec.name}** source, listed so you and your agents can "
-                 "find them. This is an index, not a summary: open a document in Bookshelf → Sources to read it.",
+        lines = [f"Documents in `{where}` from your **{spec.name}** source. Each line shows how a document starts; "
+                 "nothing here is summarised. Open a document in Bookshelf → Sources to read it.",
                  "", f"## Documents ({len(c.docs)})", ""]
         for rel in c.docs[:MAX_LISTED]:
             sub = str(PurePosixPath(rel).relative_to(c.dir)) if c.dir else rel
@@ -159,9 +176,9 @@ class NoteBuilder:
             lines.append(f"- … and {len(c.docs) - MAX_LISTED} more (search them in Bookshelf → Sources)")
         terms = self._terms(spec.name, c.docs)
         if terms:
-            lines += ["", "## Frequent terms", "", " · ".join(terms)]
+            lines += ["", "## Distinctive terms", "", " · ".join(terms)]
         return {"op": "create", "folder": self.vault_folder(spec, c.dir), "title": c.title, "type": "collection",
-                "status": "active", "tags": ["collection", spec.name], "source": f"sources/{spec.name}/{c.dir}".rstrip("/"),
+                "status": "active", "tags": ["collection", spec.name], "source": source_path(spec.name, c.dir),
                 "body": "\n".join(lines) + "\n", "origin": "agent"}
 
     def markdown_note(self, spec: SourceSpec, rel: str) -> dict:
@@ -174,7 +191,7 @@ class NoteBuilder:
         parent = str(PurePosixPath(rel).parent)
         change = {"op": "create", "folder": self.vault_folder(spec, "" if parent == "." else parent),
                   "title": title, "type": str(fm.get("type") or "note")[:80], "status": "active",
-                  "source": f"sources/{spec.name}/{rel}", "body": body if body.strip() else f"(empty file `{rel}`)\n",
+                  "source": source_path(spec.name, rel), "body": body if body.strip() else f"(empty file `{rel}`)\n",
                   "origin": "imported"}
         if tags:
             change["tags"] = tags
@@ -184,6 +201,8 @@ class NoteBuilder:
         """-> {"proposals": [{"collection", "summary", "changes"}], "already": n, "left_out": [{path, reason}]}."""
         spec = self.sources.specs[name]
         self._source_df.pop(name, None)              # recount: the source may have been re-synced
+        self._words_cache.clear()
+        notes = self.vault.scan()                    # one scan for validating every candidate
         done = self.built_sources() | set(pending_sources)
         groups: dict[str, dict] = {}            # one inbox card per area (two folder levels below the notes folder)
         left_out, already = [], 0
@@ -192,7 +211,7 @@ class NoteBuilder:
             candidates = ([("collection", c.dir, lambda c=c: self.collection_note(spec, c))] if c.docs else []) + \
                          [("markdown", rel, lambda rel=rel: self.markdown_note(spec, rel)) for rel in c.markdown]
             for kind, rel, make in candidates:
-                src = f"sources/{name}/{rel}".rstrip("/")
+                src = source_path(name, rel)
                 if src in done:
                     already += 1
                     continue
@@ -202,7 +221,7 @@ class NoteBuilder:
                     left_out.append({"path": rel, "reason": f"looks like it contains {bad}"})
                     continue
                 try:
-                    plan(self.vault, normalize([change]), IMPORTER)
+                    plan(self.vault, normalize([change]), IMPORTER, notes=notes)
                 except ProposalError as exc:
                     left_out.append({"path": rel, "reason": str(exc)})
                     continue

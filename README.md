@@ -5,13 +5,14 @@ machine. Pick local or cloud models, keep conversations and topics from many pro
 run workflows on kanban boards, and grow a knowledge base your agents read and add to, with your
 approval.
 
-**Today (v0.8.0):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
+**Today (v0.9.0):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
 or OpenAI-compatible model server can plug into the same connector layer. One inbox collects every
 approval. Around it: the Hermes kanban board, live GPU and safety status, and Bookshelf, where you
-search your notes and a read-only copy of chosen Google Drive folders. Both agents use Bookshelf
-through MCP tools; their proposed changes land only after you approve them (screened for secrets,
-undoable byte for byte). Vault imports, more programs and multiple workflow boards are on the
-[roadmap](docs/ROADMAP.md). Windows 11, local only.
+search your notes and a read-only copy of chosen Google Drive folders, and grow the vault from them:
+starter notes from your files, concept notes drafted by an agent. Both agents use Bookshelf through
+MCP tools; every change lands only after you approve it (screened for secrets, undoable byte for
+byte). Batch review, more programs and multiple workflow boards are on the [roadmap](docs/ROADMAP.md).
+Windows 11, local only.
 
 | Read | For |
 |---|---|
@@ -55,7 +56,7 @@ guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |
 | Top bar | health checks, guard logs | service lights, safety chip (red only on new blocks), Bookshelf, theme, Motion |
-| Bookshelf | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; Open vault in Explorer |
+| Bookshelf | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; **Build notes**: propose starter notes, ask an agent to draft concept notes; Open vault in Explorer |
 
 Click the `SAGE//OS` logo to replay the boot sequence.
 
@@ -73,7 +74,7 @@ hub/sage_os_hub/   FastAPI app, WebSocket stream, SQLite store (data/hub.db)
   inbox.py         the approvals inbox
   knowledge/       Bookshelf: vault reader + contract checks (D9), FTS5 search index (D10),
                    proposals + single journaled writer with undo (D11), secret screening (D12),
-                   agent tools + MCP endpoint (D16), source library (D15)
+                   agent tools + MCP endpoint (D16), source library (D15), notes from sources (D17)
 ui/src/            React + Vite + Tailwind; themes in index.css; orbs in components/Orb.tsx
 docs/              mission, status, roadmap, handoff
 config.toml        ports, Hermes paths, poll intervals, agents + model servers, Claude workspaces, profile labels

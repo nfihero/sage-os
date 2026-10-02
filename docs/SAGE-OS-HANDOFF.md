@@ -40,7 +40,7 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.8.0 (1 Oct) | `pytest` 157/157 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
+| Hub (FastAPI) + UI (React) | **works**, v0.9.0 (2 Oct) | `pytest` 164/164 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
@@ -55,7 +55,7 @@ system · **planned** = not built.
 | Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
-| Knowledge layer of its own | **Bookshelf (1 Oct): read, search, approved writes + exact undo, screening, agent tools (K1–K5), source library of chosen Drive folders (S1)** | gates in `docs/STATUS.md`; D9–D12, D15, D16 |
+| Knowledge layer of its own | **Bookshelf (2 Oct): read, search, approved writes + exact undo, screening, agent tools (K1–K5), Drive source library (S1), notes built from sources (K6)** | gates in `docs/STATUS.md`; D9–D12, D15–D17 |
 | Git | first commit made with this doc; private remote `nfihero/sage-os` added later the same day (push only on request); no CI | `git log` before: "no commits yet" |
 
 ## 3. Architecture and stack
@@ -174,7 +174,7 @@ agents should reach it only through these surfaces, never through its files dire
 ## 9. Open questions before Sage OS and BookShelf can be joined
 
 1. ~~Language and home of the rebuilt core~~ **Answered (D2):** Python package inside `sage-os`; the macOS BookShelf app is retired.
-2. ~~Which vault becomes canonical~~ **Answered (D3):** none exists; start a new local vault and import existing notes through approval.
+2. ~~Which vault becomes canonical~~ **Answered (D3):** none exists; start a new local vault and import existing notes through approval. Since D17 an existing vault (Obsidian, llm-vault) is imported by adding it as a `[[sources]]` entry.
 3. ~~Is any vault synced by Google Drive?~~ **Answered (D3):** no; personal files on `G:\` are Drive-synced and stay read-only to agents.
 4. **Where does review happen** — Sage OS inbox (proposals as inbox cards), BookShelf's review UI, or both? Batch approval and per-agent trust levels?
 5. **Which agents may propose writes:** Claude only, Hermes too, kanban workers?

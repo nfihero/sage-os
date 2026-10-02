@@ -23,7 +23,7 @@ from .vault import ARCHIVE, ATTACHMENTS, ULID, Vault, parse_note, split_frontmat
 
 OPS = ("create", "update", "archive")
 IMPORTER = "sage-os:importer"     # only this proposer may mark notes origin: imported (K6, D17)
-EDITABLE = ("title", "type", "status", "tags", "links")
+EDITABLE = ("title", "type", "status", "tags", "links", "source")
 MAX_CHANGES, MAX_BODY, MAX_DIFF = 50, 200_000, 20_000
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
@@ -235,13 +235,14 @@ class Planned:
                 "from_path": self.from_path, "diff": diff}
 
 
-def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | None = None) -> list[Planned]:
+def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | None = None,
+         notes: list | None = None) -> list[Planned]:
     """Render every change against the vault as it is now.
 
     `bases` (path -> sha256 at proposal time) makes this refuse notes edited since the proposal.
     Every rendered note must pass the vault contract, or nothing is planned (I9).
     """
-    notes = vault.scan()
+    notes = vault.scan() if notes is None else notes
     by_uid = {}
     for n in notes:
         by_uid.setdefault(n.uid, []).append(n)

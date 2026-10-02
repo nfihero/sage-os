@@ -152,4 +152,40 @@ def test_draft_notes_briefs_an_agent_with_the_collection(tmp_path, drive):
         assert c.post("/api/sources/drive/draft", json={"folder": "", "agent": "ghost"}, headers=H).status_code == 400
     (sid, prompt), = fake.sent
     assert "read_source" in prompt and "propose_note" in prompt and "My Drive/Finance/FIN 101/QuestionBank.pdf" in prompt
-    assert 'folder "Drive/Finance/FIN 101"' in prompt and "Don't invent facts" in prompt
+    assert '"folder": "Drive/Finance/FIN 101"' in prompt and "Don't invent facts" in prompt and '"source": "sources/drive/' in prompt
+
+
+def test_review_fixes(tmp_path, drive):
+    """Code review (2 Oct): status covers markdown notes; updates can set a citation; busy agent is 409."""
+    from sage_os_hub.connectors.base import AgentBusy
+    app = make(tmp_path, drive)
+    hub = app.state.hub
+    with TestClient(app, base_url="http://127.0.0.1") as c:
+        c.post("/api/sources/drive/build", headers=H)
+        for item in [i for i in c.get("/api/state").json()["panels"]["inbox"] if i["source"] == "bookshelf"]:
+            c.post(f"/api/inbox/{item['id']}", json={"choice": "approve"}, headers=H)
+        (drive / "My Drive/Finance/FIN 101/later.md").write_text("# Later\n\nAdded after the first build.\n", encoding="utf-8")
+        hub.sources.sync("drive")
+        statuses = {x["dir"]: x["status"] for x in c.get("/api/sources/drive/collections").json()}
+        assert statuses["My Drive/Finance/FIN 101"] == "new"                    # a new markdown file makes it buildable
+        r = c.post("/api/sources/drive/build", headers=H).json()
+        assert r["proposed"] == 1 and r["notes"] == 1 and r["already"] == 4
+        note = next(n for n in hub.vault.scan() if n.title == "WACC" or n.type == "collection")
+        p = hub.writer.propose("hermes:default", "", [{"op": "update", "uid": note.uid, "source": "sources/drive/x.pdf"}])
+        hub.writer.approve(p["id"])
+        assert next(n for n in hub.vault.scan() if n.uid == note.uid).source == "sources/drive/x.pdf"
+
+        class Busy(FakeAgent):
+            async def send(self, sid, text):
+                raise AgentBusy("still working")
+        hub.agents["hermes:default"] = Busy()
+        assert c.post("/api/sources/drive/draft", json={"folder": "My Drive/Finance/FIN 101"}, headers=H).status_code == 409
+
+
+def test_outside_callers_cannot_pose_as_the_importer(tmp_path, drive):
+    """vibe-security (2 Oct): the importer may mark notes origin: imported, so its name is reserved."""
+    app = make(tmp_path, drive)
+    with TestClient(app, base_url="http://127.0.0.1") as c:
+        r = c.post("/api/vault/proposals", headers=H, json={"agent": "Sage-OS:importer", "changes": [
+            {"op": "create", "folder": "Inbox", "title": "t", "body": "x", "origin": "imported"}]})
+        assert r.status_code == 400 and "reserved" in r.text

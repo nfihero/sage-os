@@ -314,6 +314,29 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   just disappears from its tool list.
 - **Revisit if:** a third agent connects (add its endpoint) or Phase 3 brings authentication.
 
+## D17 — K6 redefined: notes start from whatever the user has provided
+
+- **Date / by:** 2026-10-02, user ("I don't have an Obsidian vault and most users might not as well,
+  make it so that the notes can start building off whatever is provided"); design by Claude
+- **Status:** accepted. Replaces K6's original scope (import existing Obsidian/llm-vault vaults): an
+  existing vault is now just another `[[sources]]` entry whose markdown gets imported.
+- **Decision:** two layers, both proposals the user approves (I1):
+  1. *Starter notes*, deterministic and model-free (I6): markdown files imported verbatim
+     (`origin: imported`, reserved for `sage-os:importer`), and one *collection note* per folder of
+     documents. Collection notes are an honest index: each document's opening lines or slide titles,
+     its source path, and distinctive terms. Nothing is summarised (BookShelf I7's intent).
+  2. *Concept notes* on request: an agent is briefed with the collection's file list (as quoted data)
+     and an exact example change, reads documents through `read_source`, and proposes cited notes.
+  Proposals are grouped one card per area (two folder levels under the notes folder) so the inbox
+  isn't flooded; every note records `source:`, which makes re-runs idempotent.
+- **Costs / limits:** collection notes are only as good as text extraction (no OCR; Google Docs
+  shortcuts missing). Agent drafts vary in how well they follow the brief (the first Hermes run put
+  tags in the body and skipped `source:`; the brief now shows an exact example). Hermes caches an MCP
+  server's tool list at first connect, so new Sage OS tools need its `bookshelf` entry toggled
+  (`enabled: false` → back) or a gateway restart (STATUS known issues).
+- **Revisit if:** collection notes go stale as sources change (update proposals instead of skipping
+  built ones), or drafting should run on a schedule or a kanban board (Phase 4).
+
 ---
 
 ## Proposed, awaiting the user

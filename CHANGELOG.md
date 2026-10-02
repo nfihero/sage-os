@@ -12,6 +12,41 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-02
+
+Gate: K6 pass (redefined, D17) — from the Drive source alone, Sage OS proposed 51 starter notes in 9
+inbox cards (25 collections, 26 markdown files), nothing written before approval; Hermes, briefed by
+*Draft*, read four FIN 101 documents with `read_source` and proposed 5 cited concept notes. Checks:
+pytest 164/164, UI build clean, smoke 18/18. Reviewed with `/code-review` (8 findings, all fixed),
+vibe-security (2 findings, fixed) and no-ai-slop (template copy).
+
+### Added
+- **Notes from your sources (K6, DECISIONS D17):** Bookshelf → Sources → *Build notes*.
+  *Propose starter notes* turns a source into proposals, one inbox card per area: markdown files
+  become notes with your text verbatim (`origin: imported`, folder structure kept under the
+  source's `notes_folder`), and every folder of documents gets a **collection note** listing each
+  document with how it starts (slide titles for decks), its source path, and the folder's distinctive
+  terms (tf-idf against the whole source). Nothing is summarised or invented. *Draft* asks an agent
+  (Hermes by default) to read a collection with `read_source` and propose 3-6 concept notes that cite
+  their documents and link the collection note. Every note records `source:`, so re-runs skip what's
+  built or waiting. Tiny folders roll up into their parent; code `src/` folders count as their project.
+- Notes and proposals can carry `source:` (a vault-relative citation, e.g. `sources/drive/...`);
+  updates can set it too. Only Sage OS's importer may mark notes `origin: imported`
+  (`imported_by: sage-os:importer`); everyone else is `origin: agent`.
+- `[[sources]]` gains `notes_folder` and `strip` (leading folders dropped from vault paths).
+
+### Changed
+- The Drive source also excludes `Documents/Card statements` (card statements named by date, which the
+  name rules missed).
+- Proposal refusals carry a machine-readable `code` (`inbox_cap`); agent names starting with
+  `sage-os:` are reserved and refused on `POST /api/vault/proposals`.
+
+### Fixed (review, 2 Oct)
+- A collection's status now covers its markdown notes too (new markdown in a built folder can be
+  proposed; markdown-only folders no longer stay "new" forever).
+- `/api/sources/{name}/draft` answers 409 when the agent is busy (was 502).
+- Building starter notes scans the vault once and reads each document's words once.
+
 ## [0.8.0] — 2026-10-01
 
 Bundles two roadmap steps, because K5 was never released on its own: **K5** (Bookshelf tools for

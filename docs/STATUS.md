@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.8.0 · 1 Oct 2026.** Checked today: `pytest` 157/157, `npm run build` clean, hub `/api/smoke`
+**Version 0.9.0 · 2 Oct 2026.** Checked today: `pytest` 164/164, `npm run build` clean, hub `/api/smoke`
 18/18, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
 chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
@@ -19,6 +19,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | Bookshelf search (K2) | FTS5 keyword search as you type: ranked (title > tags > body), stemmed + prefix, highlighted snippets; index is a cache at `data/bookshelf-index.db`, kept in step by the vault watcher, rebuildable (`POST /api/vault/reindex`) |
 | Bookshelf tools for agents (K5) | Claude (in-process) and Hermes (MCP at `/mcp/hermes/default/`) can `search_notes`, `read_note`, `propose_note`, `list_proposals`, `search_sources`, `read_source`; agent id set by Sage OS; sensitive note text withheld |
 | Source library (S1) | Bookshelf → Sources: read-only copy of chosen Drive folders in `data/sources/drive` (499 files, 494 searchable), Sync now, left-out list (private by name or content, media, binaries, Google shortcuts), search + text reader |
+| Notes from sources (K6) | Bookshelf → Sources → Build notes: *Propose starter notes* (markdown imported verbatim + a collection note per folder, one inbox card per area); *Draft* briefs Hermes to propose cited concept notes; collection status new / in inbox / in vault; re-runs skip what's built or waiting |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Bookshelf writes (K3) | agents propose (create / update / archive); inbox card shows each change's diff; *Approve & file* applies the batch through one journaled writer; History tab undoes a batch byte for byte; stale and contract-breaking proposals refused; pending proposals survive restarts |
 | Secret screening (K4) + *Save anyway* | proposals with secret-looking content (keys, tokens, passwords, card / ID / bank numbers) are held in the inbox in memory only, never stored; *Reject* or two-step *Save anyway*; only the category is ever shown or logged; sensitive notes' text stays out of search (🔒) |
@@ -36,7 +37,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
-- **Bookshelf** next: imports of existing vaults (K6), batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); meaning-based search (D10); OCR and Google-native docs for sources (D15)
+- **Bookshelf** next: batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); updating collection notes when sources change; meaning-based search (D10); OCR and Google-native docs for sources (D15)
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
@@ -49,10 +50,11 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 5. No CI; the private remote is pushed only on request.
 6. Stale alias scripts `swift.bat`, `coder.bat`, `guardian.bat` in `~\.local\bin` (deleted Hermes profiles).
 7. Usage meter has no percentage until near a limit.
+8. Hermes caches the Bookshelf MCP tool list at first connect: after Sage OS adds tools, toggle `mcp_servers.bookshelf.enabled` off and on in Hermes' `config.yaml` (or restart the gateway), or Hermes won't see them.
 
 ## Next
 
-1. K6 (import Obsidian Vault / llm-vault) or Phase 3; A1 and K1–K5 + S1 done (30 Sep–1 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+1. Review the 9 starter-note cards and Hermes' FIN 101 drafts in the inbox; then K7 (batch review) or Phase 3. A1, K1–K6 and S1 done (30 Sep–2 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
    D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
@@ -71,6 +73,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | 2 | Answering it in the inbox releases Claude | pass — *Allow once* clicked; file written |
 | 2 | Deny with a note | pass — nothing written; note reached Claude verbatim |
 | 2 | Write routes refuse requests without the header | pass — HTTP 403, covered by tests |
+| K6 | A source becomes approvable starter notes and agent drafts, nothing written before approval | pass — real Drive source: 51 starter notes in 9 cards (25 collection notes, 26 markdown imports), vault unchanged until approval; Hermes read 4 FIN 101 documents via `read_source` and proposed 5 cited concept notes (it ignored the tags/source fields; brief tightened); pytest 164/164 |
 | S1 | Chosen Drive folders searchable in Sage OS and by agents, Drive untouched | pass — 499 files copied in ~4½ min, 494 with text, 9 held back as private, 0 files on `G:\` modified, "cost of capital" → FIN 101 lecture in 3.7 ms; two false-positive bugs found on real files and fixed (glued spreadsheet cells, decimals) |
 | K5 | Claude and Hermes both read and propose through MCP | pass — real hub: Claude searched and proposed a note (approved, then undone byte-exact); Hermes searched, read and quoted it, proposed a tag (rejected); `hermes mcp test bookshelf` found the tools |
 | K4 | A proposal containing a key is refused before anything is written | pass — two proposals with a fake key held (202, value never echoed); byte search of hub.db, journal, index, vault and log found it nowhere; override checked live: one rejected, one *Saved anyway* (two clicks) → filed, `screened` recorded, text out of search; pytest 95/95 (incl. canary tests) |
