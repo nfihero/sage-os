@@ -96,3 +96,21 @@ config.toml        ports, Hermes paths, poll intervals, agents + model servers, 
 hub\.venv\Scripts\python -m pytest hub
 cd ui && npm run build
 ```
+
+## Working on this repo with Claude Code
+
+`.claude/settings.json` runs a **git guardrails** hook (`.claude/hooks/git_guardrails.py`) before
+every shell command and file edit in Claude Code sessions opened in this folder. It blocks
+`git push`, `reset --hard`, `clean -f`, `branch -D` and discarding all local edits, and it blocks
+edits to the guardrails themselves. Push yourself when you want a push.
+
+To remove the guardrails, ask Claude: it runs `git_guardrails.py remove`, which prints exactly what
+removal changes and changes nothing. You confirm by running the same command yourself in a terminal
+and typing `REMOVE`:
+
+```
+hub\.venv\Scripts\python .claude\hooks\git_guardrails.py remove
+```
+
+Sessions started in another folder (e.g. a workspace one level up) don't load this project's
+settings, so the hook doesn't apply to them (DECISIONS D13).

@@ -246,6 +246,21 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** false positives become frequent on real notes, or a secret slips through (add the
   pattern and a test); consider a per-category allow list in settings rather than a global off switch.
 
+## D13 — Git guardrails on Claude Code sessions in this repo
+
+- **Date / by:** 2026-10-01, user (adopting Matt Pocock's git-guardrails skill); design by Claude
+- **Status:** accepted
+- **Decision:** a project hook blocks destructive git commands (push, reset --hard, clean -f,
+  branch -D, checkout/restore of everything) and edits to the guardrails, for Bash and PowerShell.
+  The rule "push only when the user asks" is now enforced by the harness instead of resting on the
+  agent's judgment. Removal is user-confirmed by design: Claude can run `git_guardrails.py remove`
+  to show what it will change, but only someone typing `REMOVE` in a terminal can make it happen.
+- **Costs / limits:** a text match, not a sandbox: it catches mistakes, not a determined bypass.
+  The user pushes by hand. The hook needs `hub/.venv`; if that venv is missing the hook errors and
+  Claude Code lets commands through (fail-open). Project settings load only for sessions started in
+  this folder.
+- **Revisit if:** pushes become routine (e.g. CI), or sessions usually start outside this folder.
+
 ---
 
 ## Proposed, awaiting the user

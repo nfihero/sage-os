@@ -12,6 +12,14 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Added
+- **Git guardrails for Claude Code** (`.claude/settings.json` + `.claude/hooks/git_guardrails.py`,
+  user request 1 Oct): a PreToolUse hook blocks `git push`, `reset --hard`, `clean -f`, `branch -D`,
+  `checkout .` / `restore .` and edits to the guardrails themselves, for Bash and PowerShell. Removal
+  only via `git_guardrails.py remove`: it explains the change, then needs `REMOVE` typed in a real
+  terminal. Adapted from Matt Pocock's git-guardrails skill (Python instead of jq). 33 tests
+  (`hub/tests/test_git_guardrails.py`). DECISIONS D13.
+
 ## [0.7.0] — 2026-10-01
 
 Gate: K4 pass — on the scratch hub two proposals carrying a fake API key were held (HTTP 202, value
