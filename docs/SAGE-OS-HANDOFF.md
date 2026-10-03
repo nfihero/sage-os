@@ -15,15 +15,15 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 3 Oct 2026, v0.11.0)
+## 0. Start here (handoff of 3 Oct 2026, v0.11.1)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
 `DECISIONS.md` (D1–D21), those win.
 
 ### Where things are
-- **Version 0.11.0**, `main` at `09a77f7`, tags v0.4.0–v0.11.0. Checked 3 Oct: `pytest` 170/170,
+- **Version 0.11.1** (`main` = tag `v0.11.1`), tags v0.4.0–v0.11.1. Checked 3 Oct: `pytest` 170/170,
   `npm run build` clean, `/api/smoke` 18/18, Claude CLI found and signed in. GitHub `origin/main` is
-  at `59c0d4e` (v0.10.0): **v0.10.1 and v0.11.0 are not pushed yet** (the user's Mac needs them).
+  at `59c0d4e` (v0.10.0): **v0.10.1 through v0.11.1 are not pushed yet** (the user's Mac needs them).
 - **Built:** dashboard, Claude + Hermes chat through connectors (A1), approvals inbox, Bookshelf
   K1–K6 (read, search, propose → approve → exact undo, secret screening, MCP tools for both agents,
   notes built from sources), Drive source library (S1), guide + tour + demo script (D18,
@@ -47,7 +47,7 @@ Sections 1–9 below are the 30 Sep primer, patched since; where they conflict w
    (own board), Phase 6 / D8 (team chat).
 
 ### Waiting on the user
-- **Push** v0.10.1 + v0.11.0 (`git push origin main --tags`).
+- **Push** v0.10.1–v0.11.1 (`git push origin main --tags`).
 - **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
   Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
   user's explicit OK and should be shown as a diff first (D13).
