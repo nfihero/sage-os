@@ -1,0 +1,2 @@
+# start.sh must keep Unix line endings or macOS refuses to run it (D21)
+*.sh text eol=lf
