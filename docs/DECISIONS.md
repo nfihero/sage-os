@@ -356,6 +356,51 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   phone the tour can't point at panels hidden behind tabs and centres its cards instead.
 - **Revisit if:** D8's team chat lands (the tour and the team table change), or more agents connect.
 
+## D19 — OCR is a roadmap step (S2), not a someday item
+
+- **Date / by:** 2026-10-03, user ("OCR should be a concrete step, as it makes Sage being a one stop
+  hub for everything make more sense"); measurements and engine choice by Claude
+- **Status:** accepted. Amends D15's "images have no OCR yet" from a cost to a planned step.
+- **Why:** a hub that can't read a photo of a page isn't one-stop. Today 37 images and 16 scanned
+  PDFs (under 200 characters of text each, mostly CamScanner) in the Drive copy are invisible to
+  search, to agents and to *Build notes*: about 11% of it.
+- **Decision:** step **S2** in the Bookshelf track. Text is read from images and from scanned PDF pages
+  during *Sync*, stored like any other extracted text, and marked as OCR text (with the engine) so
+  search results and notes can say where the words came from. Private-file rules and the K4 screen
+  apply to OCR text exactly as to other text.
+- **Engine:** behind a small interface, like connectors (D4). First engine: **Windows' built-in OCR**
+  (`Windows.Media.Ocr`: free, offline, English already installed on this PC). Mac (Apple Vision) or
+  Tesseract later; a local vision model through llama.cpp as an optional higher-quality engine.
+- **Unverified (check when building):** the Python bridge to Windows OCR (a new dependency); pulling
+  page images out of scanned PDFs with pypdf; accuracy on phone-camera scans and handwriting.
+- **Revisit if:** OCR quality on real scans is too poor to search, or the engine needs a GPU slot the
+  local model is using.
+
+## D20 — Briefing packs are chosen per prompt, and you see them (K8)
+
+- **Date / by:** 2026-10-03, user ("based on the user prompt … the user sees what the agent is
+  reading"); details proposed by Claude
+- **Status:** accepted; the preview detail below is still open
+- **Decision:**
+  1. **Per prompt.** Each message you send is used as a search over your notes and sources; the best
+     few matches (default 3 notes + 2 document excerpts, within a size budget) are attached to that
+     message for the agent. A new message gets a new pack.
+  2. **Visible.** Every message shows a *Reading* strip: the notes and documents attached, each one
+     click away. The agent's own reads during the reply (`read_note`, `read_source`) are added to the
+     same strip, so you see everything the answer was based on.
+  3. **Same rules as tools.** The pack is marked as untrusted data, never instructions (D14); notes
+     screened as sensitive (D12) are never attached; agents still can't write without the inbox.
+  4. **Recorded.** Which items went with which message is stored, so a past answer can be traced to
+     what the agent was shown.
+  5. **Switchable.** On by default; a per-chat toggle turns it off.
+- **Open:** whether to show the pack *before* sending (remove items, then send) or alongside the sent
+  message (faster; you see it, you can't edit it). Recommended: alongside, with removal added if
+  wrong picks turn out common.
+- **Costs / limits:** keyword search (D10) will miss notes that use different words until
+  meaning-based search lands; a pack adds tokens to every Claude message (counted against the
+  subscription); a long prompt needs its key terms picked out, since the search requires every word.
+- **Revisit if:** packs are often irrelevant (tune or add meaning-based search) or token use matters.
+
 ---
 
 ## Proposed, awaiting the user

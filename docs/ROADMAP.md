@@ -34,15 +34,16 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K5 | MCP tools for agents: `search_notes`, `read_note`, `propose_note`, `list_proposals`; `origin: agent` + agent id provenance (D16) | Claude and Hermes both read and propose through MCP — **pass** (1 Oct, v0.8.0) |
 | S1 | Source library: read-only, searchable copy of chosen folders (Google Drive first), private files left out; agents search and cite (D15) | Chosen Drive folders searchable in Sage OS and by agents, Drive untouched — **pass** (1 Oct, v0.8.0) |
 | K6 | Notes from whatever the user provides (redefined 2 Oct, D17): starter notes from any source (markdown imported, a collection note per folder of documents) + agent-drafted concept notes that cite their sources; an existing Obsidian vault is just another source | A source becomes approvable starter notes and agent drafts, nothing written before approval — **pass** (2 Oct, v0.9.0) |
+| S2 | **OCR**: read text from images and scanned PDFs during sync, marked as OCR text; Windows' built-in engine first (D19) | A CamScanner PDF and a photo of a page are found by search and readable by agents |
 | K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
-| K8 | Briefing packs: relevant notes injected before a task or chat (D7 idea 2; needs K2) | An agent's first reply uses a fact that exists only in the vault |
+| K8 | Briefing packs chosen **per prompt** from notes and sources, shown to you in a *Reading* strip with everything the agent read (D20; D7 idea 2) | An agent's reply uses a fact that exists only in your notes, and the strip shows the note it came from |
 | K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
 | K10 | Git-backed vault: each approved batch is a commit; push to a private remote only on request (D7 idea 8; personal install only) | Undo and `git log` agree after an approve/undo cycle |
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
 | later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
-Suggested interleave: K1–K3 before Phase 4, so the fleet tools and the knowledge tools share one MCP
-surface; Phase 3 can run in parallel.
+Suggested interleave: K1–K6 are done, so the fleet tools (Phase 4) can share their MCP surface. The order
+after v0.10 is still being chosen (see STATUS *Next*).
 
 ## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
 
@@ -52,7 +53,7 @@ plug in through connectors; Hermes becomes optional. No custom llama.cpp runtime
 | Step | Scope | Gate |
 |---|---|---|
 | A1 | Sage OS interfaces for **model providers** (any OpenAI-compatible endpoint) and **agent connectors**; move the existing Claude and Hermes code behind them | Claude and Hermes panes work unchanged through the new interfaces — **pass** (30 Sep: Claude chat + inbox deny, Hermes 2 turns) |
-| A2 | Bookshelf K1–K3 as Sage OS's own (see track above) | — |
+| A2 | Bookshelf K1–K3 as Sage OS's own (see track above) | **done** with K1–K3 (1 Oct) |
 | A3 | **Sage OS task board** any agent can work from; Hermes kanban becomes an optional source. Current Hermes kanban contents may be cleared (D5) | A task created in Sage OS is finished by an agent and approved in the inbox, with Hermes kanban unused |
 | A4 | A second local agent connector, proving Hermes is optional (candidates to verify on Windows first) | Same task runs on two different local agents |
 | A5 | Environment setup: optional `llama-server` install/manage wizard (model download, GPU-fit settings) | A machine with no local AI gets a working local model through Sage OS |

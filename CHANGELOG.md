@@ -12,6 +12,17 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-10-03
+
+Docs only (planning).
+
+### Changed
+- **OCR becomes step S2** (DECISIONS D19): 37 images and 16 scanned PDFs (about 11% of the Drive
+  copy) are unreadable today; Windows' built-in OCR first.
+- **K8 briefing packs redefined** (D20): chosen per prompt from notes and sources, shown in a
+  *Reading* strip together with everything the agent reads while answering.
+- ROADMAP: A2 marked done with K1–K3; the stale interleave note replaced.
+
 ## [0.10.0] — 2026-10-03
 
 Demo readiness (D18): the app now explains why it exists and how to use it. Gate: the user's demo

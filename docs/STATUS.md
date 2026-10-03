@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.10.0 · 3 Oct 2026.** Checked today: `pytest` 165/165, `npm run build` clean, hub `/api/smoke`
+**Version 0.10.1 · 3 Oct 2026.** Checked today: `pytest` 165/165, `npm run build` clean, hub `/api/smoke`
 18/18, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
 chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
@@ -38,7 +38,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
-- **Bookshelf** next: batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); updating collection notes when sources change; meaning-based search (D10); OCR and Google-native docs for sources (D15)
+- **Bookshelf** next: batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); updating collection notes when sources change; meaning-based search (D10); Google-native docs for sources (D15); OCR is now step S2 (D19)
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
