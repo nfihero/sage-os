@@ -1,8 +1,11 @@
-"""Loads config.toml. The file lives at the sage-os root, one level above hub/."""
+"""Loads config.toml from the sage-os root (one level above hub/), then config.local.toml on top of it if
+present. The local file is per machine and untracked: paths that differ between the PC and a Mac go there
+(D21)."""
 from __future__ import annotations
 
 import os
 import re
+import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,7 +20,7 @@ class Config:
     remote_hosts: list[str] = field(default_factory=list)     # [hub] remote_hosts: exact names (Phase 3)
     store: Path = ROOT / "data" / "hub.db"
     keep_events: int = 5000
-    hermes_home: Path = Path(os.path.expandvars(r"%LOCALAPPDATA%\hermes"))
+    hermes_home: Path = field(default_factory=lambda: default_hermes_home())
     gateway: str = "http://127.0.0.1:8642"
     router: str = "http://127.0.0.1:18434"
     sidecar: str = "http://127.0.0.1:18435"
@@ -43,12 +46,37 @@ class Config:
     model_providers: list[dict] = field(default_factory=list)
 
 
+def default_hermes_home() -> Path:
+    """Where Hermes keeps its state when config.toml doesn't say ([hermes] home)."""
+    if sys.platform == "win32":
+        return Path(os.path.expandvars(r"%LOCALAPPDATA%\hermes"))
+    return Path.home() / ".hermes"
+
+
+def here(value: str) -> Path:
+    """A path setting: `~` is the user's home on any OS; relative paths are relative to the sage-os root."""
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else ROOT / path
+
+
+def merge(base: dict, over: dict) -> dict:
+    """config.local.toml over config.toml: tables merge key by key; lists ([[sources]], [[models]]) and
+    plain values are replaced whole."""
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
 def load(path: Path | None = None) -> Config:
     path = path or Path(os.environ.get("SAGE_OS_CONFIG", ROOT / "config.toml"))
+    local = path.with_name(path.stem + ".local.toml")
     cfg = Config()
-    if not path.exists():
+    if not path.exists() and not local.exists():
         return cfg
-    raw = tomllib.loads(path.read_text(encoding="utf-8"))
+    raw = tomllib.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if local.exists():
+        raw = merge(raw, tomllib.loads(local.read_text(encoding="utf-8")))
     hub, hermes, ui = raw.get("hub", {}), raw.get("hermes", {}), raw.get("ui", {})
     cfg.host = hub.get("host", cfg.host)
     cfg.port = int(hub.get("port", cfg.port))
@@ -56,23 +84,20 @@ def load(path: Path | None = None) -> Config:
     if any("*" in h for h in cfg.remote_hosts):
         raise ValueError("config.toml [hub] remote_hosts takes exact host names, no wildcards")
     if "store" in hub:
-        store = Path(hub["store"])
-        cfg.store = store if store.is_absolute() else ROOT / store
+        cfg.store = here(hub["store"])
     cfg.keep_events = int(hub.get("keep_events", cfg.keep_events))
     shelf = raw.get("bookshelf", {})
     if "vault" in shelf:
-        vault = Path(shelf["vault"])
-        cfg.vault = vault if vault.is_absolute() else ROOT / vault
+        cfg.vault = here(shelf["vault"])
     for s in raw.get("sources", []):
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,40}", str(s.get("name", ""))) or not s.get("path"):
             raise ValueError(f"config.toml [[sources]] needs a lower-case name (letters, digits, -) and a path: {s}")
-    cfg.sources = [dict(s) for s in raw.get("sources", [])]
+    cfg.sources = [dict(s) | {"path": os.path.expanduser(str(s["path"]))} for s in raw.get("sources", [])]
     for key, attr in (("index", "vault_index"), ("journal", "vault_journal")):
         if key in shelf:
-            path = Path(shelf[key])
-            setattr(cfg, attr, path if path.is_absolute() else ROOT / path)
+            setattr(cfg, attr, here(shelf[key]))
     if "home" in hermes:
-        cfg.hermes_home = Path(hermes["home"])
+        cfg.hermes_home = Path(hermes["home"]).expanduser()
     cfg.gateway = hermes.get("gateway", cfg.gateway).rstrip("/")
     cfg.router = hermes.get("router", cfg.router).rstrip("/")
     cfg.sidecar = hermes.get("sidecar", cfg.sidecar).rstrip("/")
@@ -81,7 +106,7 @@ def load(path: Path | None = None) -> Config:
     cfg.hidden_profiles = list(ui.get("hidden_profiles", cfg.hidden_profiles))
     cfg.profile_labels = dict(ui.get("profile_labels", cfg.profile_labels))
     cfg.safety_feed_size = int(ui.get("safety_feed_size", cfg.safety_feed_size))
-    cfg.claude_workspaces = list(raw.get("claude", {}).get("workspaces", cfg.claude_workspaces))
+    cfg.claude_workspaces = [os.path.expanduser(str(w)) for w in raw.get("claude", {}).get("workspaces", cfg.claude_workspaces)]
     agents = raw.get("agents", {})
     cfg.lead_agent = agents.get("lead", cfg.lead_agent)
     cfg.claude_enabled = bool(agents.get("claude", cfg.claude_enabled))

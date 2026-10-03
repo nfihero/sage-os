@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import time
 import uuid
 from dataclasses import replace
@@ -40,7 +41,7 @@ orchestrator and reviewer for local Hermes agents running on an RTX 5070 Ti.
   Hermes (`hermes kanban ...`; HERMES_BIN points at the CLI).
 - Your tool requests are answered by the owner from the Sage OS approvals inbox; ask in chat when a
   decision is his, and keep requests specific.
-- Google Drive (G:\\) is read-only. Private bank data lives in data-private/ folders: never commit
+- Google Drive is read-only. Private bank data lives in data-private/ folders: never commit
   or upload it.
 - search_sources / read_source reach the user's own documents (a read-only copy of chosen Google Drive
   folders); cite them, don't assume they're current.
@@ -103,14 +104,19 @@ CLI_GLOBS = [
     r"%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude-code\*\claude.exe",
     # Non-Store installs, and processes running inside the app's own container, see it here.
     r"%APPDATA%\Claude\claude-code\*\claude.exe",
+] if sys.platform == "win32" else [
+    # macOS: the desktop app's bundled CLI, then the native installer's usual homes (D21)
+    "~/Library/Application Support/Claude/claude-code/*/claude",
+    "~/.claude/local/claude",
+    "~/.local/bin/claude",
 ]
 
 
 def find_cli() -> str | None:
-    """Newest claude.exe shipped with the Claude desktop app, else one on PATH."""
+    """Newest Claude CLI shipped with the Claude desktop app, else one on PATH."""
     if os.environ.get("SAGE_OS_CLAUDE_CLI"):
         return os.environ["SAGE_OS_CLAUDE_CLI"]
-    found = [p for g in CLI_GLOBS for p in glob.glob(os.path.expandvars(g))]
+    found = [p for g in CLI_GLOBS for p in glob.glob(os.path.expanduser(os.path.expandvars(g)))]
 
     def ver(p):
         try:
@@ -119,7 +125,7 @@ def find_cli() -> str | None:
             return [0]
     if found:
         return max(found, key=ver)
-    return shutil.which("claude.exe")
+    return shutil.which("claude")
 
 
 def summarize_input(tool: str, inp: dict) -> str:
@@ -313,7 +319,7 @@ class ClaudeConnector(AgentConnector):
         return super().info() | {"cli_found": bool(self.cli), "logged_in": self.logged_in}
 
     def smoke(self):
-        return [("claude.exe found", bool(self.cli),
+        return [("claude CLI found", bool(self.cli),
                  self.cli or "install the Claude desktop app or set SAGE_OS_CLAUDE_CLI")]
 
     def background(self):

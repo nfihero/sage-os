@@ -40,7 +40,7 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.10.0 (3 Oct; guide + tour, D18) | `pytest` 165/165 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
+| Hub (FastAPI) + UI (React) | **works**, v0.11.0 (3 Oct; guide + tour D18, portable D21) | `pytest` 170/170 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |
@@ -52,7 +52,7 @@ system · **planned** = not built.
 | Inbox: kanban `needs_input` → reply + unblock | **untested live** | card appears for blocked task `t_549737c1`; reply path (`hermes kanban comment` + `unblock`) never clicked |
 | Subscription usage meter | **works, limited** | CLI sends `rate_limit_event`; it omits `utilization` until near a limit, so UI shows "OK + reset time" |
 | Visuals (phosphor theme, WebGL agent orbs, handoff arcs, boot screen, screen texture) | **works** | screenshots; orbs/arcs verified by event checks |
-| Cross-device (Tailscale), app login | **planned** (Phase 3) | — |
+| Cross-device (Tailscale), app login | **planned** (Phase 3b: PC home base, passkeys, D21); hub portable to macOS (3a) | — |
 | Claude orchestrating Hermes (fleet MCP tools) | **planned** (Phase 4) | — |
 | Claude reviewing worker output | **planned** (Phase 5) | — |
 | Knowledge layer of its own | **Bookshelf (2 Oct): read, search, approved writes + exact undo, screening, agent tools (K1–K5), Drive source library (S1), notes built from sources (K6)** | gates in `docs/STATUS.md`; D9–D12, D15–D17 |

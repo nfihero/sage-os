@@ -5,7 +5,7 @@ machine. Pick local or cloud models, keep conversations and topics from many pro
 run workflows on kanban boards, and grow a knowledge base your agents read and add to, with your
 approval.
 
-**Today (v0.10.1):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
+**Today (v0.11.0):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
 or OpenAI-compatible model server can plug into the same connector layer. One inbox collects every
 approval. Around it: the Hermes kanban board, live GPU and safety status, and Bookshelf, where you
 search your notes and a read-only copy of chosen Google Drive folders, and grow the vault from them:
@@ -37,6 +37,11 @@ http://127.0.0.1:5173.
 
 **Needs:** Hermes Agent installed at `%LOCALAPPDATA%\hermes` (gateway :8642, llama.cpp router :18434,
 guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12+, Node 20+.
+
+**On a Mac** (D21; for development, the PC stays home base): `./start.sh`. Copy
+`config.local.example.toml` to `config.local.toml` (untracked) and set this machine's paths: it overrides
+`config.toml`. Without Hermes or an NVIDIA GPU those panels show as down or empty; Claude works if the
+`claude` CLI is installed and signed in (`claude auth login`).
 
 **One-time Claude login** (the Agent SDK's CLI needs its own sign-in; `/login` inside a chat won't work):
 

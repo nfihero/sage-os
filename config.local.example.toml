@@ -1,0 +1,20 @@
+# Per-machine settings (D21). Copy to config.local.toml (untracked) and edit. Anything here overrides
+# config.toml: tables merge key by key; [[sources]] and [[models]] lists replace config.toml's whole.
+# Typical use: the same repo on a Mac, where the PC's Windows paths don't exist.
+
+[hermes]
+# Hermes runs on the Windows PC; a Mac copy without it just shows Hermes as down.
+home = "~/.hermes"
+
+[agents]
+hermes = []          # no local agent on this machine
+
+[claude]
+workspaces = ["/Users/YOU/code/sage-os"]
+
+# Google Drive for desktop on a Mac lives under ~/Library/CloudStorage/GoogleDrive-<account>/.
+# [[sources]]
+# name = "drive"
+# path = "/Users/YOU/Library/CloudStorage/GoogleDrive-you@example.com/My Drive"
+# include = ["Finance Classes"]
+# notes_folder = "Drive"

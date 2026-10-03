@@ -17,7 +17,7 @@ mentor plans and reviews, and nothing important happens without your say.
 
 ## What Sage OS is
 
-| Pillar | What it does | State (v0.10.1) |
+| Pillar | What it does | State (v0.11.0) |
 |---|---|---|
 | **Your choice of models** | Local models (llama.cpp via Hermes) and cloud models side by side, picked per agent or task | Partly: Claude (cloud) + Hermes local models; since v0.4.0 any OpenAI-compatible server can be connected and its models listed (`[[models]]`), but not yet picked per agent or task (H1) |
 | **One hub for many programs** | Conversations and topics from different agents and apps connected in one place | Partly: Claude Code + Hermes as connectors (v0.4.0), both using Bookshelf through MCP tools, and your Google Drive documents searchable as a source (v0.8.0); other programs plug in through the same interface (A4, Phase 6) |

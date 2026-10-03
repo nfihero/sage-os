@@ -13,7 +13,8 @@ on 30 Sep 2026 with the Bookshelf track.
 | 2 | Chat panes (Claude Code, Hermes) + approvals inbox | A Claude permission prompt reaches the inbox and is answered there | **Done** (29 Sep) |
 | 2.5 | Visual pass: phosphor theme, agent orbs, handoff arcs, boot screen, screen texture, icon | User sign-off | **Done** (30 Sep), iterating on taste |
 | 2.6 | Demo readiness (D18): guide with the why, panel tour, plain labels, teaching empty states, `docs/DEMO.md` | A first-time viewer can say what Sage OS is for and follows the files → notes loop | Built (3 Oct, v0.10.0); gate is the user's demo |
-| 3 | Cross-device: Tailscale Serve, app login (passkey or token), phone layout | A phone approves a request over the tailnet | Next |
+| 3a | Portable hub (D21): runs on macOS and Windows; per-machine `config.local.toml`; `start.sh` | The same repo starts on both | **Built** (3 Oct, v0.11.0); Mac run is the user's check |
+| 3b | Phone and Mac as screens (D21): Tailscale Serve to the PC, **passkey** login with devices added from the PC, phone layout pass | A phone approves a request over the tailnet after a Face ID login | Planned |
 | 4 | Claude as orchestrator: fleet MCP tools (`fleet_status`, `task_create`, `task_comment`/`unblock`, `ask_agent`) | Claude delegates a task that a local agent finishes | Planned |
 | 5 | Claude as reviewer: review on `request_review`, handoff animations | One task goes through changes, then approval | Planned |
 | 6 | Rooms and outside agents: **team chat** (lead agent answers by default) + **agent room** (agents only, user watches, Step in) with direct chats closed by default (DECISIONS D8); ACP and A2A adapters | The user asks in team chat; the lead hands work to another agent in the agent room; the user steps in once; the result comes back to team chat | Planned |
@@ -72,5 +73,7 @@ that a Sage OS board must match.
 
 ## Product track (open)
 
-Packaging, installer, non-Windows support, onboarding without Hermes pre-installed, accounts — all
-undecided until the audience is defined (see `MISSION.md`).
+Direction in D21: each user runs Sage OS on their own computer; signed Windows and Mac installers that
+bundle everything; first-run setup to connect their own AI (A5); phone access by same-Wi-Fi passkey,
+bring-your-own Tailscale, or an optional paid relay. Still undecided until the audience is defined
+(see `MISSION.md`): accounts, pricing, which tiers ship first.

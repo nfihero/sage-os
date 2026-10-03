@@ -12,6 +12,28 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-10-03
+
+Phase 3a, portable hub (D21). Gate: the same repo starts on macOS and Windows; checked here on
+Windows (pytest 170/170, smoke 18/18, Claude CLI still found and signed in); the Mac run is the
+user's check.
+
+### Added
+- `config.local.toml` (untracked) is read over `config.toml`: tables merge key by key, `[[sources]]`
+  and `[[models]]` are replaced whole. `config.local.example.toml` shows a Mac setup.
+- `start.sh`: launcher for macOS and Linux.
+- Decisions: **D21** (PC as home base, Mac and phone as screens, passkeys, and the direction for a
+  downloadable product) and the **D20 amendment** (✕ on any briefing item to correct an agent before
+  it runs on wrong information).
+
+### Changed
+- `~` works in every path setting, and relative paths are relative to the sage-os root everywhere.
+- The Claude CLI is found on macOS (desktop app, `~/.claude/local`, `~/.local/bin`, PATH) as well as
+  Windows; the smoke check reads "claude CLI found".
+- Hermes' default home is `%LOCALAPPDATA%\hermes` on Windows and `~/.hermes` elsewhere.
+- ROADMAP: Phase 3 split into 3a (portable hub, built) and 3b (phone and Mac as screens: Tailscale +
+  passkeys); the product track records D21's direction.
+
 ## [0.10.1] — 2026-10-03
 
 Docs only (planning).

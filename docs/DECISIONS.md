@@ -400,6 +400,55 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   meaning-based search lands; a pack adds tokens to every Claude message (counted against the
   subscription); a long prompt needs its key terms picked out, since the search requires every word.
 - **Revisit if:** packs are often irrelevant (tune or add meaning-based search) or token use matters.
+- **Amended 2026-10-03 (user: "alongside, but we need some way to correct it before agents go into a
+  loop with the wrong info"):** the pack is shown **alongside** the sent message, and every item in the
+  *Reading* strip has a **✕ wrong / not relevant** control:
+  - while the agent is still answering, ✕ stops the reply and resends the same message without that
+    item, plus one line saying it was removed and why;
+  - after the reply, ✕ adds that line to your next message;
+  - either way the item is left out of later packs in that chat, and if the agent opens it again with
+    its own tools the strip flags it.
+  D8's per-thread turn cap and no-progress check still apply when agents talk to each other.
+
+## D21 — Where Sage OS runs: PC as home base; Mac and phone as screens; code that runs on both
+
+- **Date / by:** 2026-10-03, user ("build in a way that allows the app to work from Mac and Windows,
+  and is operable by phone"; chose the PC as home base and passkeys); design by Claude
+- **Status:** accepted. Sets the shape of Phase 3; product distribution below is a direction, not a
+  decision.
+- **Decision (personal use):**
+  1. **The Windows PC is home base.** It runs the hub and holds the data (notes, Drive copy,
+     journal) and the GPU models. The Mac and the phone are screens: they open Sage OS in a browser
+     over Tailscale, a private encrypted network between your own devices. One copy of everything,
+     nothing to sync. When the PC is off, Sage OS is off.
+  2. **The code runs on macOS and Windows.** Per-machine settings live in an untracked
+     `config.local.toml` over `config.toml`; `~` works in every path; the Claude CLI is found on
+     both; `start.sh` is the Mac launcher. A Mac copy is for development and for later users, not a
+     second home for your data.
+  3. **Login with passkeys** (Face ID / fingerprint, the WebAuthn standard) once Sage OS is reachable
+     off the PC. Devices are added from the PC (it shows a one-time code); each can be revoked.
+     Localhost on the PC itself stays login-free.
+  4. **Phone-first screens**: every new screen must work at phone width (the inbox above all,
+     since approving from the phone is Phase 3's gate).
+- **Product direction (anyone downloads it from a website):** each user runs Sage OS on their own
+  computer, as today; nothing about their data is hosted by us. What has to be added:
+  - *Installers*: a signed Windows installer and a signed, notarized Mac app (needs a code-signing
+    certificate and an Apple developer account), bundling Python and the UI so users install nothing
+    else; auto-update.
+  - *First-run setup* (A5): connect the AI they already have (Claude sign-in, an API key, or Ollama /
+    LM Studio / llama.cpp running locally); app data in the per-user folder (D6).
+  - *Phone access*, in three tiers: (a) same Wi-Fi + passkey, free and simple; (b) bring-your-own
+    Tailscale for away-from-home, free but a setup step; (c) an optional **Sage relay** we run that
+    passes encrypted traffic between their phone and their computer, the way Plex or Home Assistant
+    Cloud do. (c) is the only part with a running cost per user, and the natural paid tier.
+  - *Agents*: Hermes isn't shipped; Claude, cloud APIs and local model servers plug in through A1
+    connectors; A3's own board replaces the Hermes kanban.
+- **Costs / limits:** a Mac copy without Hermes or an NVIDIA GPU shows those panels as down/empty;
+  Windows OCR (D19) needs a Mac engine before OCR works there; the guardrails hook (D13) calls the
+  Windows venv path and fails open on a Mac until its command is made OS-neutral (needs the user's OK,
+  since edits to the hook are guarded).
+- **Revisit if:** the PC being off is a real problem (then a small always-on box, or the either-host
+  setup with synced notes), or the audience question in D1 is answered.
 
 ---
 
