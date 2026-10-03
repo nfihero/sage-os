@@ -59,3 +59,15 @@ def test_ws_rejects_foreign_origin(tmp_path):
             with c.websocket_connect("ws://127.0.0.1/ws", headers={"origin": "https://evil.example"}) as ws:
                 ws.receive_json()
         assert exc.value.code == 4403
+
+
+def test_page_revalidates_so_a_rebuilt_ui_shows_up(tmp_path, monkeypatch):
+    """Demo prep (D18): a heuristically cached index.html kept serving the previous build's bundle."""
+    dist = tmp_path / "root" / "ui" / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text('<div id="root"></div>', encoding="utf-8")
+    monkeypatch.setattr("sage_os_hub.app.ROOT", tmp_path / "root")
+    with TestClient(make(tmp_path), base_url="http://127.0.0.1") as c:
+        r = c.get("/")
+        assert r.status_code == 200 and "<div id=\"root\">" in r.text
+        assert r.headers["cache-control"] == "no-cache"

@@ -337,6 +337,25 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** collection notes go stale as sources change (update proposals instead of skipping
   built ones), or drafting should run on a schedule or a kanban board (Phase 4).
 
+## D18 — Demo readiness: the app explains itself
+
+- **Date / by:** 2026-10-03, user ("a somewhat working demo, with clear displays and the app's why
+  … clear how's to the app", for a demo the following week); design by Claude
+- **Status:** accepted
+- **Decision:** the *why* and *how* live in the app, not only in docs:
+  1. A **guide** opens on a first visit (and from **? GUIDE**): the team analogy from D1 mapped to
+     panels, four rules taken from D4/D6/D11/D15, and D4's limit stated plainly. Its facts quote this
+     log; when a decision changes, update `ui/src/components/Guide.tsx` with it.
+  2. A **tour** spotlights each panel. Panels and status lights are named for what they do; technical
+     names and ports moved to tooltips.
+  3. **Empty states teach the next step** (an empty Bookshelf shows the path from sources to notes).
+  4. `docs/DEMO.md` is the script; it shows only what is built (the files → proposals → approval →
+     notes loop and agents using Bookshelf). D8's team chat is named as next, not shown.
+- **Costs / limits:** the guide is static copy that can drift from the code (mitigated by citing
+  decision numbers); "seen" is per browser (`localStorage`), so a new browser shows it again. On a
+  phone the tour can't point at panels hidden behind tabs and centres its cards instead.
+- **Revisit if:** D8's team chat lands (the tour and the team table change), or more agents connect.
+
 ---
 
 ## Proposed, awaiting the user

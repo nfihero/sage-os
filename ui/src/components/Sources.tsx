@@ -4,12 +4,14 @@ import type { BuildResult, SourceCollection, SourceDoc, SourceHit, SourceInfo, S
 import { ago, useNow } from "../util";
 
 /** The source library (D15): read-only copies of chosen folders, searchable, citable, never edited. */
-export default function Sources({ panel }: { panel?: SourcesPanel }) {
+export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { source: string; path: string } | null }) {
   const [fetched, setFetched] = useState<SourcesPanel | null>(null);
   const data = panel ?? fetched;
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<{ ms: number; results: SourceHit[] } | null>(null);
-  const [open, setOpen] = useState<SourceHit | null>(null);
+  // `doc`: a document to show on arrival, e.g. the one a note cites
+  const [open, setOpen] = useState<SourceHit | null>(() => doc
+    ? { source: doc.source, path: doc.path, title: doc.path.split("/").pop() ?? doc.path, snippet: "", score: 0 } : null);
 
   useEffect(() => { if (!panel) get<SourcesPanel>("/api/sources").then(setFetched).catch(() => {}); }, []);
   useEffect(() => {

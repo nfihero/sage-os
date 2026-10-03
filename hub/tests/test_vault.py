@@ -40,7 +40,7 @@ def test_valid_note_and_links_resolve_by_uid(tmp_path):
     assert dcf["created"] == "2026-09-30" and dcf["tags"] == ["finance", "valuation"]
     assert dcf["links"] == [{"uid": B, "title": "WACC"}, {"uid": "01J9ZQ4V6R8T2M3N5P7Q9S1W41", "title": None}]
     full = v.read(A)
-    assert full["body"].startswith("# DCF") and full["source"].startswith("---") and full["frontmatter"]["type"] == "reference"
+    assert full["body"].startswith("# DCF") and full["text"].startswith("---") and full["frontmatter"]["type"] == "reference"
 
 
 def test_contract_problems_are_named_not_hidden(tmp_path):

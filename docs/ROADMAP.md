@@ -12,6 +12,7 @@ on 30 Sep 2026 with the Bookshelf track.
 | 1 | Read-only dashboard: board, GPU lane, health, safety feed, sessions, theme | All six Phase 1 checks pass | **Done** (29 Sep) |
 | 2 | Chat panes (Claude Code, Hermes) + approvals inbox | A Claude permission prompt reaches the inbox and is answered there | **Done** (29 Sep) |
 | 2.5 | Visual pass: phosphor theme, agent orbs, handoff arcs, boot screen, screen texture, icon | User sign-off | **Done** (30 Sep), iterating on taste |
+| 2.6 | Demo readiness (D18): guide with the why, panel tour, plain labels, teaching empty states, `docs/DEMO.md` | A first-time viewer can say what Sage OS is for and follows the files → notes loop | Built (3 Oct, v0.10.0); gate is the user's demo |
 | 3 | Cross-device: Tailscale Serve, app login (passkey or token), phone layout | A phone approves a request over the tailnet | Next |
 | 4 | Claude as orchestrator: fleet MCP tools (`fleet_status`, `task_create`, `task_comment`/`unblock`, `ask_agent`) | Claude delegates a task that a local agent finishes | Planned |
 | 5 | Claude as reviewer: review on `request_review`, handoff animations | One task goes through changes, then approval | Planned |

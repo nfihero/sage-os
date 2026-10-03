@@ -215,3 +215,18 @@ button.chip:hover { background: color-mix(in oklab, currentColor 12%, transparen
 :root.reduce-motion .cycle, :root.reduce-motion .panel, :root.reduce-motion .chat-in,
 :root.reduce-motion .fx-grain, :root.reduce-motion .fx-roll { animation: none !important; }
 :root.reduce-motion .fx-roll { display: none; }
+
+/* ---- guide (D18): why page + spotlight tour ---- */
+.guide-copy { max-width: 68ch; text-wrap: pretty; }
+.guide-grid { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 9rem) minmax(0, 1fr); gap: .55rem 1rem; align-items: baseline; }
+@media (max-width: 640px) {
+  .guide-grid { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+  .guide-grid > .contents > :nth-child(3) { margin-bottom: .6rem; }
+}
+.tour-spot { position: absolute; pointer-events: none; border: 1px solid var(--n);
+  box-shadow: 0 0 0 200vmax color-mix(in oklab, var(--color-void) 78%, transparent), 0 0 24px color-mix(in oklab, var(--n) 45%, transparent); }
+/* no movement transition: animating a full-screen shadow next to the WebGL orbs lagged by seconds */
+.tour-card { animation: panel-in .25s cubic-bezier(.2,.8,.2,1) both; }
+
+/* keyboard focus: visible on every control (mouse clicks don't show it) */
+:focus-visible { outline: 1px solid var(--n); outline-offset: 2px; }

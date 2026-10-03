@@ -6,7 +6,7 @@ import { reducedMotion } from "../theme";
  * Boot sequence, once per browser session (click the logo to replay). A nod to SAGE, the 1950s
  * air-defence network run from CRT consoles; the checks shown are live.
  */
-export default function BootScreen({ hub, replay }: { hub: HubState; replay: number }) {
+export default function BootScreen({ hub, replay, onShowing }: { hub: HubState; replay: number; onShowing?: (showing: boolean) => void }) {
   const [show, setShow] = useState(() => {
     try { return !sessionStorage.getItem("sageos.booted"); } catch { return true; }
   });
@@ -14,6 +14,7 @@ export default function BootScreen({ hub, replay }: { hub: HubState; replay: num
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => { if (replay) { setStep(0); setLeaving(false); setShow(true); } }, [replay]);
+  useEffect(() => onShowing?.(show), [show]);
 
   const h = hub.panels.health, c = hub.panels.claude, inbox = hub.panels.inbox?.length ?? 0;
   const st = (ok: boolean | undefined, good = "OK", bad = "DOWN") => (ok === undefined ? "···" : ok ? good : bad);

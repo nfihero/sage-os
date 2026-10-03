@@ -14,13 +14,15 @@ import ScreenFx from "./components/ScreenFx";
 import BootScreen from "./components/BootScreen";
 import { SafetyDrawer, SafetyToast, useSafety } from "./components/Safety";
 import Bookshelf from "./components/Bookshelf";
+import Guide, { guideSeen } from "./components/Guide";
 
 type Tab = "claude" | "local" | "inbox" | "board" | "system";
 type Area = "claude" | "local" | "inbox" | "board" | "gpu";
 
+// What each panel is, in plain words (left) and its role on the team (right).
 const KICKERS: Record<Area, [string, string]> = {
-  claude: ["Panel", "Orchestrator"], local: ["Panel", "Local agents"], inbox: ["Panel", "Needs you"],
-  board: ["Panel", "Kanban"], gpu: ["Panel", "System"],
+  claude: ["Lead agent", "Answers by default"], local: ["Local agent", "Runs on your GPU"], inbox: ["Inbox", "Needs you"],
+  board: ["Task board", "Work in flight"], gpu: ["System", "GPU · memory"],
 };
 const LOW_POWER_MB = 14.5 * 1024;   // orbs drop to ~12 fps when a model nearly fills VRAM
 
@@ -43,6 +45,8 @@ export default function App() {
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("claude");
   const [shelf, setShelf] = useState(false);
+  const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
+  const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
   const { panels } = hub;
   const safety = useSafety(panels.safety ?? []);
   const inbox = panels.inbox ?? [];
@@ -88,7 +92,7 @@ export default function App() {
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} />;
   const cell = (a: Area, node: React.ReactNode) => (
-    <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }}>
+    <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }} data-tour={a}>
       <div className={`kicker ${a === "claude" ? "text-orange/70" : ""}`}><span>{KICKERS[a][0]}</span><span>{KICKERS[a][1]}</span></div>
       {node}
     </div>
@@ -98,11 +102,11 @@ export default function App() {
     <>
       <DotGrid ripples={ripples} />
       <div className="vignette" />
-      <BootScreen hub={hub} replay={boot} />
+      <BootScreen hub={hub} replay={boot} onShowing={setBooting} />
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} />
+        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col p-2">
@@ -143,7 +147,8 @@ export default function App() {
       </div>
       <SafetyDrawer open={safety.open} safety={panels.safety ?? []} events={hub.events} onClose={safety.close} onOpenTask={setOpenTask} />
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
-      {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} onClose={() => setShelf(false)} />}
+      {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} proposals={inbox.filter((i) => i.source === "bookshelf").length} onClose={() => setShelf(false)} />}
+      <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
     </>
   );

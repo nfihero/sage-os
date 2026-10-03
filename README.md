@@ -5,7 +5,7 @@ machine. Pick local or cloud models, keep conversations and topics from many pro
 run workflows on kanban boards, and grow a knowledge base your agents read and add to, with your
 approval.
 
-**Today (v0.9.0):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
+**Today (v0.10.0):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
 or OpenAI-compatible model server can plug into the same connector layer. One inbox collects every
 approval. Around it: the Hermes kanban board, live GPU and safety status, and Bookshelf, where you
 search your notes and a read-only copy of chosen Google Drive folders, and grow the vault from them:
@@ -19,6 +19,7 @@ Windows 11, local only.
 | [docs/MISSION.md](docs/MISSION.md) | Why it exists, pillars, principles, why "Sage" |
 | [docs/STATUS.md](docs/STATUS.md) | What works, what's untested, known issues, next |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and gates; the Bookshelf and architecture tracks |
+| [docs/DEMO.md](docs/DEMO.md) | 5–7 minute demo script: prep checklist, walkthrough, fixes |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what was decided, why, costs, when to revisit |
 | [CHANGELOG.md](CHANGELOG.md) | Version history: one version and tag per roadmap step that passes its gate |
 | [docs/SAGE-OS-HANDOFF.md](docs/SAGE-OS-HANDOFF.md) | Context primer for a fresh session: architecture, agent model, knowledge-backend contract, reversed decisions, open questions |
@@ -55,10 +56,11 @@ guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12
 | Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change; held (secret-looking) proposals: reject / save anyway |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |
-| Top bar | health checks, guard logs | service lights, safety chip (red only on new blocks), Bookshelf, theme, Motion |
+| Top bar | health checks, guard logs | service lights (Hermes, Models, Guard), safety chip (red only on new blocks), **? GUIDE** (why + tour), Bookshelf, theme, Motion |
 | Bookshelf | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; **Build notes**: propose starter notes, ask an agent to draft concept notes; Open vault in Explorer |
 
-Click the `SAGE//OS` logo to replay the boot sequence.
+New here? **? GUIDE** explains why Sage OS exists and tours the screen (it opens by itself on a first visit;
+`?guide` in the URL forces it). Click the `SAGE//OS` logo to replay the boot sequence.
 
 ## Layout
 

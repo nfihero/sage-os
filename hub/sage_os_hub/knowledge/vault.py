@@ -227,5 +227,5 @@ class Vault:
         note, fm, body = parse_note(match.path, text, match.size, match.mtime)
         titles = {n.uid: n.title for n in notes if n.uid}
         return asdict(note) | {"ref": match.ref, "problems": match.problems, "frontmatter": jsonable(fm),
-                               "body": body, "source": text,
+                               "body": body, "text": text,      # `source` stays the note's citation (K6)
                                "links": [{"uid": u, "title": titles.get(u)} for u in note.links]}

@@ -25,7 +25,7 @@ def seed(vault):
     (vault / "Finance").mkdir(parents=True, exist_ok=True)
     (vault / "Finance" / "dcf-formula-sheet.md").write_text(
         f"---\nuid: {UID}\ntitle: DCF formula sheet\ncreated: 2026-03-14\nupdated: 2026-03-14\ntype: reference\n"
-        "status: active\norigin: human\ntags: [finance]\n---\nEnterprise value is the sum of discounted free cash flows.\n",
+        "status: active\norigin: human\nsource: sources/drive/Finance/dcf.pdf\ntags: [finance]\n---\nEnterprise value is the sum of discounted free cash flows.\n",
         encoding="utf-8")
     (vault / "Finance" / "broker-login.md").write_text(
         f"---\nuid: {SECRET_UID}\ntitle: Broker login\ncreated: 2026-03-14\nupdated: 2026-03-14\ntype: note\n"
@@ -55,6 +55,9 @@ def test_search_and_read(hub):
     assert [r["title"] for r in res["results"]] == ["DCF formula sheet"] and "«" in res["results"][0]["snippet"]
     note = asyncio.run_coroutine_threadsafe(t.read("hermes:default", UID), hub.loop).result()
     assert note["body"].startswith("Enterprise value") and note["origin"] == "human"
+    assert note["source"] == "sources/drive/Finance/dcf.pdf"     # the citation, so the agent can follow it (review 3 Oct)
+    full = hub.vault.read(UID)
+    assert full["source"] == "sources/drive/Finance/dcf.pdf" and full["text"].startswith("---")
     assert "error" in asyncio.run_coroutine_threadsafe(t.read("x", "01J9ZQ4V6R8T2M3N5P7Q9S1W99"), hub.loop).result()
 
 

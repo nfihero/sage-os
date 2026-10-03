@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.9.0 · 2 Oct 2026.** Checked today: `pytest` 164/164, `npm run build` clean, hub `/api/smoke`
+**Version 0.10.0 · 3 Oct 2026.** Checked today: `pytest` 165/165, `npm run build` clean, hub `/api/smoke`
 18/18, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
 chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
@@ -20,6 +20,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | Bookshelf tools for agents (K5) | Claude (in-process) and Hermes (MCP at `/mcp/hermes/default/`) can `search_notes`, `read_note`, `propose_note`, `list_proposals`, `search_sources`, `read_source`; agent id set by Sage OS; sensitive note text withheld |
 | Source library (S1) | Bookshelf → Sources: read-only copy of chosen Drive folders in `data/sources/drive` (499 files, 494 searchable), Sync now, left-out list (private by name or content, media, binaries, Google shortcuts), search + text reader |
 | Notes from sources (K6) | Bookshelf → Sources → Build notes: *Propose starter notes* (markdown imported verbatim + a collection note per folder, one inbox card per area); *Draft* briefs Hermes to propose cited concept notes; collection status new / in inbox / in vault; re-runs skip what's built or waiting |
+| Guide and tour (D18) | **? GUIDE**: why Sage OS exists (team analogy, rules, limit, live counts) + a 7-step panel tour; opens on first visit or `?guide`; empty Bookshelf shows how notes arrive; notes show *Built from* with a link into Sources; demo script `docs/DEMO.md` |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Bookshelf writes (K3) | agents propose (create / update / archive); inbox card shows each change's diff; *Approve & file* applies the batch through one journaled writer; History tab undoes a batch byte for byte; stale and contract-breaking proposals refused; pending proposals survive restarts |
 | Secret screening (K4) + *Save anyway* | proposals with secret-looking content (keys, tokens, passwords, card / ID / bank numbers) are held in the inbox in memory only, never stored; *Reject* or two-step *Save anyway*; only the category is ever shown or logged; sensitive notes' text stays out of search (🔒) |
@@ -54,7 +55,7 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 ## Next
 
-1. Review the 9 starter-note cards and Hermes' FIN 101 drafts in the inbox; then K7 (batch review) or Phase 3. A1, K1–K6 and S1 done (30 Sep–2 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
+1. Rehearse `docs/DEMO.md` (demo week of 5 Oct): prep checklist, then approve one starter card live. Then K7 (batch review) or Phase 3. A1, K1–K6 and S1 done (30 Sep–2 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
    D6, D7); architecture direction recorded (D4).
 2. Phase 3 (Tailscale + login + phone).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.

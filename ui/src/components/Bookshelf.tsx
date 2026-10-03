@@ -7,7 +7,9 @@ import Sources from "./Sources";
 import { ago, useNow } from "../util";
 
 /** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
-export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPanel; sources?: SourcesPanel; onClose: () => void }) {
+export default function Bookshelf({ panel, sources, proposals = 0, onClose }: {
+  panel?: VaultPanel; sources?: SourcesPanel; proposals?: number; onClose: () => void;
+}) {
   const [fetched, setFetched] = useState<VaultPanel | null>(null);
   const vault = panel ?? fetched;
   const [ref, setRef] = useState<string | null>(null);
@@ -19,6 +21,8 @@ export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPa
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const searching = q.trim().length > 0;
   const [view, setView] = useState<"notes" | "history" | "sources">("notes");
+  const [cited, setCited] = useState<{ source: string; path: string } | null>(null);
+  const showSource = (doc: { source: string; path: string } | null) => { setCited(doc); setView("sources"); };
 
   useEffect(() => {
     if (!panel) get<VaultPanel>("/api/vault").then(setFetched).catch(() => {});
@@ -67,7 +71,7 @@ export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPa
           <span className="flex gap-1">
             <button className={`htab ${view === "notes" ? "on" : ""}`} onClick={() => setView("notes")}>NOTES</button>
             <button className={`htab ${view === "history" ? "on" : ""}`} onClick={() => setView("history")}>HISTORY</button>
-            <button className={`htab ${view === "sources" ? "on" : ""}`} onClick={() => setView("sources")}>SOURCES</button>
+            <button className={`htab ${view === "sources" ? "on" : ""}`} onClick={() => showSource(null)}>SOURCES</button>
           </span>
           <span className="ml-auto flex min-w-0 items-center gap-2">
             {vault && <span className="hidden min-w-0 truncate font-mono text-[11px] normal-case tracking-normal text-mute md:inline" title={vault.root}>{vault.root}</span>}
@@ -77,7 +81,7 @@ export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPa
         </div>
         {openErr && <div className="border-b border-red/40 px-3 py-1 text-[12px] text-red">{openErr}</div>}
 
-        {view === "sources" ? <Sources panel={sources} /> : view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {view === "sources" ? <Sources key={cited ? cited.source + cited.path : ""} panel={sources} doc={cited} /> : view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className={`flex min-h-0 flex-col border-cyan/20 md:w-[330px] md:shrink-0 md:border-r ${current ? "hidden md:flex" : "flex flex-1 md:flex-none"}`}>
             <div className="flex items-center gap-2 border-b border-cyan/20 p-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes…" aria-label="Search notes"
@@ -87,7 +91,7 @@ export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPa
               </label>
             </div>
             <div className="panel-body text-[12.5px]">
-              {vault && vault.count === 0 && !searching && <EmptyVault onOpen={openVault} />}
+              {vault && vault.count === 0 && !searching && <EmptyVault onOpen={openVault} onSources={() => showSource(null)} proposals={proposals} />}
               {searching && <SearchResults hits={hits} err={searchErr} current={ref} onPick={setRef} />}
               {!searching && vault && vault.count > 0 && shown.length === 0 && <div className="text-mute">No notes match.</div>}
               {!searching && groups.map(([folder, list]) => (
@@ -108,8 +112,9 @@ export default function Bookshelf({ panel, sources, onClose }: { panel?: VaultPa
           </aside>
 
           <section className={`min-h-0 min-w-0 flex-1 flex-col ${current ? "flex" : "hidden md:flex"}`}>
-            {current ? <NoteView meta={current} onBack={() => setRef(null)} onOpen={(uid) => setRef(uid)} known={new Set(notes.map((n) => n.ref))} />
-              : <div className="m-auto p-6 text-center text-[12.5px] text-mute">{vault && vault.count > 0 ? "Pick a note to read it." : ""}</div>}
+            {current ? <NoteView meta={current} onBack={() => setRef(null)} onOpen={(uid) => setRef(uid)} onSource={showSource} known={new Set(notes.map((n) => n.ref))} />
+              : vault && vault.count > 0 ? <div className="m-auto p-6 text-center text-[12.5px] text-mute">Pick a note to read it.</div>
+              : <HowNotesArrive onSources={() => showSource(null)} />}
           </section>
         </div>}
       </div>
@@ -188,17 +193,68 @@ function Snippet({ text }: { text: string }) {
   })}</>;
 }
 
-function EmptyVault({ onOpen }: { onOpen: () => void }) {
+/** The path from your files to a note, shown while the vault is empty (D17, D11). */
+const FLOW: [string, string][] = [
+  ["Sources", "Sage OS keeps a read-only copy of the folders you chose and makes their text searchable. The originals are never touched."],
+  ["Build notes", "It proposes starter notes: your markdown files as they are, plus one index note per folder listing what's in it. Draft asks an agent to write notes that cite the documents."],
+  ["Inbox", "Every proposal waits for you with the exact change shown. Secret-looking text is held back. You approve or reject it."],
+  ["Bookshelf", "Approved notes land here as plain markdown, searchable by you and by every agent. History can undo any batch exactly."],
+];
+
+/** Where a note came from (its `source:`, K6). A cited file opens in Sources; a folder (what collection
+ *  notes cite, D17) is just named. */
+function Cited({ source, folder, onOpen }: { source: string; folder: boolean; onOpen: (doc: { source: string; path: string }) => void }) {
+  const m = /^sources\/([^/]+)\/(.+)$/.exec(source);
+  const file = m && !folder;
   return (
-    <div className="flex flex-col gap-2 text-[12.5px] text-ink/80">
-      <div className="display text-[11px] text-cyan">The vault is empty</div>
-      <p>Notes are plain markdown files in this folder. Sage OS never writes one on its own. Agents propose notes and you approve them in the inbox, or you add files here yourself.</p>
-      <button className="chip self-start" onClick={onOpen}>OPEN VAULT</button>
+    <div className="mt-2 flex items-baseline gap-1.5 text-[11px]">
+      <span className="text-mute">Built from:</span>
+      {m && file
+        ? <button className="chip min-w-0 truncate normal-case tracking-normal" title="Open this document in Sources" onClick={() => onOpen({ source: m[1], path: m[2] })}>{m[2]}</button>
+        : <span className="min-w-0 truncate font-mono text-ink/80" title={source}>{m ? `${m[2]}/ (folder in ${m[1]})` : source}</span>}
     </div>
   );
 }
 
-function NoteView({ meta, onBack, onOpen, known }: { meta: NoteMeta; onBack: () => void; onOpen: (uid: string) => void; known: Set<string> }) {
+function HowNotesArrive({ onSources }: { onSources: () => void }) {
+  return (
+    <div className="m-auto flex max-w-[560px] flex-col gap-4 p-6" data-testid="how-notes">
+      <div className="display text-[11px] text-mute">How notes get here</div>
+      <ol className="flex flex-col gap-3">
+        {FLOW.map(([step, what], i) => (
+          <li key={step} className="flex gap-3">
+            <span className="font-dot glow-cyan w-6 shrink-0 text-[20px] leading-none">{i + 1}</span>
+            <span><span className="display text-[13px] text-cyan">{step}</span>
+              <span className="mt-0.5 block text-[12.5px] leading-snug text-ink/85">{what}</span></span>
+          </li>
+        ))}
+      </ol>
+      <button className="chip self-start" onClick={onSources}>START WITH SOURCES →</button>
+    </div>
+  );
+}
+
+function EmptyVault({ onOpen, onSources, proposals }: { onOpen: () => void; onSources: () => void; proposals: number }) {
+  return (
+    <div className="flex flex-col gap-2 text-[12.5px] text-ink/80">
+      <div className="display text-[11px] text-cyan">The vault is empty</div>
+      <p>Notes are plain markdown files in this folder. Sage OS never writes one on its own. Agents propose notes and you approve them in the inbox, or you add files here yourself.</p>
+      {proposals > 0 ? (
+        <p className="border-l-2 border-amber/60 pl-2 text-amber">{proposals} note proposal{proposals === 1 ? " is" : "s are"} waiting in the inbox. Approve one and its notes appear here.</p>
+      ) : (
+        <p className="border-l-2 border-cyan/50 pl-2">To start from your own files: <b>Sources</b> → <b>Build notes</b> → <b>Propose starter notes</b>.</p>
+      )}
+      <span className="flex gap-2">
+        <button className="chip md:hidden" onClick={onSources}>GO TO SOURCES</button>
+        <button className="chip mute" onClick={onOpen}>OPEN VAULT</button>
+      </span>
+    </div>
+  );
+}
+
+function NoteView({ meta, onBack, onOpen, onSource, known }: {
+  meta: NoteMeta; onBack: () => void; onOpen: (uid: string) => void; onSource: (doc: { source: string; path: string }) => void; known: Set<string>;
+}) {
   const [note, setNote] = useState<NoteFull | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [source, setSource] = useState(false);
@@ -244,7 +300,7 @@ function NoteView({ meta, onBack, onOpen, known }: { meta: NoteMeta; onBack: () 
         {err && <div className="text-red">{err}</div>}
         {!n && !err && <div className="text-mute">loading…</div>}
         {n && (source
-          ? <pre className="whitespace-pre-wrap font-mono text-[12px] text-ink/85">{n.source}</pre>
+          ? <pre className="whitespace-pre-wrap font-mono text-[12px] text-ink/85">{n.text}</pre>
           : <div className="md"><Markdown remarkPlugins={[remarkGfm]} components={{
               a: ({ href, children }) => /^https?:\/\//.test(href ?? "")
                 ? <a href={href} target="_blank" rel="noreferrer noopener">{children}</a> : <span title={href}>{children}</span>,
@@ -259,6 +315,7 @@ function NoteView({ meta, onBack, onOpen, known }: { meta: NoteMeta; onBack: () 
           {meta.tags.map((t) => <span key={t} className="chip mute">#{t}</span>)}
           <span className="ml-auto font-mono text-mute" title={meta.uid ?? "no uid"}>{meta.path}</span>
         </div>
+        {meta.source && <Cited source={meta.source} folder={meta.tags.includes("collection")} onOpen={onSource} />}
       </div>
     </>
   );

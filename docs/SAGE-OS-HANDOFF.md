@@ -40,7 +40,7 @@ system · **planned** = not built.
 
 | Area | State | How checked |
 |---|---|---|
-| Hub (FastAPI) + UI (React) | **works**, v0.9.0 (2 Oct) | `pytest` 164/164 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
+| Hub (FastAPI) + UI (React) | **works**, v0.10.0 (3 Oct; guide + tour, D18) | `pytest` 165/165 pass; `npm run build` clean (tsc + vite); hub running, `/api/smoke` 18/18 |
 | Connectors (A1): agents + model servers behind one interface | **works** | A1 gate 30 Sep: Claude chat + inbox deny, Hermes 2 turns through the connectors |
 | Live dashboard: board, GPU/RAM lane, service health, safety feed, sessions | **works** | Phase 1 gates (README history): task visible 4.8 s after CLI create, model swap 0.3 s, guard block 0.3 s, router down/up detected |
 | Claude Code pane (Agent SDK, subscription login) | **works** | Phase 2 gate: `Write` request → inbox card → *Allow once* → file written; *Deny + note* → no write, note reached Claude verbatim |

@@ -75,8 +75,8 @@ class BookshelfTools:
         note = await asyncio.to_thread(self.hub.vault.read, uid)
         if note is None:
             return {"error": f"No note with uid {uid}. Use search_notes to find uids."}
-        out = {k: note[k] for k in ("uid", "title", "path", "type", "status", "origin", "agent", "created", "updated",
-                                    "tags", "links", "archived")}
+        out = {k: note[k] for k in ("uid", "title", "path", "type", "status", "origin", "agent", "source", "created",
+                                    "updated", "tags", "links", "archived")}   # source: follow it with read_source
         if note.get("sensitive"):
             out["body"] = None
             out["withheld"] = f"This note looks like it contains {note['sensitive']}, so its text isn't shared with agents."

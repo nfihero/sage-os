@@ -5,17 +5,18 @@ import { useNow } from "../util";
 import { SafetyChip } from "./Safety";
 import { UsageBars } from "./Usage";
 
+// Hermes' services, named for what they do; the tooltip keeps the technical name and port.
 const SERVICES = [
-  ["gateway", "Gateway", ":8642"],
-  ["router", "Router", ":18434"],
-  ["sidecar", "Guardian", ":18435"],
+  ["gateway", "Hermes", "Hermes gateway :8642, the local agent"],
+  ["router", "Models", "llama.cpp router :18434, serves the local models"],
+  ["sidecar", "Guard", "Guardian sidecar :18435, checks the local agent's commands"],
 ] as const;
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
-  onBookshelf: () => void;
+  onBookshelf: () => void; onGuide: () => void;
 }) {
   const vault = hub.panels.vault;
   const now = useNow(1000);
@@ -38,15 +39,15 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
       </div>
 
       <div className="flex items-center gap-4">
-        {SERVICES.map(([k, label, port]) => {
+        {SERVICES.map(([k, label, what]) => {
           const s = h?.[k];
           const cls = !s ? "idle" : s.up ? "up" : "down";
-          const tip = s ? (s.up ? `${label} up · ${s.ms} ms${s.version ? ` · v${s.version}` : ""}` : `${label} DOWN · ${s.error ?? ""}`) : "waiting";
+          const tip = `${what}
+` + (s ? (s.up ? `up · ${s.ms} ms${s.version ? ` · v${s.version}` : ""}` : `DOWN · ${s.error ?? ""}`) : "waiting");
           return (
             <span key={k} title={tip} data-service={k} data-up={s?.up ?? ""} className="readout flex items-center gap-1.5 text-[12px] tracking-[.12em]">
               <span className={`light ${cls}`} />
               {!compact && <span className={s && !s.up ? "text-red" : "text-ink/85"}>{label.toUpperCase()}</span>}
-              {!compact && <span className="text-mute">{port}</span>}
             </span>
           );
         })}
@@ -59,6 +60,7 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         )}
         <SafetyChip safety={hub.panels.safety ?? []} unseen={unseen} onClick={onSafety} />
         <span className={`chip ${inboxCount ? "amber pulse-amber" : "mute"}`} title="Items waiting for you in the inbox">INBOX <span className="font-dot text-[15px] leading-none">{inboxCount}</span></span>
+        <button className="chip" onClick={onGuide} data-tour="guide" title="Why Sage OS exists, and a tour of the screen">? GUIDE</button>
         <button className="chip" onClick={onBookshelf} data-testid="bookshelf-open"
           title={vault ? `Bookshelf: ${vault.count} notes${vault.problems ? `, ${vault.problems} with problems` : ""}` : "Bookshelf"}>
           BOOKSHELF <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>

@@ -12,6 +12,42 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-03
+
+Demo readiness (D18): the app now explains why it exists and how to use it. Gate: the user's demo
+(docs/DEMO.md); checked here: pytest 165/165, UI build clean, smoke 18/18, guide and tour run at
+1440×900 and 375×812 with no sideways scroll, the citation link opens Sources (throwaway hub).
+
+### Added
+- **Guide** (**? GUIDE** in the top bar; opens by itself on a first visit, or with `?guide` in the
+  URL): what a team needs and where it is in Sage OS (D1), the four rules (D4, D6, D11, D15) and the
+  limit (D4), plus a live line of notes, source documents and items waiting for you.
+- **Tour**: seven steps that spotlight each panel with two sentences on what it does. Arrow keys or
+  Enter to move, Esc to leave; on a phone the cards are centred.
+- **How notes get here**: an empty Bookshelf shows the four-step path (Sources → Build notes → Inbox
+  → Bookshelf) and a button to start, and says when proposals are already waiting in the inbox.
+- **Built from:** a note shows its `source:`; a cited file opens in Sources.
+- `docs/DEMO.md`: a 5–7 minute demo script with a prep checklist and fixes for what can go wrong.
+
+### Changed
+- Panel labels say what each panel is (*Lead agent · Answers by default*, *Inbox · Needs you*, …)
+  instead of "Panel / Orchestrator". Top-bar lights read **HERMES · MODELS · GUARD**; ports moved to
+  the tooltip.
+- Every control shows a focus ring when reached by keyboard.
+
+### Fixed
+- The browser could keep serving the previous UI build after an update (index.html was cached
+  heuristically); the page now revalidates on every load. One Ctrl+F5 is needed the first time.
+
+### Fixed (review, 3 Oct)
+- Reading a note returned the whole file under `source`, hiding its citation; `/api/vault/note` now
+  returns the citation as `source` and the file as `text`, and the agents' `read_note` includes
+  `source` so they can follow it with `read_source`.
+- On a first visit the key that skipped the boot screen also dismissed the guide; the guide now
+  waits for the boot screen. Enter on a focused tour button does what that button says.
+- The tour spotlight follows layout changes (panels sliding in, the top bar wrapping).
+- *Built from* tells folders from files by the collection tag, not by guessing from an extension.
+
 ## [0.9.0] — 2026-10-02
 
 Gate: K6 pass (redefined, D17) — from the Drive source alone, Sage OS proposed 51 starter notes in 9

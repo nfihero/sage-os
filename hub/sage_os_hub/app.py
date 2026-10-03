@@ -770,7 +770,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             f = dist / path
             if path and f.is_file() and dist in f.resolve().parents:
                 return FileResponse(f)
-            return FileResponse(dist / "index.html")
+            # Revalidate the page every load so a rebuilt UI shows up at once (assets are content-hashed).
+            return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
     else:
         @app.get("/")
         def no_ui():
