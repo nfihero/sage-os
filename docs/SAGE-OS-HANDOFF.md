@@ -15,6 +15,81 @@ system · **planned** = not built.
 
 ---
 
+## 0. Start here (handoff of 3 Oct 2026, v0.11.0)
+
+Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
+`DECISIONS.md` (D1–D21), those win.
+
+### Where things are
+- **Version 0.11.0**, `main` at `09a77f7`, tags v0.4.0–v0.11.0. Checked 3 Oct: `pytest` 170/170,
+  `npm run build` clean, `/api/smoke` 18/18, Claude CLI found and signed in. GitHub `origin/main` is
+  at `59c0d4e` (v0.10.0): **v0.10.1 and v0.11.0 are not pushed yet** (the user's Mac needs them).
+- **Built:** dashboard, Claude + Hermes chat through connectors (A1), approvals inbox, Bookshelf
+  K1–K6 (read, search, propose → approve → exact undo, secret screening, MCP tools for both agents,
+  notes built from sources), Drive source library (S1), guide + tour + demo script (D18,
+  `docs/DEMO.md`), portable hub for macOS and Windows (3a, D21).
+- **Live data:** the vault is **empty** (0 notes). The inbox holds 9 starter-note cards (51 notes,
+  from *Build notes*), Hermes' FIN 101 draft `p_90a0ac40ed` (5 notes; long titles, tags in body, no
+  `source:`), and kanban `t_549737c1` (budget parser,
+  blocked on the user's spending categories). The Drive copy has 476 files in `data/sources/drive`.
+
+### Next, in the order the user is leaning toward (confirm before starting)
+1. **K8 briefing packs** (D20 + amendment): per prompt, notes + source excerpts attached to each
+   message, shown **alongside** it in a *Reading* strip that also lists the agent's own reads; a ✕ on
+   any item stops/resends or corrects the next turn and drops it from later packs; per-chat toggle;
+   stored per message; phone width from the start (D21).
+2. **Phase 3b** (D21): Tailscale Serve to the PC + **passkey** login (WebAuthn), devices added from
+   the PC with a one-time code, revocable; localhost stays login-free; phone layout pass. Needs the
+   user's Tailscale account (Claude can't create accounts).
+3. **S2 OCR** (D19): Windows' built-in OCR first (`Windows.Media.Ocr`, en-US present), 37 images +
+   16 scanned PDFs waiting; behind an engine interface so a Mac engine can follow.
+4. Then K9 (save to Bookshelf from chat), K7 (batch review), Phase 4 (Claude ↔ Hermes handoff), A3
+   (own board), Phase 6 / D8 (team chat).
+
+### Waiting on the user
+- **Push** v0.10.1 + v0.11.0 (`git push origin main --tags`).
+- **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
+  Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
+  user's explicit OK and should be shown as a diff first (D13).
+- Review the inbox cards (approve course material; Downloads and Java exercises are noisy).
+- Delete the stale alias scripts (`swift.bat`, `coder.bat`, `guardian.bat`)? Still unanswered.
+- Spending categories for `t_549737c1`.
+- Who the product is for (D1 open question): gates pricing, accounts and installers (D21).
+
+### How the user wants work done
+- **Every pass:** update all docs (README, STATUS, ROADMAP, MISSION, this file, CHANGELOG), record
+  choices in `DECISIONS.md` as new entries (never rewrite history), give each roadmap step its own
+  minor version + CHANGELOG entry + local tag; docs-only = patch version. Version strings live in
+  `hub/sage_os_hub/__init__.py`, `hub/pyproject.toml`, `ui/package.json`, `ui/package-lock.json` (×2).
+- **After building:** run `/code-review high --fix`, and `no-ai-slop` on any user-facing copy;
+  `vibe-security` when auth, network exposure, secrets or agent input change (Phase 3b must re-run
+  the D14 audit). Verify UI changes in the browser pane at 1440×900 and 375×812.
+- **Commit when it makes sense; push only when the user says "push".** Ask before destructive or
+  persistent system changes (Hermes config, deleting files, models). Bonsai models are parked.
+  Never handle the user's credentials; `G:\` is read-only; `data-private/` never committed.
+- The user prefers plain-language explanations (non-CS framing), recommendations over surveys, and
+  asks before big direction changes.
+
+### Gotchas learned 1–3 Oct (save time)
+- Long-lived processes: start detached with `Invoke-CimMethod Win32_Process Create` (the hub:
+  `hub\.venv\Scripts\python.exe -m sage_os_hub`, cwd `sage-os`); kill by matching `sage_os_hub` in
+  the command line.
+- Patch scripts: inline heredocs with backslashes or quotes break (bash or Python escapes); write the
+  script to the scratchpad and run it, or use the Edit tool. Assert each replacement count.
+- PowerShell's parser rejects some constructs (`-replace '\\','/'`, mixed `cmd /c`); use bash or Python.
+- FastAPI `TestClient`: one context per app (a second context finds its DBs closed).
+- After a UI rebuild the browser may need one Ctrl+F5 (index.html now revalidates; old caches don't).
+- The browser pane's screenshots lag CSS transitions on large shadows next to the WebGL orbs; check
+  geometry with JS, not only screenshots.
+- Hermes caches an MCP server's tool list at first connect: after adding Bookshelf tools, toggle
+  `mcp_servers.bookshelf.enabled` off and on in Hermes `config.yaml` (YAML-checked edit) and wait for
+  the reconcile line in `gateway.log`.
+- Never use the Hermes API key from `.env` in diagnostics; go through the hub.
+- A throwaway hub for UI checks: `SAGE_OS_CONFIG=<scratch>/config.toml` with its own vault and port,
+  **no `[[sources]]`** (the sources root and index are not configurable and would hit the real copy).
+
+---
+
 ## 1. What Sage OS is
 
 - **One local workspace in a browser tab** where the owner (one person, a finance + AI student) talks to
@@ -176,9 +251,9 @@ agents should reach it only through these surfaces, never through its files dire
 1. ~~Language and home of the rebuilt core~~ **Answered (D2):** Python package inside `sage-os`; the macOS BookShelf app is retired.
 2. ~~Which vault becomes canonical~~ **Answered (D3):** none exists; start a new local vault and import existing notes through approval. Since D17 an existing vault (Obsidian, llm-vault) is imported by adding it as a `[[sources]]` entry.
 3. ~~Is any vault synced by Google Drive?~~ **Answered (D3):** no; personal files on `G:\` are Drive-synced and stay read-only to agents.
-4. **Where does review happen** — Sage OS inbox (proposals as inbox cards), BookShelf's review UI, or both? Batch approval and per-agent trust levels?
-5. **Which agents may propose writes:** Claude only, Hermes too, kanban workers?
-6. **Agent provenance format:** accept `origin: agent` + `agent: claude:<session> | hermes:default:<session>`?
+4. ~~Where does review happen~~ **Answered (D11):** the Sage OS inbox; batch approval and per-agent trust are K7.
+5. ~~Which agents may propose writes~~ **Answered (K5, D16):** Claude and Hermes through MCP; kanban workers once Phase 4/A3 give them the tools.
+6. ~~Agent provenance format~~ **Answered (D9, D11):** `origin: agent` + `agent: <id>`, `edited_by` for edits, `origin: imported` reserved for `sage-os:importer` (D17).
 7. **Product scope:** "potential full product" — for whom beyond you (students? finance learners? anyone with a local GPU?), and does it keep BookShelf's "personal memory, no collaboration" stance? Product-izing also hits hard dependencies: Windows-only today, Hermes install, a Claude subscription, a capable GPU.
 8. **Private financial data** (bank/card statements under `data-private/`): must it stay out of the knowledge base entirely?
-9. **Auth ownership** once Phase 3 exposes Sage OS to the tailnet: does BookShelf trust Sage OS's identity, or authenticate agents itself?
+9. ~~Auth ownership~~ **Answered (D2, D21):** Bookshelf is part of the hub, so the hub's passkey login (Phase 3b) covers it; agents are identified by the hub (D16).

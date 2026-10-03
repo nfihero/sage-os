@@ -12,6 +12,15 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-10-03
+
+Docs only: handoff for a fresh session.
+
+### Changed
+- `SAGE-OS-HANDOFF.md` gains **§0 Start here**: current state, next steps in order (K8, 3b, S2),
+  what waits on the user, how the user wants work done, and gotchas from 1–3 Oct. Open questions 4,
+  5, 6 and 9 marked answered (D9, D11, D16, D17, D21).
+
 ## [0.11.0] — 2026-10-03
 
 Phase 3a, portable hub (D21). Gate: the same repo starts on macOS and Windows; checked here on
