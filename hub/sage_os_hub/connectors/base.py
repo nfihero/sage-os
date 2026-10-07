@@ -69,8 +69,14 @@ class AgentConnector(ABC):
         """Start a session; returns at least {"id": ...}."""
 
     @abstractmethod
-    async def send(self, session_id: str, text: str) -> None:
-        """Queue a user message; output streams as chat frames. Raises AgentBusy if mid-turn."""
+    async def send(self, session_id: str, text: str, shown: str | None = None) -> None:
+        """Queue a user message; output streams as chat frames. Raises AgentBusy if mid-turn.
+        `text` is what the agent gets (the message plus any briefing pack, K8); `shown` is what the
+        user typed, for transcripts the connector keeps itself."""
+
+    def busy(self, session_id: str) -> bool:
+        """Is the session mid-turn? (A ✕ on the reading strip stops and resends only a busy turn.)"""
+        return False
 
     async def interrupt(self, session_id: str) -> None:
         raise InvalidRequest(f"{self.label} can't be interrupted")

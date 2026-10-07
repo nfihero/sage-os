@@ -75,6 +75,7 @@ class BookshelfTools:
         note = await asyncio.to_thread(self.hub.vault.read, uid)
         if note is None:
             return {"error": f"No note with uid {uid}. Use search_notes to find uids."}
+        await self.hub.note_read(agent, "note", {"uid": note["ref"]}, note["title"])   # K8 Reading strip
         out = {k: note[k] for k in ("uid", "title", "path", "type", "status", "origin", "agent", "source", "created",
                                     "updated", "tags", "links", "archived")}   # source: follow it with read_source
         if note.get("sensitive"):
@@ -101,6 +102,8 @@ class BookshelfTools:
         doc = await asyncio.to_thread(self.hub.sources.read, source, path, offset, 20_000)
         if doc is None:
             return {"error": f"No source file {source}/{path}. Use search_sources to find one."}
+        if offset == 0:                                    # K8 Reading strip: once per document, not per page
+            await self.hub.note_read(agent, "source", {"source": source, "path": path}, path.rsplit("/", 1)[-1])
         return doc | {"caution": UNTRUSTED.replace("Note text", "Source text").replace("inside a note", "inside a source")}
 
     async def proposals(self, agent: str, status: str | None = None) -> dict:

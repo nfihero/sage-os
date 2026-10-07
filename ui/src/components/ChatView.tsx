@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ChatItem } from "../types";
+import type { Briefing, ChatItem } from "../types";
 import { clock } from "../util";
+import { briefingFor, ReadingStrip, ReadingToggle, useReading } from "./Reading";
 
 type Tone = "orange" | "cyan";
 
@@ -15,19 +16,31 @@ const SAFE_MD: Components = {
 };
 
 /** One transcript + composer. Items are the durable history; `live` is the streaming tail. */
-export default function ChatView({ items, live, busy, tone, placeholder, onSend, onStop, disabled, banner }: {
+export default function ChatView({ items, live, busy, tone, placeholder, onSend, onStop, disabled, banner, chat }: {
   items: ChatItem[]; live: string; busy: boolean; tone: Tone; placeholder: string;
   onSend: (text: string) => Promise<void>; onStop?: () => void; disabled?: string | null; banner?: React.ReactNode;
+  chat?: string | null;     // pane id: shows the K8 Reading strips and toggle for this chat
 }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  const reading = useReading(chat ?? null);
+  const strips = useMemo(() => {     // user item id -> its briefing, matched by text in order
+    const out = new Map<ChatItem["id"], Briefing>();
+    let after = 0;
+    for (const it of items) {
+      if (it.kind !== "user") continue;
+      const b = briefingFor(reading.state?.briefings, String(it.data?.text ?? ""), it.ts, after);
+      if (b) { out.set(it.id, b); after = b.id; }
+    }
+    return out;
+  }, [items, reading.state]);
 
   useEffect(() => {
     const el = scroller.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [items, live]);
+  }, [items, live, reading.state]);
 
   const submit = async () => {
     const t = text.trim();
@@ -48,7 +61,12 @@ export default function ChatView({ items, live, busy, tone, placeholder, onSend,
       <div ref={scroller} className="panel-body flex flex-col gap-2.5 text-[13.5px] leading-relaxed"
         onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}>
         {items.length === 0 && !live && <div className="m-auto text-mute">No messages yet.</div>}
-        {items.map((it) => <div key={it.id} className="chat-in"><Item it={it} tone={tone} /></div>)}
+        {items.map((it) => (
+          <div key={it.id} className="chat-in">
+            <Item it={it} tone={tone} />
+            {chat && strips.has(it.id) && <ReadingStrip b={strips.get(it.id)!} chat={chat} />}
+          </div>
+        ))}
         {live && <div className={`md ${tone === "orange" ? "md-orange" : ""}`}><Markdown remarkPlugins={[remarkGfm]} components={SAFE_MD}>{live}</Markdown><span className="caret" /></div>}
         {busy && !live && <div className={`text-[12px] ${tone === "orange" ? "glow-orange" : "glow-cyan"}`}>working<span className="dots" /></div>}
       </div>
@@ -61,6 +79,7 @@ export default function ChatView({ items, live, busy, tone, placeholder, onSend,
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
             className={`min-w-0 flex-1 resize-none border bg-void/80 px-2.5 py-2 text-[13.5px] text-ink outline-none placeholder:text-mute
               ${tone === "orange" ? "border-orange/40 focus:border-orange" : "border-cyan/35 focus:border-cyan"}`} />
+          {chat && reading.state && <ReadingToggle enabled={reading.state.settings.enabled} onToggle={() => { reading.toggle().catch((e) => setErr(String(e.message))); }} />}
           {busy && onStop ? (
             <button onClick={onStop} className="chip red h-9 px-3">STOP</button>
           ) : (

@@ -132,7 +132,7 @@ export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
         </aside>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {cur ? (
-            <ChatView items={items} live={live} busy={busy} tone="orange" banner={banner}
+            <ChatView items={items} live={live} busy={busy} tone="orange" banner={banner} chat={`claude:${cur.id}`}
               placeholder="Ask Claude to plan, review, or work… (Enter to send, Shift+Enter for a new line)"
               disabled={!panel?.cli ? "claude.exe not found. Install the Claude desktop app." : null}
               onSend={async (t) => {

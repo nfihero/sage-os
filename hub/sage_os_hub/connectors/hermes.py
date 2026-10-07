@@ -46,12 +46,15 @@ class HermesConnector(AgentConnector):
         except Exception as exc:
             raise AgentError(f"Hermes: {exc}") from exc
 
-    async def send(self, session_id: str, text: str) -> None:
-        sid = _sid(session_id)
+    async def send(self, session_id: str, text: str, shown: str | None = None) -> None:
+        sid = _sid(session_id)       # Hermes keeps the transcript, pack included; the UI hides the pack block
         try:
             await self.chat.send(self.profile, sid, text)
         except RuntimeError as exc:
             raise AgentBusy(str(exc)) from exc
+
+    def busy(self, session_id: str) -> bool:
+        return self.pane(session_id) in self.chat.runs
 
     async def interrupt(self, session_id: str) -> None:
         await self.chat.stop(self.profile, _sid(session_id))

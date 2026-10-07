@@ -8,13 +8,14 @@ import Scramble from "./Scramble";
 import { useOrbState } from "../useOrbState";
 
 const ACTIVE_S = 90;
+const PACK_MARK = "\n\n⟦Sage OS reading pack⟧";   // K8: Hermes stores the pack with the message; the strip shows it instead
 
 /** Hermes' message rows -> chat items. tool_calls arrive as a Python repr string, so names are regexed out. */
 function toItems(rows: any[]): ChatItem[] {
   const out: ChatItem[] = [];
   for (const m of rows) {
     const ts = Number(m.timestamp) || 0;
-    if (m.role === "user") out.push({ id: m.id, ts, kind: "user", data: { text: m.content } });
+    if (m.role === "user") out.push({ id: m.id, ts, kind: "user", data: { text: String(m.content ?? "").split(PACK_MARK)[0] } });
     else if (m.role === "assistant") {
       if (m.content) out.push({ id: m.id, ts, kind: "text", data: { text: m.content } });
       if (m.tool_calls) {
@@ -139,7 +140,7 @@ function HermesChat({ profile, s, busy }: { profile: string; s: Session; busy: b
     </div>
   );
   return (
-    <ChatView items={items} live={live} busy={busy} tone="cyan" banner={banner}
+    <ChatView items={items} live={live} busy={busy} tone="cyan" banner={banner} chat={pane}
       placeholder={`Message Hermes (${profile})… runs on the local GPU`}
       onSend={async (t) => {
         setItems((xs) => [...xs, { id: `u-${Date.now()}`, ts: Date.now() / 1000, kind: "user", data: { text: t } }]);

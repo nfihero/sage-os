@@ -414,8 +414,8 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 
 - **Date / by:** 2026-10-03, user ("build in a way that allows the app to work from Mac and Windows,
   and is operable by phone"; chose the PC as home base and passkeys); design by Claude
-- **Status:** accepted. Sets the shape of Phase 3; product distribution below is a direction, not a
-  decision.
+- **Status:** accepted; point 1 (PC as home base) **superseded by D22** (every device runs Sage OS,
+  notes sync). Sets the shape of Phase 3; product distribution below is a direction, not a decision.
 - **Decision (personal use):**
   1. **The Windows PC is home base.** It runs the hub and holds the data (notes, Drive copy,
      journal) and the GPU models. The Mac and the phone are screens: they open Sage OS in a browser
@@ -449,6 +449,48 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   since edits to the hook are guarded).
 - **Revisit if:** the PC being off is a real problem (then a small always-on box, or the either-host
   setup with synced notes), or the audience question in D1 is answered.
+
+## D22 — A shippable app for anyone with several AIs and scattered notes; nothing assumes this PC
+
+- **Date / by:** 2026-10-06, user ("a shippable, installable app that the average person who uses
+  multiple AIs and has scattered notes can create a smart 'Wikipedia for themselves' that also
+  supplements their AI usage"; chose options B + C below; asked for Google Docs, more file types and our
+  own llama server); design by Claude
+- **Status:** accepted. Answers D1's audience question. Supersedes D21's "the PC is home base" (D21.1);
+  keeps D21.2 (code runs on macOS and Windows), D21.3 (passkeys) and D21.4 (phone-first screens).
+  Puts D4.2 into effect (Sage OS installs and manages `llama-server`; it still doesn't rewrite it).
+- **Audience:** someone who uses more than one AI (ChatGPT, Claude, Gemini, a local model) and keeps
+  notes and documents in several places. No GPU, no Hermes and no terminal assumed.
+- **Decision:**
+  1. **Core needs only a folder.** Notes, search, sources, the inbox and briefing packs work on any
+     Mac or Windows laptop with no particular AI installed. Everything else is a connector, and a
+     missing one shows as *not connected*, never as a broken panel.
+  2. **Bring your own AI.** v1 connects Claude, ChatGPT, Gemini and local models. Cloud chat models go
+     through one OpenAI-compatible chat connector (OpenAI and Gemini both offer that API); Claude Code
+     keeps its own connector. Hermes stays an optional connector for those who have it.
+  3. **Our own local engine.** Sage OS downloads and runs the stock `llama-server` (CUDA, Vulkan or CPU
+     on Windows; Metal on Mac) and offers a curated model catalog. Each model shows its download size,
+     the memory it needs and whether it fits this machine, so a 4B model on a laptop and a 31B model on
+     a gaming PC both work. Downloads resume and are checked against a hash; gated models need the user
+     to accept the licence themselves. Ollama and LM Studio still plug in as endpoints.
+  4. **Hardware is the user's choice, not a requirement.** A cloud AI plus a small local model runs on
+     modest hardware; big local models need a big GPU. The app detects what's there and says so.
+  5. **Google Drive is a connector, not a drive letter.** Google Docs, Sheets and Slides are read
+     through the Drive API (exported to Word, Excel and PowerPoint formats, then indexed like any
+     other file). Drive for desktop stays a fallback for plain files.
+  6. **Every device runs Sage OS; notes sync (option B).** Notes are plain markdown, so each device
+     keeps a copy and syncs through a folder the user already trusts (iCloud, OneDrive, Syncthing)
+     first. Each device does its own search and AI calls; local models run where the hardware allows.
+  7. **Optional relay later (option C):** a Sage-run relay for phone access away from home, the
+     natural paid tier. Same Wi-Fi + passkey stays free.
+- **Costs / limits:** we now own an engine's packaging (binaries per OS and GPU, updates, crash
+  handling). Google's `drive.readonly` scope is *restricted*: fine for personal use with the user's own
+  OAuth client in testing mode, but a public release needs Google's verification and security
+  assessment, or the narrower `drive.file` scope with a file picker. Sync (B) needs conflict handling
+  that a single home base didn't. Hermes-only features (kanban board, guardian) stay Hermes-only until
+  A3 replaces them.
+- **Revisit if:** sync conflicts are common (then a home-base mode as in D21), or Google verification
+  is out of reach (then `drive.file` + picker).
 
 ---
 

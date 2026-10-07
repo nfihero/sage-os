@@ -114,6 +114,15 @@ html { background: #000; }
 /* dot-matrix face for big numerals (clock); fixed-width digits so it doesn't jitter */
 .font-dot { font-family: "Doto", var(--font-mono); font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 
+/* ---- K8 Reading strip: what an answer was based on ---- */
+.reading-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 2px 1px 6px;
+  border: 1px solid color-mix(in oklab, var(--a) 35%, transparent); color: var(--color-ink); }
+.reading-item.agent { border-style: dashed; }
+.reading-item .x { padding: 0 4px; color: var(--color-mute); }
+.reading-item .x:hover { color: var(--color-red); }
+.reading-item.dropped { opacity: .45; text-decoration: line-through; }
+.reading-item.flagged { border-color: var(--color-red); color: var(--color-red); }
+
 /* orb slot size follows the Claude pane's width */
 .orb-host { --orb: 112px; }
 @container (min-width: 640px) { .orb-host aside { --orb: 220px; } }

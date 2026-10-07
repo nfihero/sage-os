@@ -196,10 +196,13 @@ class ClaudeSession:
         self.status = st
         self.mgr.publish_sessions()
 
-    async def send(self, text: str):
-        if self.task and not self.task.done():
+    def busy(self) -> bool:
+        return bool(self.task and not self.task.done())
+
+    async def send(self, text: str, shown: str | None = None):
+        if self.busy():
             raise AgentBusy("Claude is still working on the previous message")
-        self.mgr.item(self.id, "user", {"text": text})
+        self.mgr.item(self.id, "user", {"text": shown if shown is not None else text})
         self.task = asyncio.create_task(self._run(text))
 
     async def _run(self, text: str):
@@ -384,13 +387,18 @@ class ClaudeConnector(AgentConnector):
     async def create_session(self, title: str | None = None, **options) -> dict:
         return self.create(title, options.get("cwd"), options.get("model"))
 
-    async def send(self, sid: str, text: str):
+    async def send(self, sid: str, text: str, shown: str | None = None):
         s = self.get(sid)
+        if s.busy():
+            raise AgentBusy("Claude is still working on the previous message")
         if s.row["title"] == "New session":
-            s.row["title"] = text.strip().splitlines()[0][:60] or "New session"
+            s.row["title"] = (shown or text).strip().splitlines()[0][:60] or "New session"
         s.row["updated"] = time.time()
         self.save(s.row)
-        await s.send(text)
+        await s.send(text, shown)
+
+    def busy(self, sid: str) -> bool:
+        return sid in self.sessions and self.sessions[sid].busy()
 
     async def interrupt(self, sid: str):
         await self.get(sid).interrupt()

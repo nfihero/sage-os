@@ -275,8 +275,22 @@ class SourceLibrary:
             return {"sources": out}
 
     def search(self, text: str, limit: int = 20) -> dict:
+        return self._search(text, fts_query(text), limit)
+
+    def doc_freq(self, term: str) -> tuple[int, int]:
+        """-> (documents containing the term or a word starting with it, all indexed documents)."""
+        q = fts_query(term)
+        with self.lock:
+            n = self.db.execute("SELECT COUNT(*) FROM fts WHERE fts MATCH ?", (q,)).fetchone()[0] if q else 0
+            return n, self.db.execute("SELECT COUNT(*) FROM fts").fetchone()[0]
+
+    def search_raw(self, query: str, limit: int = 20) -> list[dict]:
+        """An FTS5 query built by the caller (briefing packs use OR across key terms)."""
+        return self._search(query, query, limit)["results"]
+
+    def _search(self, text: str, q: str | None, limit: int) -> dict:
         t0 = time.perf_counter()
-        q, rows = fts_query(text), []
+        rows = []
         if q:
             with self.lock:
                 rows = self.db.execute("""

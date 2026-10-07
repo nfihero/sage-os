@@ -107,8 +107,21 @@ class SearchIndex:
 
     def search(self, text: str, *, limit: int = 30, archived: bool = False) -> dict:
         """-> {"q", "ms", "results": [{path, ref, title, folder, archived, snippet, score}]}, best first."""
+        return self._search(text, fts_query(text), limit, archived)
+
+    def doc_freq(self, term: str) -> tuple[int, int]:
+        """-> (notes containing the term or a word starting with it, all notes)."""
+        q = fts_query(term)
+        with self._lock:
+            n = self.con.execute("SELECT COUNT(*) FROM fts WHERE fts MATCH ?", (q,)).fetchone()[0] if q else 0
+            return n, self.con.execute("SELECT COUNT(*) FROM docs").fetchone()[0]
+
+    def search_raw(self, query: str, *, limit: int = 30) -> list[dict]:
+        """An FTS5 query built by the caller (briefing packs use OR across key terms), live notes only."""
+        return self._search(query, query, limit, False)["results"]
+
+    def _search(self, text: str, q: str | None, limit: int, archived: bool) -> dict:
         t0 = time.perf_counter()
-        q = fts_query(text)
         rows = []
         if q:
             with self._lock:

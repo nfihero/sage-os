@@ -20,7 +20,7 @@ from pathlib import Path
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -38,6 +38,7 @@ from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidReque
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
+from .knowledge.briefing import Briefings
 from .knowledge.builder import NoteBuilder, source_path
 from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
@@ -103,6 +104,7 @@ class Hub:
                        s.get("notes_folder"), list(s.get("strip", [])))
             for s in cfg.sources], cfg.sources_index)
         self.builder = NoteBuilder(self.vault, self.sources)
+        self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
@@ -350,6 +352,78 @@ class Hub:
         self.event("knowledge", "bookshelf", "notes.draft_started", {"source": name, "collection": c.dir, "agent": agent_id})
         return {"agent": agent_id, "session": session["id"], "collection": c.dir, "title": c.title}
 
+    # -- briefing packs (K8, D20) ---------------------------------------------------------------------
+    async def send_message(self, agent_id: str, sid: str, text: str) -> dict | None:
+        """Send a user message with its briefing pack. -> the briefing shown in the Reading strip, or None."""
+        connector = self.agents[agent_id]
+        if connector.busy(sid):
+            raise AgentBusy(f"{connector.label} is still working on the previous message")
+        chat = connector.pane(sid)
+        full, rec = await asyncio.to_thread(self.briefings.prepare, chat, agent_id, sid, text)
+        try:
+            await connector.send(sid, full, shown=text)
+        except Exception:
+            if rec:
+                await asyncio.to_thread(self.briefings.forget, rec["id"])
+            raise
+        if rec:
+            self.publish({"t": "chat", "pane": chat, "op": "reading", "briefing": rec})
+            self.event("knowledge", "bookshelf", "briefing.sent",
+                       {"chat": chat, "agent": agent_id, "items": len(rec["items"]), "corrections": len(rec["corrections"])},
+                       persist=False)
+        return rec
+
+    def chat_of(self, agent: str) -> str | None:
+        """The chat (pane) a Bookshelf tool call came from. Claude and local-chat ids are their panes;
+        Hermes calls name only the profile, so the profile's running chat is assumed."""
+        if agent.startswith(("claude:", "chat:")):
+            return agent
+        if agent.startswith("hermes:"):
+            profile = agent.split(":")[1]
+            for a in self.agents.values():
+                if a.vendor == "hermes" and getattr(a, "profile", None) == profile:
+                    running = [p for p in a.chat.runs if p.startswith(f"hermes:{profile}:")]
+                    return running[0] if len(running) == 1 else None
+        return None
+
+    async def note_read(self, agent: str, kind: str, ref: dict, title: str):
+        """An agent read a note or source with its own tools: list it in that chat's Reading strip."""
+        chat = self.chat_of(agent)
+        if not chat:
+            return
+        rec = await asyncio.to_thread(self.briefings.record_read, chat, kind, ref, title)
+        if rec:
+            self.publish({"t": "chat", "pane": chat, "op": "reading", "briefing": rec})
+
+    async def drop_reading(self, chat: str, key: str) -> dict:
+        """✕ on a Reading-strip item (D20 amendment). While the agent is still answering the message that
+        carried it, stop the turn and resend that message without it; otherwise the correction rides on
+        the next message. Either way the item is left out of the chat's later packs."""
+        item, changed = await asyncio.to_thread(self.briefings.drop, chat, key)
+        for rec in changed:
+            self.publish({"t": "chat", "pane": chat, "op": "reading", "briefing": rec})
+        latest = await asyncio.to_thread(self.briefings.latest, chat)
+        resend = False
+        if latest and latest.get("agent") in self.agents and any(i["key"] == key for i in latest["items"]):
+            connector, sid = self.agents[latest["agent"]], latest["session"]
+            if connector.busy(sid):
+                resend = True
+                asyncio.create_task(self._stop_and_resend(connector, latest["agent"], sid, latest["query"]))
+        self.event("knowledge", "bookshelf", "briefing.dropped", {"chat": chat, "kind": item["kind"], "resend": resend},
+                   persist=False)
+        return {"dropped": item["key"], "resend": resend}
+
+    async def _stop_and_resend(self, connector: AgentConnector, agent_id: str, sid: str, text: str):
+        try:
+            await connector.interrupt(sid)
+            for _ in range(120):                       # up to 30 s for the turn to wind down
+                if not connector.busy(sid):
+                    break
+                await asyncio.sleep(0.25)
+            await self.send_message(agent_id, sid, text)
+        except Exception as exc:                       # the user still sees the ✕ and can resend by hand
+            log.warning("reading-strip resend for %s failed: %s", connector.pane(sid), exc)
+
     def refresh_vault(self):
         """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
         if self.loop:
@@ -423,6 +497,16 @@ class Send(BaseModel):
     text: str = Field(min_length=1, max_length=100_000)
 
 
+class BriefingSettings(BaseModel):
+    chat: str = Field(min_length=1, max_length=300)
+    enabled: bool
+
+
+class BriefingDrop(BaseModel):
+    chat: str = Field(min_length=1, max_length=300)
+    key: str = Field(min_length=1, max_length=2000)
+
+
 class Decision(BaseModel):
     choice: str
     note: str = Field(default="", max_length=20_000)
@@ -462,6 +546,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.index.close()
         hub.writer.close()
         hub.sources.close()
+        hub.briefings.close()
         hub.store.close()
 
     # No /docs, /redoc or /openapi.json: nothing to browse the API with but the UI.
@@ -692,9 +777,10 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.post("/api/agents/{agent_id}/sessions/{sid}/send", dependencies=W)
     async def agent_send(agent_id: str, sid: str, body: Send):
+        agent(agent_id)
         with agent_errors():
-            await agent(agent_id).send(sid, body.text)
-        return {"ok": True}
+            rec = await hub.send_message(agent_id, sid, body.text)
+        return {"ok": True, "briefing": rec}
 
     @app.post("/api/agents/{agent_id}/sessions/{sid}/interrupt", dependencies=W)
     async def agent_interrupt(agent_id: str, sid: str):
@@ -726,6 +812,23 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.post("/api/hermes/{profile}/sessions/{sid}/stop", dependencies=W)
     async def hermes_stop(profile: str, sid: str):
         return await agent_interrupt(f"hermes:{profile}", sid)
+
+    # -- briefing packs (K8) -------------------------------------------------------------------------
+    @app.get("/api/briefing")
+    async def briefing(chat: str = Query(max_length=300)):
+        return {"settings": await asyncio.to_thread(hub.briefings.settings, chat),
+                "briefings": await asyncio.to_thread(hub.briefings.list, chat)}
+
+    @app.post("/api/briefing/settings", dependencies=W)
+    async def briefing_settings(body: BriefingSettings):
+        return await asyncio.to_thread(hub.briefings.set_enabled, body.chat, body.enabled)
+
+    @app.post("/api/briefing/drop", dependencies=W)
+    async def briefing_drop(body: BriefingDrop):
+        try:
+            return await hub.drop_reading(body.chat, body.key)
+        except KeyError:
+            raise HTTPException(404, "that item isn't in this chat's reading")
 
     @app.post("/api/inbox/{item_id}", dependencies=W)
     async def inbox_decide(item_id: str, body: Decision):
