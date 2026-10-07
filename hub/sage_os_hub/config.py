@@ -47,6 +47,13 @@ class Config:
     hermes_profiles: list[str] = field(default_factory=lambda: ["default"])
     # [[models]]: extra OpenAI-compatible endpoints ({id, label, base_url, kind, api_key_env})
     model_providers: list[dict] = field(default_factory=list)
+    chat_enabled: bool = True                                  # [agents] chat: the OpenAI-compatible chat (D22.2)
+    # [engine]: Sage OS's own llama-server (D22.3)
+    engine_enabled: bool = True
+    engine_root: Path = ROOT / "data" / "engine"
+    engine_port: int = 8790
+    engine_binary: str | None = None                           # an existing llama-server instead of a download
+    engine_model_dirs: list[str] = field(default_factory=list)  # folders with GGUF files already on this computer
 
 
 def default_hermes_home() -> Path:
@@ -125,4 +132,12 @@ def load(path: Path | None = None) -> Config:
             raise ValueError(f"config.toml [[models]] {m['id']}: put the key in an environment variable "
                              "and name it with api_key_env; keys don't belong in this file")
     cfg.model_providers = [dict(m) for m in raw.get("models", [])]
+    cfg.chat_enabled = bool(agents.get("chat", cfg.chat_enabled))
+    eng = raw.get("engine", {})
+    cfg.engine_enabled = bool(eng.get("enabled", cfg.engine_enabled))
+    if "root" in eng:
+        cfg.engine_root = here(eng["root"])
+    cfg.engine_port = int(eng.get("port", cfg.engine_port))
+    cfg.engine_binary = str(here(eng["binary"])) if eng.get("binary") else None
+    cfg.engine_model_dirs = [str(here(d)) for d in eng.get("model_dirs", [])]
     return cfg

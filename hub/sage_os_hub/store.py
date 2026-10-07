@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS chat_items (
     data       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS chat_items_session ON chat_items (session_id, id);
+CREATE TABLE IF NOT EXISTS chat_sessions (      -- chats with OpenAI-compatible models (D22.2)
+    id       TEXT PRIMARY KEY,
+    title    TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model    TEXT NOT NULL,
+    created  REAL NOT NULL,
+    updated  REAL NOT NULL
+);
 """
 
 
@@ -104,6 +112,26 @@ class Store:
             cur = self._db.execute("SELECT * FROM claude_sessions ORDER BY updated DESC")
             names = [d[0] for d in cur.description]
             return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    # -- model chats ----------------------------------------------------------------------------
+    def upsert_chat_session(self, s: dict) -> None:
+        cols = ["id", "title", "provider", "model", "created", "updated"]
+        with self._lock:
+            self._db.execute(f"INSERT OR REPLACE INTO chat_sessions ({', '.join(cols)}) VALUES (?,?,?,?,?,?)",
+                             [s.get(c) for c in cols])
+            self._db.commit()
+
+    def chat_sessions(self) -> list[dict]:
+        with self._lock:
+            cur = self._db.execute("SELECT * FROM chat_sessions ORDER BY updated DESC LIMIT 200")
+            names = [d[0] for d in cur.description]
+            return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    def chat_session(self, sid: str) -> dict | None:
+        with self._lock:
+            cur = self._db.execute("SELECT * FROM chat_sessions WHERE id = ?", (sid,))
+            r = cur.fetchone()
+            return dict(zip([d[0] for d in cur.description], r)) if r else None
 
     def add_chat_item(self, session_id: str, kind: str, data: dict, ts: float | None = None) -> dict:
         ts = ts or time.time()

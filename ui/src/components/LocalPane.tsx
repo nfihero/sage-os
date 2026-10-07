@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { get, onChat, post } from "../api";
-import type { Board, ChatItem, ProfileSessions, Session } from "../types";
+import type { Board, ChatItem, ChatSessionInfo, ProfileSessions, Session } from "../types";
 import { ago, shortModel, useNow } from "../util";
 import ChatView from "./ChatView";
+import ModelChat from "./ModelChat";
 import Orb from "./LazyOrb";
 import Scramble from "./Scramble";
 import { useOrbState } from "../useOrbState";
@@ -29,12 +30,34 @@ function toItems(rows: any[]): ChatItem[] {
   return out;
 }
 
-export default function LocalPane({ sessions, board, runs, compact, lowPower }: {
+export default function LocalPane({ sessions, board, runs, compact, lowPower, chats, onModels }: {
   sessions: ProfileSessions[]; board?: Board; runs: Record<string, { run_id: string | null }>; compact?: boolean; lowPower?: boolean;
+  chats?: ChatSessionInfo[]; onModels: () => void;
 }) {
   const now = useNow(5000);
   const [profile, setProfile] = useState("default");
   const [open, setOpen] = useState<Session | null>(null);
+  const [mode, setMode] = useState<"chat" | "hermes">(() => (localStorage.getItem("sageos.local.mode") as "chat" | "hermes") ?? "chat");
+  useEffect(() => { try { localStorage.setItem("sageos.local.mode", mode); } catch { /* private mode */ } }, [mode]);
+  if (mode === "chat" || sessions.length === 0) {
+    return (
+      <section className="panel min-h-0" data-testid="local-pane">
+        <div className="panel-head">
+          <span className="tab">Chat</span>
+          {sessions.length > 0 && <button className="htab" onClick={() => setMode("hermes")} title="Hermes, if you have it">Hermes</button>}
+          <button className="chip ml-auto normal-case tracking-normal" onClick={onModels}>MODELS</button>
+        </div>
+        <ModelChat sessions={chats ?? []} onModels={onModels} />
+      </section>
+    );
+  }
+  return <HermesPane {...{ sessions, board, runs, compact, lowPower, now, profile, setProfile, open, setOpen, onChat: () => setMode("chat") }} />;
+}
+
+function HermesPane({ sessions, board, runs, compact, lowPower, now, profile, setProfile, open, setOpen, onChat }: {
+  sessions: ProfileSessions[]; board?: Board; runs: Record<string, { run_id: string | null }>; compact?: boolean; lowPower?: boolean;
+  now: number; profile: string; setProfile: (p: string) => void; open: Session | null; setOpen: (s: Session | null) => void; onChat: () => void;
+}) {
   const p = sessions.find((x) => x.profile === profile) ?? sessions[0];
   const holding = (board?.tasks ?? []).filter((t) => t.assignee === p?.profile && ["running", "blocked", "ready"].includes(t.status));
   const live = p?.sessions[0] && now - (p.sessions[0].last_activity_at ?? p.sessions[0].started_at) < ACTIVE_S;
@@ -54,6 +77,7 @@ export default function LocalPane({ sessions, board, runs, compact, lowPower }: 
         {sessions.filter((x) => x.profile !== p?.profile).map((x) => (
           <button key={x.profile} className="htab" onClick={() => { setProfile(x.profile); setOpen(null); }}>{x.label ?? x.profile}</button>
         ))}
+        <button className="htab" onClick={onChat} title="Chat with a local or cloud model">Chat</button>
         <span className="ml-auto" />
         {open ? (
           <button className="chip normal-case tracking-normal" onClick={() => setOpen(null)}>← sessions</button>

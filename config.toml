@@ -33,6 +33,27 @@ hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS withou
 # base_url = "http://127.0.0.1:11434/v1"
 # kind = "local"            # local | cloud
 # api_key_env = "OLLAMA_API_KEY"
+#
+# ChatGPT and Gemini (D22.2): set the key in an environment variable, then uncomment.
+# [[models]]
+# id = "openai"
+# label = "ChatGPT (OpenAI)"
+# base_url = "https://api.openai.com/v1"
+# kind = "cloud"
+# api_key_env = "OPENAI_API_KEY"
+# [[models]]
+# id = "gemini"
+# label = "Gemini (Google)"
+# base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+# kind = "cloud"
+# api_key_env = "GEMINI_API_KEY"
+
+[engine]                    # Sage OS's own llama-server (D22.3); models and binaries live in data/engine
+port = 8790
+# This PC already has a CUDA build and models from Hermes: use them instead of downloading. A fresh
+# install leaves these out and downloads the build and models from the Models screen.
+binary = "C:/Users/you/AppData/Local/hermes/tools/llamacpp-cuda-10964-win32-x64/llama-server.exe"
+model_dirs = ["C:/Users/you/AppData/Local/hermes/models"]
 
 [bookshelf]
 vault = "data/vault"        # the knowledge base (DECISIONS D6); relative to the sage-os folder

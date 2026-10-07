@@ -36,6 +36,7 @@ from .adapters.vault import VaultAdapter
 from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
+from .engine import EngineError, LocalEngine
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -115,13 +116,16 @@ class Hub:
                          SafetyAdapter(self, cfg), SessionsAdapter(self, cfg), self.vault_adapter]
         self.inbox = Inbox(self.publish, self.event)
         self.bookshelf_tools = BookshelfTools(self)
+        self.engine = LocalEngine(cfg.engine_root, cfg.engine_port, cfg.engine_binary,
+                                  [Path(d) for d in cfg.engine_model_dirs], on_change=self.publish_engine_soon) \
+            if cfg.engine_enabled else None
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
-        # Bookshelf over MCP (K5): Claude gets an in-process server per session; every other agent
-        # gets a Streamable HTTP endpoint whose path fixes the agent id.
+        # Bookshelf over MCP (K5): Claude gets an in-process server per session, the model chat calls the
+        # tools itself; every other agent gets a Streamable HTTP endpoint whose path fixes the agent id.
         self.mcp = {a.id: build_server(self.bookshelf_tools, a.id, cfg.port)
-                    for a in self.agents.values() if a.vendor != "claude-code"}
+                    for a in self.agents.values() if a.vendor not in ("claude-code", "openai-compatible")}
         self.claude = self.agents.get("claude")
-        self.providers = build_providers(cfg)
+        self.providers = build_providers(cfg, self.engine)
         self.smoke_results: list[dict] = []
         self.started = time.time()
         usage = self.store.load_panels().get("claude_usage")
@@ -355,6 +359,32 @@ class Hub:
         self.event("knowledge", "bookshelf", "notes.draft_started", {"source": name, "collection": c.dir, "agent": agent_id})
         return {"agent": agent_id, "session": session["id"], "collection": c.dir, "title": c.title}
 
+    # -- local engine (D22.3) --------------------------------------------------------------------------
+    def engine_state(self) -> dict:
+        e = self.engine
+        return e.status() | {"catalog": e.catalog(), "local": e.local_models()} if e else {"disabled": True}
+
+    def publish_engine_soon(self):
+        """Engine changes come from worker threads (downloads); publish from the event loop."""
+        if self.loop and self.engine:
+            self.loop.call_soon_threadsafe(lambda: self.panel("engine", self.engine.status()))
+
+    async def watch_engine(self):
+        """While a model loads, poll llama-server until it answers; notice if it dies."""
+        while True:
+            e = self.engine
+            if e and e.serving and not e.serving.get("ready"):
+                try:
+                    ready = await asyncio.to_thread(e.check_ready)
+                except Exception as exc:                  # noqa: BLE001 -- it stopped: say so
+                    self.event("system", "engine", "engine.stopped", {"error": str(exc)})
+                    ready = True
+                if ready:
+                    self.panel("engine", e.status())
+                await asyncio.sleep(1)
+            else:
+                await asyncio.sleep(3)
+
     # -- briefing packs (K8, D20) ---------------------------------------------------------------------
     async def send_message(self, agent_id: str, sid: str, text: str) -> dict | None:
         """Send a user message with its briefing pack. -> the briefing shown in the Reading strip, or None."""
@@ -480,9 +510,18 @@ def _offer(q: asyncio.Queue, msg):
 
 # -- request bodies ------------------------------------------------------------------------------
 class NewSession(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=200)
     cwd: str | None = None             # agents with the "workspaces" capability
-    model: str | None = None           # agents with the "model_pick" capability
+    model: str | None = Field(default=None, max_length=200)   # agents with the "model_pick" capability
+    provider: str | None = Field(default=None, max_length=100)  # the model chat: which endpoint (D22.2)
+
+
+class EngineModel(BaseModel):
+    model: str = Field(min_length=1, max_length=300)
+
+
+class EngineJob(BaseModel):
+    key: str = Field(min_length=1, max_length=300)
 
 
 class NewProposal(BaseModel):
@@ -530,9 +569,14 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             hub.claude.publish_sessions()
         hub.offer_pending_proposals()
         hub.publish_sources()
+        if "chat" in hub.agents:
+            hub.agents["chat"].publish()
+        if hub.engine:
+            hub.panel("engine", hub.engine.status())
         if start_adapters:
             results = await asyncio.to_thread(hub.run_smoke)
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
+            tasks.append(asyncio.create_task(hub.watch_engine(), name="engine"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
             bad = [r for r in results if not r["ok"]]
             url = f"http://{cfg.host}:{cfg.port}"
@@ -545,6 +589,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             t.cancel()
         for a in hub.agents.values():
             await a.shutdown()
+        if hub.engine:
+            await asyncio.to_thread(hub.engine.stop)
         await mcp_stack.aclose()
         hub.index.close()
         hub.writer.close()
@@ -776,7 +822,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.post("/api/agents/{agent_id}/sessions", dependencies=W)
     async def agent_new(agent_id: str, body: NewSession):
         with agent_errors():
-            return await agent(agent_id).create_session(body.title, cwd=body.cwd, model=body.model)
+            return await agent(agent_id).create_session(body.title, cwd=body.cwd, model=body.model, provider=body.provider)
 
     @app.post("/api/agents/{agent_id}/sessions/{sid}/send", dependencies=W)
     async def agent_send(agent_id: str, sid: str, body: Send):
@@ -815,6 +861,62 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.post("/api/hermes/{profile}/sessions/{sid}/stop", dependencies=W)
     async def hermes_stop(profile: str, sid: str):
         return await agent_interrupt(f"hermes:{profile}", sid)
+
+    # -- local engine (D22.3) ----------------------------------------------------------------------------
+    def engine() -> LocalEngine:
+        if not hub.engine:
+            raise HTTPException(404, "the local engine is turned off in config.toml ([engine] enabled)")
+        return hub.engine
+
+    @app.get("/api/engine")
+    async def engine_get():
+        engine()
+        return await asyncio.to_thread(hub.engine_state)
+
+    @app.post("/api/engine/install", dependencies=W)
+    async def engine_install():
+        e = engine()
+        job = e.jobs.get("binary")
+        if job and job.state == "running":
+            raise HTTPException(409, "already downloading")
+        asyncio.get_running_loop().run_in_executor(None, e.install_binary)
+        await asyncio.sleep(0.2)
+        return e.status()
+
+    @app.post("/api/engine/download", dependencies=W)
+    async def engine_download(body: EngineModel):
+        e = engine()
+        if not any(m["id"] == body.model for m in e.catalog()):
+            raise HTTPException(404, "no such model in the catalog")
+        job = e.jobs.get(f"model:{body.model}")
+        if job and job.state == "running":
+            raise HTTPException(409, "already downloading")
+        asyncio.get_running_loop().run_in_executor(None, e.download_model, body.model)
+        await asyncio.sleep(0.2)
+        return e.status()
+
+    @app.post("/api/engine/cancel", dependencies=W)
+    def engine_cancel(body: EngineJob):
+        engine().cancel(body.key)
+        return {"ok": True}
+
+    @app.post("/api/engine/start", dependencies=W)
+    async def engine_start(body: EngineModel):
+        e = engine()
+        try:
+            serving = await asyncio.to_thread(e.start, body.model)
+        except EngineError as exc:
+            raise HTTPException(400, str(exc))
+        hub.panel("engine", e.status())
+        hub.event("system", "engine", "engine.started", {"model": body.model})
+        return serving
+
+    @app.post("/api/engine/stop", dependencies=W)
+    async def engine_stop():
+        e = engine()
+        await asyncio.to_thread(e.stop)
+        hub.panel("engine", e.status())
+        return {"ok": True}
 
     # -- Google Drive (D22.5) ---------------------------------------------------------------------------
     # Google sends the browser back to this machine. Loopback only: a remote device can't finish sign-in.

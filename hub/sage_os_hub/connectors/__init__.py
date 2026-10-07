@@ -5,6 +5,7 @@ import os
 
 from ..adapters.system import router_info
 from .base import AgentConnector
+from .chat import ChatConnector
 from .claude import ClaudeConnector
 from .hermes import HermesConnector
 from .hermes_api import HermesAPI
@@ -20,11 +21,15 @@ def build_agents(hub, cfg) -> dict[str, AgentConnector]:
         api = HermesAPI(cfg.gateway, cfg.hermes_home)
         chat = HermesChat(hub, api, hub.inbox)
         agents += [HermesConnector(p, cfg.profile_labels.get(p, p), api, chat) for p in cfg.hermes_profiles]
+    if cfg.chat_enabled:
+        agents.append(ChatConnector(hub))
     return {a.id: a for a in agents}
 
 
-def build_providers(cfg) -> dict[str, ModelProvider]:
+def build_providers(cfg, engine=None) -> dict[str, ModelProvider]:
     providers: list[ModelProvider] = []
+    if engine is not None:
+        providers.append(ModelProvider("engine", "Sage engine (on this computer)", engine.base_url, "local"))
     if cfg.hermes_profiles:
         home = cfg.hermes_home
         providers.append(ModelProvider("hermes-router", "llama.cpp (Hermes)", f"{cfg.router}/v1", "local",

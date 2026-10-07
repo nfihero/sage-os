@@ -81,7 +81,22 @@ export type Batch = {
   started: number; finished: number | null; undone: number | null; files: { path: string; op: "create" | "update" | "remove" }[];
 };
 
+// -- Models (D22): local engine + providers + model chat --------------------------------------------
+export type Hardware = { os: string; arch: string; ram_gb: number; ram_free_gb: number; backend: string;
+  gpu: { vendor: string; name: string; vram_gb: number; driver?: string } | null };
+export type EngineJob = { kind: string; target: string; total: number; done: number; state: "running" | "done" | "failed" | "cancelled"; error: string | null };
+export type EngineModel = { id: string; label: string; note?: string; repo?: string; file?: string; path?: string; licence?: string;
+  size: number; fit: "fits" | "tight" | "too big"; need_gb: number; installed?: boolean };
+export type EnginePanel = { hardware: Hardware; binary: string | null; port: number; base_url: string;
+  serving: { id: string; path: string; started: number; ready: boolean } | null; jobs: Record<string, EngineJob> };
+export type EngineState = EnginePanel & { catalog: EngineModel[]; local: EngineModel[]; disabled?: boolean };
+export type ProviderInfo = { id: string; label: string; base_url: string; kind: "local" | "cloud"; key_source: string | null;
+  key_present: boolean | null; models: { id: string; state: string | null }[]; error: string | null };
+export type ChatSessionInfo = { id: string; title: string; provider: string; model: string; created: number; updated: number; status: "idle" | "running" };
+
 export type Panels = {
+  engine?: EnginePanel;
+  chat?: { sessions: ChatSessionInfo[] };
   board?: Board; gpu?: Gpu; health?: Health; safety?: Guard[]; sessions?: ProfileSessions[];
   inbox?: InboxItem[]; claude?: ClaudePanel; claude_usage?: Record<string, UsageWindow>;
   hermes_runs?: Record<string, { run_id: string | null; profile: string }>;

@@ -14,6 +14,7 @@ import ScreenFx from "./components/ScreenFx";
 import BootScreen from "./components/BootScreen";
 import { SafetyDrawer, SafetyToast, useSafety } from "./components/Safety";
 import Bookshelf from "./components/Bookshelf";
+import Models from "./components/Models";
 import Guide, { guideSeen } from "./components/Guide";
 
 type Tab = "claude" | "local" | "inbox" | "board" | "system";
@@ -21,7 +22,7 @@ type Area = "claude" | "local" | "inbox" | "board" | "gpu";
 
 // What each panel is, in plain words (left) and its role on the team (right).
 const KICKERS: Record<Area, [string, string]> = {
-  claude: ["Lead agent", "Answers by default"], local: ["Local agent", "Runs on your GPU"], inbox: ["Inbox", "Needs you"],
+  claude: ["Lead agent", "Answers by default"], local: ["Chat", "Local or cloud models"], inbox: ["Inbox", "Needs you"],
   board: ["Task board", "Work in flight"], gpu: ["System", "GPU · memory"],
 };
 const LOW_POWER_MB = 14.5 * 1024;   // orbs drop to ~12 fps when a model nearly fills VRAM
@@ -45,6 +46,7 @@ export default function App() {
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("claude");
   const [shelf, setShelf] = useState(false);
+  const [models, setModels] = useState(false);
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
   const { panels } = hub;
@@ -87,7 +89,8 @@ export default function App() {
   }, [hub.events]);
 
   const claude = <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={inbox.length} lowPower={lowPower} />;
-  const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower} />;
+  const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
+    chats={panels.chat?.sessions} onModels={() => setModels(true)} />;
   const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} />;
@@ -148,6 +151,7 @@ export default function App() {
       <SafetyDrawer open={safety.open} safety={panels.safety ?? []} events={hub.events} onClose={safety.close} onOpenTask={setOpenTask} />
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
       {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} proposals={inbox.filter((i) => i.source === "bookshelf").length} onClose={() => setShelf(false)} />}
+      {models && <Models panel={panels.engine} onClose={() => setModels(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
     </>

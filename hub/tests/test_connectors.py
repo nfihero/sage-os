@@ -30,13 +30,19 @@ def test_agents_listed_with_capabilities(tmp_path):
         body = c.get("/api/agents").json()
     assert body["lead"] == "claude"
     by_id = {a["id"]: a for a in body["agents"]}
-    assert set(by_id) == {"claude", "hermes:default"}
+    assert set(by_id) == {"claude", "hermes:default", "chat"}
+    assert by_id["chat"]["vendor"] == "openai-compatible" and "chat" not in app_mcp(tmp_path)
     assert by_id["claude"]["kind"] == "cloud" and "approvals" in by_id["claude"]["capabilities"]
     assert by_id["hermes:default"]["label"] == "Hermes" and by_id["hermes:default"]["profile"] == "default"
 
 
+def app_mcp(tmp_path):
+    """Agents that get a Bookshelf MCP endpoint (the model chat calls its tools in-process)."""
+    return set(make(tmp_path / "m", engine_enabled=False).state.hub.mcp)
+
+
 def test_agents_can_be_turned_off(tmp_path):
-    app = make(tmp_path, claude_enabled=False, hermes_profiles=[])
+    app = make(tmp_path, claude_enabled=False, hermes_profiles=[], chat_enabled=False)
     with TestClient(app, base_url="http://127.0.0.1") as c:
         assert c.get("/api/agents").json()["agents"] == []
         assert c.get("/api/state").status_code == 200

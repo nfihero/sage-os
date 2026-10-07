@@ -1,0 +1,90 @@
+[
+ {
+  "id": "gemma-4-e4b",
+  "label": "Gemma 4 E4B",
+  "note": "small \u00b7 laptops",
+  "repo": "ggml-org/gemma-4-E4B-it-GGUF",
+  "file": "gemma-4-E4B-it-Q8_0.gguf",
+  "size": 8031242688,
+  "sha256": "34be82b17b4942d389b9b527170c4b058027abdd32531fda063d3d97dd8ce80a",
+  "licence": "Gemma",
+  "gated": false
+ },
+ {
+  "id": "qwen-3-5-4b",
+  "label": "Qwen 3.5 4B",
+  "note": "small \u00b7 laptops",
+  "repo": "unsloth/Qwen3.5-4B-GGUF",
+  "file": "Qwen3.5-4B-Q4_K_M.gguf",
+  "size": 2740937888,
+  "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+  "licence": "Apache-2.0",
+  "gated": false
+ },
+ {
+  "id": "granite-4-2-3b",
+  "label": "Granite 4.2 3B",
+  "note": "small \u00b7 laptops",
+  "repo": "ibm-granite/granite-4.2-3b-GGUF",
+  "file": "granite-4.2-3b-Q4_K_M.gguf",
+  "size": 2244011552,
+  "sha256": "e0406663965846ae22a403456eb826ccce5f450840491f71952f18a7cb78e7d5",
+  "licence": "Apache-2.0",
+  "gated": false
+ },
+ {
+  "id": "qwen-3-5-9b",
+  "label": "Qwen 3.5 9B",
+  "note": "medium",
+  "repo": "unsloth/Qwen3.5-9B-GGUF",
+  "file": "Qwen3.5-9B-Q4_K_M.gguf",
+  "size": 5680522464,
+  "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+  "licence": "Apache-2.0",
+  "gated": false
+ },
+ {
+  "id": "gemma-4-12b",
+  "label": "Gemma 4 12B",
+  "note": "medium",
+  "repo": "unsloth/gemma-4-12b-it-GGUF",
+  "file": "gemma-4-12b-it-Q4_K_M.gguf",
+  "size": 7121861440,
+  "sha256": "0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42",
+  "licence": "Gemma",
+  "gated": false
+ },
+ {
+  "id": "gpt-oss-20b",
+  "label": "gpt-oss 20B",
+  "note": "large \u00b7 16 GB+",
+  "repo": "ggml-org/gpt-oss-20b-GGUF",
+  "file": "gpt-oss-20b-MXFP4.gguf",
+  "size": 12109566624,
+  "sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+  "licence": "Apache-2.0",
+  "gated": false
+ },
+ {
+  "id": "qwen-3-6-27b",
+  "label": "Qwen 3.6 27B",
+  "note": "large \u00b7 24 GB+",
+  "repo": "unsloth/Qwen3.6-27B-GGUF",
+  "file": "Qwen3.6-27B-Q4_K_M.gguf",
+  "size": 16817244384,
+  "sha256": "5ed60d0af4650a854b1755bd392f9aef4872643dc25a254bc68043fa638392a0",
+  "licence": "Apache-2.0",
+  "gated": false
+ },
+ {
+  "id": "qwen-3-6-35b-a3b-moe",
+  "label": "Qwen 3.6 35B-A3B (MoE)",
+  "note": "large \u00b7 fast for its size",
+  "repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
+  "file": "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+  "size": 22360456160,
+  "sha256": "707a55a8a4397ecde44de0c499d3e68c1ad1d240d1da65826b4949d1043f4450",
+  "licence": "Apache-2.0",
+  "gated": false
+ }
+]
