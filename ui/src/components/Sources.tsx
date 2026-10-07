@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { get, post } from "../api";
-import type { BuildResult, SourceCollection, SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
+import type { BuildResult, GoogleStatus, SourceCollection, SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
 import { ago, useNow } from "../util";
 
 /** The source library (D15): read-only copies of chosen folders, searchable, citable, never edited. */
@@ -35,6 +35,7 @@ export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { 
           {sources.length === 0 && (
             <p className="text-mute">No sources configured. Add a <code>[[sources]]</code> entry to config.toml (DECISIONS D15).</p>
           )}
+          {!q.trim() && data?.google && sources.some((s) => s.google) && <GoogleCard g={data.google} />}
           {!q.trim() && sources.map((s) => <SourceCard key={s.name} s={s} />)}
           {q.trim() && hits && (
             <div className="flex flex-col gap-1.5">
@@ -55,6 +56,42 @@ export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { 
         {open ? <DocView hit={open} onBack={() => setOpen(null)} />
           : <div className="m-auto max-w-md p-6 text-center text-[12.5px] text-mute">Search your documents, then pick one to read its text. Agents search and cite these too; nobody edits them here.</div>}
       </section>
+    </div>
+  );
+}
+
+/** Google Docs, Sheets and Slides come through the Drive API (D22): read-only consent in the user's browser. */
+function GoogleCard({ g }: { g: GoogleStatus }) {
+  const [err, setErr] = useState<string | null>(null);
+  const connect = async () => {
+    setErr(null);
+    const tab = window.open("about:blank", "_blank");     // opened in the click, so it isn't blocked
+    try {
+      const { url } = await post<{ url: string }>("/api/google/connect");
+      if (tab) tab.location.href = url; else window.location.href = url;
+    } catch (e) { tab?.close(); setErr(String((e as Error).message ?? e)); }
+  };
+  const disconnect = async () => {
+    setErr(null);
+    try { await post("/api/google/disconnect"); } catch (e) { setErr(String((e as Error).message ?? e)); }
+  };
+  return (
+    <div className="mb-3 border border-cyan/20 p-2 text-[11.5px]">
+      <div className="flex items-center gap-2">
+        <span className="display text-[12px] text-cyan">Google Drive</span>
+        <span className={`light ${g.connected ? "up" : "idle"}`} />
+        <span className="min-w-0 flex-1 truncate text-mute">{g.connected ? `connected, read-only${g.account ? ` · ${g.account}` : ""}` : "not connected"}</span>
+      </div>
+      <p className="mt-1 text-ink/75">
+        {g.connected ? "Google Docs, Sheets and Slides are exported and indexed on each sync. Drive is never changed."
+          : g.configured ? "Connect to bring in Google Docs, Sheets and Slides. Google asks you to sign in and allow read-only access."
+          : <>To include Google Docs, Sheets and Slides, save a Google OAuth client (Desktop app) as <code className="break-all">{g.client_file}</code>, then connect.</>}
+      </p>
+      <div className="mt-1.5 flex gap-1.5">
+        {!g.connected && <button className="chip" disabled={!g.configured} onClick={connect}>CONNECT GOOGLE DRIVE</button>}
+        {g.connected && <button className="chip mute" onClick={disconnect} title="Revoke Sage OS's access and forget the token">DISCONNECT</button>}
+      </div>
+      {err && <div className="mt-1 text-red">{err}</div>}
     </div>
   );
 }

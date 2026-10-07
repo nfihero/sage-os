@@ -68,9 +68,10 @@ export type SearchResult = { q: string; ms: number; results: SearchHit[] };
 export type SourceInfo = {
   name: string; path: string; copy: string; include: string[]; files: number; indexed: number;
   last_sync: number | null; last_stats: { copied: number; unchanged: number; removed: number; private_content: number; errors: number; skipped: number } | null;
-  skipped: { path: string; reason: string }[]; syncing: boolean; progress?: { done: number; total: number };
+  skipped: { path: string; reason: string }[]; syncing: boolean; progress?: { done: number; total: number }; google?: boolean;
 };
-export type SourcesPanel = { sources: SourceInfo[] };
+export type GoogleStatus = { configured: boolean; connected: boolean; client_file: string; account: string | null };
+export type SourcesPanel = { sources: SourceInfo[]; google?: GoogleStatus | null };
 export type SourceCollection = { dir: string; title: string; docs: number; markdown: number; folder: string; note: string | null; status: "new" | "pending" | "built" };
 export type BuildResult = { proposed: number; notes: number; already: number; left_out: { path: string; reason: string }[]; not_sent: { collection: string; reason: string }[] };
 export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number };

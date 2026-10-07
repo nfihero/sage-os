@@ -33,6 +33,9 @@ class Config:
     sources: list[dict] = field(default_factory=list)
     sources_root: Path = ROOT / "data" / "sources"
     sources_index: Path = ROOT / "data" / "sources-index.db"
+    # [google]: the user's own OAuth client (Desktop app) and where the read-only Drive token is kept (D22)
+    google_client: Path = ROOT / "data" / "google-oauth-client.json"
+    google_token: Path = ROOT / "data" / "google-token.json"
     pinned_profiles: list[str] = field(default_factory=lambda: ["default"])
     hidden_profiles: list[str] = field(default_factory=list)
     profile_labels: dict[str, str] = field(default_factory=dict)
@@ -96,6 +99,10 @@ def load(path: Path | None = None) -> Config:
     for key, attr in (("index", "vault_index"), ("journal", "vault_journal")):
         if key in shelf:
             setattr(cfg, attr, here(shelf[key]))
+    google = raw.get("google", {})
+    for key, attr in (("client", "google_client"), ("token", "google_token")):
+        if key in google:
+            setattr(cfg, attr, here(google[key]))
     if "home" in hermes:
         cfg.hermes_home = Path(hermes["home"]).expanduser()
     cfg.gateway = hermes.get("gateway", cfg.gateway).rstrip("/")

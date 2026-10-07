@@ -8,6 +8,7 @@ write route requires the X-Sage-OS header, a local Host and a local Origin. Run:
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import os
 import subprocess
@@ -22,7 +23,7 @@ from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -40,6 +41,7 @@ from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writ
 from .knowledge.mcp_http import build_server, mcp_path
 from .knowledge.briefing import Briefings
 from .knowledge.builder import NoteBuilder, source_path
+from .knowledge.gdrive import DriveError, GoogleDrive
 from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
@@ -99,10 +101,11 @@ class Hub:
         self.vault.ensure()
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
+        self.drive = GoogleDrive(cfg.google_client, cfg.google_token)
         self.sources = SourceLibrary(cfg.sources_root, [
             SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
-                       s.get("notes_folder"), list(s.get("strip", [])))
-            for s in cfg.sources], cfg.sources_index)
+                       s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)))
+            for s in cfg.sources], cfg.sources_index, self.drive)
         self.builder = NoteBuilder(self.vault, self.sources)
         self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)
         for batch in self.writer.recover():
@@ -812,6 +815,48 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.post("/api/hermes/{profile}/sessions/{sid}/stop", dependencies=W)
     async def hermes_stop(profile: str, sid: str):
         return await agent_interrupt(f"hermes:{profile}", sid)
+
+    # -- Google Drive (D22.5) ---------------------------------------------------------------------------
+    # Google sends the browser back to this machine. Loopback only: a remote device can't finish sign-in.
+    google_redirect = f"http://127.0.0.1:{cfg.port}/api/google/callback"
+
+    @app.get("/api/google")
+    def google_status():
+        return hub.drive.status()
+
+    @app.post("/api/google/connect", dependencies=W)
+    def google_connect():
+        try:
+            return {"url": hub.drive.start(google_redirect)}
+        except DriveError as exc:
+            raise HTTPException(400, str(exc))
+
+    @app.get("/api/google/callback")
+    async def google_callback(state: str = "", code: str = "", error: str = ""):
+        """Google's redirect after the consent screen. The state ties it to a sign-in this hub started."""
+        if error or not code:
+            msg = "Google sign-in was cancelled." if error == "access_denied" else "Google sign-in didn't complete."
+        else:
+            try:
+                await asyncio.to_thread(hub.drive.finish, code, state)
+                msg = None
+            except DriveError as exc:
+                msg = str(exc)
+        hub.publish_sources()
+        if msg is None:
+            hub.event("knowledge", "sources", "google.connected", {})
+        body = (f"<p>{html.escape(msg)}</p>" if msg else
+                "<p>Google Drive is connected (read-only). Go back to Sage OS and press <b>Sync now</b> in Sources "
+                "to bring in your Google Docs, Sheets and Slides.</p>")
+        return HTMLResponse(f"<!doctype html><meta charset=utf-8><title>Sage OS</title>"
+                            f"<body style='font-family:system-ui;background:#010703;color:#c9ffdb;padding:2rem'>"
+                            f"<h1 style='font-size:1.2rem'>Sage OS</h1>{body}<p>You can close this tab.</p></body>")
+
+    @app.post("/api/google/disconnect", dependencies=W)
+    async def google_disconnect():
+        await asyncio.to_thread(hub.drive.disconnect)
+        hub.publish_sources()
+        return hub.drive.status()
 
     # -- briefing packs (K8) -------------------------------------------------------------------------
     @app.get("/api/briefing")

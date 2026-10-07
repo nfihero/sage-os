@@ -21,6 +21,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .gdrive import NATIVE, DriveError, GoogleDrive
 from .index import HIT_END, HIT_START, fts_query
 from .screen import screen
 
@@ -56,6 +57,7 @@ class SourceSpec:
     exclude: list[str] = field(default_factory=list)    # sub-paths never copied
     notes_folder: str | None = None   # vault folder for notes built from this source (K6); default: Name
     strip: list[str] = field(default_factory=list)      # leading source folders dropped in vault paths
+    google: bool = False              # a Drive for desktop folder: Google Docs/Sheets/Slides come through the API (D22)
 
 
 # -- text extraction ------------------------------------------------------------------------------
@@ -107,8 +109,16 @@ def extract_text(path: Path) -> str:
 
 
 # -- the library ----------------------------------------------------------------------------------
+def copy_name(rel: str) -> str:
+    """Where a file lives in the copy: the same path, except Google stubs, which are stored exported
+    ("Draft Email.gdoc" -> "Draft Email.gdoc.docx") so they open in Word, Excel or PowerPoint."""
+    ext = Path(rel).suffix.lower()
+    return rel + NATIVE[ext][2] if ext in NATIVE else rel
+
+
 class SourceLibrary:
-    def __init__(self, root: Path, specs: list[SourceSpec], index_path: Path):
+    def __init__(self, root: Path, specs: list[SourceSpec], index_path: Path, drive: GoogleDrive | None = None):
+        self.drive = drive
         self.root, self.specs = Path(root), {s.name: s for s in specs}
         self.root.mkdir(parents=True, exist_ok=True)
         Path(index_path).parent.mkdir(parents=True, exist_ok=True)
@@ -127,6 +137,7 @@ class SourceLibrary:
     def plan(self, spec: SourceSpec) -> tuple[list[tuple[Path, str]], list[tuple[str, str]]]:
         """-> (files to copy as (original, relative path), skipped as (relative path, reason))."""
         take, skipped = [], []
+        google = spec.google and self.drive is not None and self.drive.connected
         roots = [spec.path / i for i in spec.include] if spec.include else [spec.path]
         excl = [e.replace("\\", "/").strip("/").lower() for e in spec.exclude]
         for top in roots:
@@ -145,6 +156,10 @@ class SourceLibrary:
                         continue
                     if PRIVATE_NAME.search(rel):
                         skipped.append((rel, "looks private by its name"))
+                    elif ext in NATIVE and google:
+                        take.append((p, rel))                     # exported through the Drive API in sync
+                    elif ext in NATIVE and spec.google:
+                        skipped.append((rel, "Google file: connect Google Drive in Sources to include it"))
                     elif ext in SKIP_REASONS:
                         skipped.append((rel, SKIP_REASONS[ext]))
                     elif ext not in TEXT | RICH:
@@ -167,6 +182,8 @@ class SourceLibrary:
         dest = self.root / name
         started = time.time()
         take, skipped = self.plan(spec)
+        if self.drive:
+            self.drive.begin_sync()
         stats = {"copied": 0, "unchanged": 0, "removed": 0, "indexed": 0, "private_content": 0, "errors": 0}
         with self.lock:
             self.syncing = name
@@ -182,13 +199,26 @@ class SourceLibrary:
                 try:
                     st = src.stat()
                     old = have.get(rel)
-                    if not stale and old and old[1] == st.st_size and old[2] == st.st_mtime and (dest / rel).exists():
+                    if not stale and old and old[1] == st.st_size and old[2] == st.st_mtime and (dest / copy_name(rel)).exists():
                         stats["unchanged"] += 1
                         keep.add(rel)
                         continue
-                    target = dest / rel
+                    target = dest / copy_name(rel)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, target)                      # reads the original; never writes it
+                    if src.suffix.lower() in NATIVE:               # Google file: export it (Drive is only read)
+                        try:
+                            data = self.drive.export(self.drive.resolve(rel)["id"], src.suffix.lower())
+                        except DriveError as exc:
+                            stats["errors"] += 1
+                            if old:
+                                keep.add(rel)                      # keep the last good copy (its row stays indexed)
+                            else:
+                                skipped.append((rel, f"Google file not exported: {exc}"))
+                            continue
+                        target.write_bytes(data)
+                        stats["google"] = stats.get("google", 0) + 1
+                    else:
+                        shutil.copy2(src, target)                  # reads the original; never writes it
                     try:
                         text = extract_text(target)[:MAX_TEXT]
                     except Exception as exc:                     # noqa: BLE001 -- a bad file never stops a sync
@@ -210,7 +240,7 @@ class SourceLibrary:
                     skipped.append((rel, f"copy failed ({exc.strerror or type(exc).__name__})"))
                     stats["errors"] += 1
             for rel in set(have) - keep:                         # deselected, deleted on Drive, or now private
-                (dest / rel).unlink(missing_ok=True)
+                (dest / copy_name(rel)).unlink(missing_ok=True)
                 self._forget(name, rel)
                 stats["removed"] += 1
             self._prune_dirs(dest)
@@ -271,8 +301,8 @@ class SourceLibrary:
                             "indexed": counts.get("indexed", 0), "last_sync": last[0] if last else None,
                             "last_stats": json.loads(last[1]) if last else None,
                             "skipped": [{"path": r, "reason": why} for r, why in skipped],
-                            "syncing": self.syncing == name})
-            return {"sources": out}
+                            "syncing": self.syncing == name, "google": spec.google})
+            return {"sources": out, "google": self.drive.status() if self.drive else None}
 
     def search(self, text: str, limit: int = 20) -> dict:
         return self._search(text, fts_query(text), limit)
