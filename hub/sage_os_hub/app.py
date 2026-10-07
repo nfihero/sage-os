@@ -373,21 +373,22 @@ class Hub:
         """While a model loads, poll llama-server until it answers; notice if it dies."""
         while True:
             e = self.engine
-            if e and e.serving and not e.serving.get("ready"):
+            if e and e.serving:
+                loading = not e.serving.get("ready")
                 try:
-                    ready = await asyncio.to_thread(e.check_ready)
-                except Exception as exc:                  # noqa: BLE001 -- it stopped: say so
+                    ready = await asyncio.to_thread(e.check_ready) if loading else e.alive()
+                except Exception as exc:                  # noqa: BLE001 -- it stopped (e.g. out of GPU memory): say so
                     self.event("system", "engine", "engine.stopped", {"error": str(exc)})
                     ready = True
-                if ready:
+                if loading and ready or e.serving is None:
                     self.panel("engine", e.status())
-                await asyncio.sleep(1)
+                await asyncio.sleep(1 if loading else 3)
             else:
                 await asyncio.sleep(3)
 
     # -- briefing packs (K8, D20) ---------------------------------------------------------------------
-    async def send_message(self, agent_id: str, sid: str, text: str) -> dict | None:
-        """Send a user message with its briefing pack. -> the briefing shown in the Reading strip, or None."""
+    async def send_message(self, agent_id: str, sid: str, text: str) -> dict:
+        """Send a user message with its briefing pack. -> the briefing shown in the Reading strip."""
         connector = self.agents[agent_id]
         if connector.busy(sid):
             raise AgentBusy(f"{connector.label} is still working on the previous message")
@@ -396,11 +397,10 @@ class Hub:
         try:
             await connector.send(sid, full, shown=text)
         except Exception:
-            if rec:
-                await asyncio.to_thread(self.briefings.forget, rec["id"])
+            await asyncio.to_thread(self.briefings.forget, rec["id"])
             raise
-        if rec:
-            self.publish({"t": "chat", "pane": chat, "op": "reading", "briefing": rec})
+        self.publish({"t": "chat", "pane": chat, "op": "reading", "briefing": rec})
+        if rec["items"] or rec["corrections"]:
             self.event("knowledge", "bookshelf", "briefing.sent",
                        {"chat": chat, "agent": agent_id, "items": len(rec["items"]), "corrections": len(rec["corrections"])},
                        persist=False)
@@ -873,26 +873,34 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         engine()
         return await asyncio.to_thread(hub.engine_state)
 
+    def in_background(fn, *args):
+        """Run a download in a worker thread; failures land in the job (and the log), never vanish."""
+        def done(f):
+            if f.exception():
+                log.warning("engine %s failed: %s", fn.__name__, f.exception())
+        asyncio.get_running_loop().run_in_executor(None, fn, *args).add_done_callback(done)
+
     @app.post("/api/engine/install", dependencies=W)
     async def engine_install():
         e = engine()
-        job = e.jobs.get("binary")
-        if job and job.state == "running":
-            raise HTTPException(409, "already downloading")
-        asyncio.get_running_loop().run_in_executor(None, e.install_binary)
-        await asyncio.sleep(0.2)
+        try:
+            e.claim("binary", "binary", "llama-server")     # registered before returning: a double click gets 409
+        except EngineError as exc:
+            raise HTTPException(409, str(exc))
+        in_background(e.install_binary)
         return e.status()
 
     @app.post("/api/engine/download", dependencies=W)
     async def engine_download(body: EngineModel):
         e = engine()
-        if not any(m["id"] == body.model for m in e.catalog()):
+        m = next((m for m in e.catalog() if m["id"] == body.model), None)
+        if not m:
             raise HTTPException(404, "no such model in the catalog")
-        job = e.jobs.get(f"model:{body.model}")
-        if job and job.state == "running":
-            raise HTTPException(409, "already downloading")
-        asyncio.get_running_loop().run_in_executor(None, e.download_model, body.model)
-        await asyncio.sleep(0.2)
+        try:
+            e.claim(f"model:{body.model}", "model", m["label"])
+        except EngineError as exc:
+            raise HTTPException(409, str(exc))
+        in_background(e.download_model, body.model)
         return e.status()
 
     @app.post("/api/engine/cancel", dependencies=W)

@@ -105,7 +105,7 @@ class Job:
     target: str               # model id or "llama-server"
     total: int = 0
     done: int = 0
-    state: str = "running"    # running | done | failed | cancelled
+    state: str = "running"    # queued | running | done | failed | cancelled
     error: str | None = None
     started: float = field(default_factory=time.time)
     cancel: threading.Event = field(default_factory=threading.Event, repr=False)
@@ -181,12 +181,22 @@ class LocalEngine:
                     "jobs": {k: j.public() for k, j in self.jobs.items()}}
 
     # -- downloads ------------------------------------------------------------------------------------
-    def _job(self, key: str, kind: str, target: str) -> Job:
+    def claim(self, key: str, kind: str, target: str) -> Job:
+        """Register a download before its thread starts, so a second request is refused at once."""
         with self.lock:
             j = self.jobs.get(key)
-            if j and j.state == "running":
+            if j and j.state in ("queued", "running"):
                 raise EngineError(f"{target} is already downloading")
-            self.jobs[key] = j = Job(kind, target)
+            self.jobs[key] = j = Job(kind, target, state="queued")
+        return j
+
+    def _job(self, key: str, kind: str, target: str) -> Job:
+        """The claimed job for this download (or a new one when called directly), now running."""
+        with self.lock:
+            j = self.jobs.get(key)
+            if not (j and j.state == "queued"):
+                j = self.claim(key, kind, target)
+            j.state = "running"
         return j
 
     def cancel(self, key: str):
@@ -268,6 +278,8 @@ class LocalEngine:
     def download_model(self, model_id: str) -> None:
         m = next((x for x in self.catalog() if x["id"] == model_id), None)
         if not m:
+            with self.lock:
+                self.jobs.pop(f"model:{model_id}", None)
             raise EngineError(f"no model {model_id!r} in the catalog")
         job = self._job(f"model:{model_id}", "model", m["label"])
         try:
@@ -308,6 +320,16 @@ class LocalEngine:
             self.proc = proc
             self.serving = {"id": model_id, "path": str(path), "started": time.time(), "ready": False, "pid": proc.pid}
         return self.serving
+
+    def alive(self) -> bool:
+        """Is the served model's process still running? Raises (and clears `serving`) if it died."""
+        with self.lock:
+            proc = self.proc
+        if proc and proc.poll() is not None:
+            with self.lock:
+                self.serving, self.proc = None, None
+            raise EngineError(f"llama-server stopped (exit {proc.returncode}); see {self.root / 'server.log'}")
+        return True
 
     def check_ready(self) -> bool:
         """Poll llama-server's /health (it loads the model before answering)."""

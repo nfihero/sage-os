@@ -110,6 +110,8 @@ class GoogleDrive:
             raise DriveError("This sign-in link expired or wasn't started from Sage OS. Start again from Sources.")
         verifier, redirect, _ = pending
         c = self._client()
+        if not c:
+            raise DriveError(f"The Google OAuth client at {self.client_path} is missing or unreadable.")
         r = httpx.post(TOKEN_URL, data={"client_id": c["client_id"], "client_secret": c["client_secret"], "code": code,
                                         "code_verifier": verifier, "grant_type": "authorization_code",
                                         "redirect_uri": redirect}, timeout=20)

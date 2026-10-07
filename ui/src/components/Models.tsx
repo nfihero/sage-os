@@ -29,7 +29,7 @@ export default function Models({ panel, onClose }: { panel?: EnginePanel; onClos
     setErr(null);
     try { await post(path, body); await load(); } catch (e) { setErr(String((e as Error).message)); }
   };
-  const s = { ...state, ...(panel ?? {}) } as EngineState | null;
+  const s: EngineState | null = state ? { ...state, ...(panel ?? {}) } : null;   // catalog/local come only from /api/engine
   const hw = s?.hardware;
   const jobs = s?.jobs ?? {};
   const serving = s?.serving;
@@ -139,7 +139,7 @@ function ModelRow({ m, serving, canRun, job, onStart, onDownload, onCancel }: {
 }
 
 function JobOrButton({ job, label, onStart, onCancel, disabled }: { job?: EngineJob; label: string; onStart: () => void; onCancel: () => void; disabled?: boolean }) {
-  if (job?.state === "running") {
+  if (job?.state === "running" || job?.state === "queued") {
     const pct = job.total ? Math.floor((job.done / job.total) * 100) : 0;
     return (
       <span className="flex items-center gap-2">

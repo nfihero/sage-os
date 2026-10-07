@@ -194,8 +194,10 @@ class ChatConnector(AgentConnector):
                             if sid:
                                 self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "delta", "text": d["content"]})
                         for tc in d.get("tool_calls") or []:
-                            slot = calls.setdefault(tc.get("index", 0), {"id": tc.get("id") or f"call_{len(calls)}",
-                                                                         "type": "function", "function": {"name": "", "arguments": ""}})
+                            # OpenAI streams pieces keyed by index; some servers (Gemini) send whole calls without one
+                            idx = tc["index"] if "index" in tc else (len(calls) if tc.get("id") or not calls else len(calls) - 1)
+                            slot = calls.setdefault(idx, {"id": tc.get("id") or f"call_{idx}",
+                                                          "type": "function", "function": {"name": "", "arguments": ""}})
                             fn = tc.get("function") or {}
                             slot["function"]["name"] += fn.get("name") or ""
                             slot["function"]["arguments"] += fn.get("arguments") or ""

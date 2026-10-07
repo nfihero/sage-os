@@ -84,7 +84,7 @@ export type Batch = {
 // -- Models (D22): local engine + providers + model chat --------------------------------------------
 export type Hardware = { os: string; arch: string; ram_gb: number; ram_free_gb: number; backend: string;
   gpu: { vendor: string; name: string; vram_gb: number; driver?: string } | null };
-export type EngineJob = { kind: string; target: string; total: number; done: number; state: "running" | "done" | "failed" | "cancelled"; error: string | null };
+export type EngineJob = { kind: string; target: string; total: number; done: number; state: "queued" | "running" | "done" | "failed" | "cancelled"; error: string | null };
 export type EngineModel = { id: string; label: string; note?: string; repo?: string; file?: string; path?: string; licence?: string;
   size: number; fit: "fits" | "tight" | "too big"; need_gb: number; installed?: boolean };
 export type EnginePanel = { hardware: Hardware; binary: string | null; port: number; base_url: string;

@@ -88,21 +88,21 @@ def test_pack_travels_with_the_message_and_is_recorded(env):
 def test_sensitive_notes_never_travel(env):
     hub, agent, client = env
     r = client.post("/api/agents/fake/sessions/s1/send", json={"text": "broker login password"}, headers=H).json()
-    assert r["briefing"] is None or all(i["ref"].get("uid") != SECRET_UID for i in r["briefing"]["items"])
+    assert all(i["ref"].get("uid") != SECRET_UID for i in r["briefing"]["items"])
     assert "Xk29" not in agent.got[-1][1]
 
 
 def test_nothing_relevant_means_no_pack(env):
     hub, agent, client = env
     r = client.post("/api/agents/fake/sessions/s1/send", json={"text": "zebra quokka"}, headers=H).json()
-    assert r["briefing"] is None and agent.got[-1][1] == "zebra quokka"
+    assert r["briefing"]["items"] == [] and agent.got[-1][1] == "zebra quokka"
 
 
 def test_toggle_off(env):
     hub, agent, client = env
     client.post("/api/briefing/settings", json={"chat": "chat:s1", "enabled": False}, headers=H)
     r = client.post("/api/agents/fake/sessions/s1/send", json={"text": "outreach email succession"}, headers=H).json()
-    assert r["briefing"] is None and MARK not in agent.got[-1][1]
+    assert r["briefing"]["items"] == [] and MARK not in agent.got[-1][1]
 
 
 def test_drop_after_reply_corrects_next_message_and_leaves_item_out(env):
@@ -115,7 +115,7 @@ def test_drop_after_reply_corrects_next_message_and_leaves_item_out(env):
     assert nxt["items"] == [] and nxt["corrections"][0]["title"] == "Outreach email structure"
     assert "marked these items" in agent.got[-1][1] and "15-minute" not in agent.got[-1][1]
     third = client.post("/api/agents/fake/sessions/s1/send", json={"text": "outreach email once more"}, headers=H).json()
-    assert third["briefing"] is None                           # correction is said once
+    assert third["briefing"]["corrections"] == [] and MARK not in agent.got[-1][1]   # correction is said once
     old = client.get("/api/briefing", params={"chat": "chat:s1"}).json()["briefings"][0]
     assert old["items"][0]["dropped"] is True                  # the record shows what was struck
 
@@ -145,6 +145,15 @@ def test_agent_reads_join_the_strip_and_dropped_reads_are_flagged(env):
     call(hub, hub.bookshelf_tools.read("chat:s1", UID))
     assert hub.briefings.latest("chat:s1")["items"][1]["flagged"] is True
     assert rec["id"] == hub.briefings.latest("chat:s1")["id"]
+
+
+def test_agent_reads_are_listed_even_when_nothing_was_attached(env):
+    hub, agent, client = env
+    rec = client.post("/api/agents/fake/sessions/s1/send", json={"text": "zebra quokka"}, headers=H).json()["briefing"]
+    assert rec["items"] == []
+    call(hub, hub.bookshelf_tools.read("chat:s1", UID))
+    latest = hub.briefings.latest("chat:s1")
+    assert latest["id"] == rec["id"] and [i["by"] for i in latest["items"]] == ["agent"]
 
 
 def test_writes_need_the_header(env):
