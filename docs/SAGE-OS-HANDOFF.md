@@ -23,9 +23,8 @@ who uses several AIs and has scattered notes; nothing may assume this PC (no Her
 letter required).
 
 ### Where things are
-- **Version 0.12.0** (tag `v0.12.0`), tags v0.4.0–v0.12.0. Checked 6 Oct: `pytest` 193/193,
-  `npm run build` clean, `/api/smoke` 18/18. GitHub `origin/main` is at `59c0d4e` (v0.10.0):
-  **v0.10.1 through v0.12.0 are not pushed** (the user's Mac needs them).
+- **Version 0.12.1** (tag `v0.12.1`; 7 Oct security + copy pass), tags v0.4.0–v0.12.1, **pushed to
+  GitHub 7 Oct** at the user's request. Checked: `pytest` 196/196, `npm run build` clean, `/api/smoke` 18/18.
 - **Built:** everything through v0.11 plus, in 0.12.0: K8 briefing packs + Reading strip (D20),
   Sage OS's own llama.cpp engine with a model catalog rated per machine (A5, D22.3), one Chat
   connector for any OpenAI-compatible AI with the Bookshelf tools (D22.2), the Google Drive connector
@@ -50,7 +49,6 @@ letter required).
 - **Google OAuth client** (Desktop app, Drive API enabled, testing mode with themselves as test user)
   saved as `data/google-oauth-client.json`; then *Connect Google Drive* in Sources. Their account, so
   they create it.
-- **Push** v0.10.1–v0.12.0 (`git push origin main --tags`).
 - **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
   Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
   user's explicit OK and should be shown as a diff first (D13).

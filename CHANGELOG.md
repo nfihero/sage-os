@@ -12,6 +12,25 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.12.1] — 2026-10-07
+
+Security pass (vibe-security, against the D14 baseline) and copy pass on 0.12.0. pytest 196/196.
+
+### Fixed
+- **Local engine locked down.** llama-server's defaults (no key, CORS `*`, web UI on) let any web page
+  you visit use the model and read its recent prompts, which carry your notes. It now starts with a
+  fresh key per start (passed in the environment, never on the command line), no web UI and no CORS
+  origin; only the hub knows the key. Checked live: requests without it get 401.
+- An engine build is installed only if GitHub publishes its SHA-256.
+- The Google sign-in tab can't reach back into Sage OS (`opener` cleared; only accounts.google.com URLs).
+- `read_source` accepts a file name or a `sources/<name>/` prefix where small models put them, so their
+  own reads stop failing.
+
+### Known, not fixed (product work, D22)
+- The Google refresh token (read-only Drive) is a plain file in `data/`; an installer should use the OS
+  keychain. Cloud API keys come from environment variables; no spending cap beyond 8 tool rounds per
+  message.
+
 ## [0.12.0] — 2026-10-06
 
 D22 scope (a shippable app for anyone with several AIs and scattered notes) and three steps toward it,

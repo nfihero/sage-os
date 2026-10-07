@@ -66,8 +66,10 @@ function GoogleCard({ g }: { g: GoogleStatus }) {
   const connect = async () => {
     setErr(null);
     const tab = window.open("about:blank", "_blank");     // opened in the click, so it isn't blocked
+    if (tab) tab.opener = null;                            // the sign-in page can't reach back into Sage OS
     try {
       const { url } = await post<{ url: string }>("/api/google/connect");
+      if (!url.startsWith("https://accounts.google.com/")) throw new Error("unexpected sign-in address");
       if (tab) tab.location.href = url; else window.location.href = url;
     } catch (e) { tab?.close(); setErr(String((e as Error).message ?? e)); }
   };

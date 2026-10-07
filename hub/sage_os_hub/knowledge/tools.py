@@ -99,6 +99,14 @@ class BookshelfTools:
                 "note": None if res["results"] else "Nothing in the source library matches."}
 
     async def read_source(self, agent: str, source: str, path: str, offset: int = 0) -> dict:
+        names = list(self.hub.sources.specs)
+        if source not in names:            # small models put the file name in `source`: try the configured sources
+            path = path.removeprefix(f"{source}/") if source and path.startswith(f"{source}/") else path
+            for name in names:
+                path = path.removeprefix(f"sources/{name}/").removeprefix(f"{name}/")
+            hits = [n for n in names if await asyncio.to_thread(self.hub.sources.read, n, path, 0, 1)]
+            if len(hits) == 1:
+                source = hits[0]
         doc = await asyncio.to_thread(self.hub.sources.read, source, path, offset, 20_000)
         if doc is None:
             return {"error": f"No source file {source}/{path}. Use search_sources to find one."}

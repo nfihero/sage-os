@@ -16,6 +16,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -127,6 +128,7 @@ class LocalEngine:
         self.proc: subprocess.Popen | None = None
         self.serving: dict | None = None          # {"id", "path", "started", "ready"}
         self.jobs: dict[str, Job] = {}
+        self.api_key: str | None = None             # per start; only the hub knows it (never sent to the browser)
         self.lock = threading.RLock()
         self._hw: dict | None = None
 
@@ -256,7 +258,9 @@ class LocalEngine:
             dl = self.root / "download"
             target = self.bin_dir / rel["tag_name"]
             for a in assets:
-                digest = (a.get("digest") or "").removeprefix("sha256:") or None
+                digest = (a.get("digest") or "").removeprefix("sha256:")
+                if not re.fullmatch(r"[0-9a-f]{64}", digest):     # an executable is never installed unchecked
+                    raise EngineError(f"GitHub gave no SHA-256 for {a['name']}; not installing it")
                 path = dl / a["name"]
                 self._fetch(a["browser_download_url"], path, job, digest, a.get("size"))
                 if job.state == "cancelled":
@@ -308,12 +312,19 @@ class LocalEngine:
         path = self.resolve_model(model_id)
         self.stop()
         hw = self.hardware()
+        # Locked down: llama-server answers any web page by default (CORS *, no key) and its /slots and web
+        # UI can show recent prompts, which carry the user's notes. A fresh key per start, passed in the
+        # environment (not the command line, which other processes can read); no web UI; no CORS origin.
         args = [str(b), "-m", str(path), "--host", "127.0.0.1", "--port", str(self.port), "-c", str(CTX),
-                "--jinja", "--alias", model_id, "-ngl", "999" if hw["backend"] != "cpu" else "0"]
+                "--jinja", "--alias", model_id, "-ngl", "999" if hw["backend"] != "cpu" else "0",
+                "--no-webui", "--cors-origins", "http://127.0.0.1:1"]
+        self.api_key = secrets.token_urlsafe(32)
+        env = {**os.environ, "LLAMA_API_KEY": self.api_key}
         self.root.mkdir(parents=True, exist_ok=True)
         log = open(self.root / "server.log", "ab")
         try:
-            proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, cwd=str(b.parent), creationflags=NO_WINDOW)
+            proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, cwd=str(b.parent), env=env,
+                                    creationflags=NO_WINDOW)
         finally:
             log.close()
         with self.lock:

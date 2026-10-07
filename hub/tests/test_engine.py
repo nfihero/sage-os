@@ -124,6 +124,44 @@ def test_orphan_reaped_only_if_it_is_llama_server(tmp_path, monkeypatch):
     assert e.reap_orphan() == 4242 and killed == [4242] and not (tmp_path / "server.pid").exists()
 
 
+def test_engine_starts_locked_down(tmp_path, monkeypatch):
+    """llama-server answers any web page by default; Sage OS starts it with a per-start key (in the
+    environment, not the command line), no web UI and no CORS origin."""
+    binp = tmp_path / "bin" / eng.EXE
+    binp.parent.mkdir(parents=True)
+    binp.write_bytes(b"")
+    (tmp_path / "m").mkdir()
+    (tmp_path / "m" / "x.gguf").write_bytes(b"GGUF")
+    seen = {}
+
+    class FakeProc:
+        pid = 1
+
+        def poll(self):
+            return None
+
+    def popen(args, env=None, **kw):
+        seen["args"], seen["env"] = args, env
+        return FakeProc()
+    monkeypatch.setattr(eng.subprocess, "Popen", popen)
+    e = LocalEngine(tmp_path / "engine", binary=str(binp), model_dirs=[tmp_path / "m"])
+    monkeypatch.setattr(e, "hardware", lambda refresh=False: NVIDIA)
+    e.start("file:x")
+    key = seen["env"]["LLAMA_API_KEY"]
+    assert len(key) > 30 and key == e.api_key and key not in " ".join(seen["args"])
+    assert "--no-webui" in seen["args"] and seen["args"][seen["args"].index("--cors-origins") + 1] != "*"
+    assert seen["args"][seen["args"].index("--host") + 1] == "127.0.0.1"
+
+
+def test_install_refuses_a_build_without_a_checksum(tmp_path, monkeypatch):
+    e = LocalEngine(tmp_path)
+    monkeypatch.setattr(e, "hardware", lambda refresh=False: LAPTOP)
+    rel = [{"tag_name": "b1", "assets": [{"name": "llama-b1-bin-win-vulkan-x64.zip", "browser_download_url": "u", "size": 1}]}]
+    monkeypatch.setattr(eng.httpx, "get", lambda *a, **k: httpx.Response(200, json=rel))
+    e.install_binary()
+    assert e.jobs["binary"].state == "failed" and "SHA-256" in e.jobs["binary"].error
+
+
 def test_local_models_found_and_start_needs_a_binary(tmp_path):
     d = tmp_path / "elsewhere"
     d.mkdir()

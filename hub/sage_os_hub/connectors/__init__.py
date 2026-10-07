@@ -29,7 +29,8 @@ def build_agents(hub, cfg) -> dict[str, AgentConnector]:
 def build_providers(cfg, engine=None) -> dict[str, ModelProvider]:
     providers: list[ModelProvider] = []
     if engine is not None:
-        providers.append(ModelProvider("engine", "Sage engine (on this computer)", engine.base_url, "local"))
+        providers.append(ModelProvider("engine", "Sage engine (on this computer)", engine.base_url, "local",
+                                       "Sage engine", lambda: engine.api_key))
     if cfg.hermes_profiles:
         home = cfg.hermes_home
         providers.append(ModelProvider("hermes-router", "llama.cpp (Hermes)", f"{cfg.router}/v1", "local",

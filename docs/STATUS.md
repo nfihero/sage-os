@@ -1,6 +1,7 @@
 # Sage OS — status
 
-**Version 0.12.0 · 6 Oct 2026.** Checked today: `pytest` 193/193, `npm run build` clean, hub `/api/smoke`
+**Version 0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
+fixed or listed in CHANGELOG; local engine now needs a per-start key). **0.12.0 · 6 Oct:** `pytest` 193/193 (196 at 0.12.1), `npm run build` clean, hub `/api/smoke`
 18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
 from the outreach playbooks with both shown in the Reading strip. **Claude Code's sign-in for Sage OS has
 expired** ("OAuth session expired"): run `claude auth login` again (README). Version history: `CHANGELOG.md`.

@@ -156,6 +156,19 @@ def test_agent_reads_are_listed_even_when_nothing_was_attached(env):
     assert latest["id"] == rec["id"] and [i["by"] for i in latest["items"]] == ["agent"]
 
 
+def test_read_source_forgives_a_file_name_in_source(env):
+    hub, agent, client = env
+    src = hub.sources.root
+    hub.sources.specs["drive"] = type("S", (), {})()     # one configured source
+    hub.sources._store("drive", "Sell/Batch_4_Targets.md", type("St", (), {"st_size": 5, "st_mtime": 1})(),
+                       "indexed", None, "Oasis Labs NY")
+    good = call(hub, hub.bookshelf_tools.read_source("chat:s1", "drive", "Sell/Batch_4_Targets.md"))
+    wrong = call(hub, hub.bookshelf_tools.read_source("chat:s1", "Batch_4_Targets.md", "Sell/Batch_4_Targets.md"))
+    prefixed = call(hub, hub.bookshelf_tools.read_source("chat:s1", "x", "sources/drive/Sell/Batch_4_Targets.md"))
+    assert good["text"] == wrong["text"] == prefixed["text"] == "Oasis Labs NY"
+    assert src.exists()
+
+
 def test_writes_need_the_header(env):
     hub, agent, client = env
     assert client.post("/api/briefing/settings", json={"chat": "chat:s1", "enabled": False}).status_code == 403

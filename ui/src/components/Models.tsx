@@ -68,7 +68,7 @@ export default function Models({ panel, onClose }: { panel?: EnginePanel; onClos
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-ink/85">Not installed. Sage OS downloads the official llama.cpp build for this computer
+                    <span className="text-ink/85">Not installed. Install downloads the official llama.cpp build for this computer
                       {hw?.backend === "cuda" ? " (NVIDIA: about 550 MB with the CUDA runtime)" : hw?.backend === "metal" ? " (about 12 MB)" : " (about 35 MB)"}.</span>
                     <JobOrButton job={jobs["binary"]} label="INSTALL ENGINE" onStart={() => act("/api/engine/install")} onCancel={() => act("/api/engine/cancel", { key: "binary" })} />
                   </div>
