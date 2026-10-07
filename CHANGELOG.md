@@ -12,6 +12,37 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-10-06
+
+D22 scope (a shippable app for anyone with several AIs and scattered notes) and three steps toward it,
+bundled in one version because they were built for the same demo: **K8** briefing packs, **A5** Sage
+OS's own local engine with a chat for any OpenAI-compatible AI, and **S3** the Google Drive connector.
+Gates: K8 pass (local Gemma 4 12B answered from the outreach playbooks, both shown in the Reading strip);
+A5 partly (engine ran a model already on disk; downloads tested offline only); S3 built, not run live
+(needs the user's OAuth client). pytest 193/193, smoke 18/18.
+
+### Added
+- **Briefing packs (K8, D20):** each message is searched against notes and sources (key terms picked
+  out and weighted by rarity; collection notes and duplicate copies skipped) and the best matches go
+  with it, marked as data. A *Reading* strip under the message lists them and whatever the agent opened
+  itself; ✕ leaves an item out of later packs and tells the agent (stopping and resending if it is still
+  answering); 📖 turns packs off per chat. Every pack is recorded (`data/briefings.db`).
+- **Local engine (D22.3):** MODELS screen with a hardware check, a catalog of 8 models (2–22 GB) rated
+  *fits / tight / too big* for this machine, install of the official llama.cpp build for this OS and GPU
+  and model downloads from Hugging Face (resumable, SHA-256 checked), models already on disk, start/stop.
+  A llama-server left running by a killed hub is stopped on the next start.
+- **Chat connector (D22.2):** one chat for any OpenAI-compatible AI (the engine, ChatGPT, Gemini,
+  Ollama), with the Bookshelf tools as function calls run by Sage OS. Chat tab in the Local pane.
+- **Google Drive connector (S3, D22.5):** Google Docs, Sheets and Slides exported through the Drive API
+  with read-only consent (the user's own OAuth client, PKCE) and indexed like any other file.
+- Decision **D22**; the Deal Club folder is now in the source copy (63 more files); a list of other
+  people's contact details is excluded.
+
+### Changed
+- Config files saved with a byte-order mark (Notepad, PowerShell 5) now load.
+- D21's "PC as home base" is superseded by D22 (every device runs Sage OS; notes sync).
+- README describes the product for its D22 audience; Hermes is optional in the "Needs" list.
+
 ## [0.11.1] — 2026-10-03
 
 Docs only: handoff for a fresh session.

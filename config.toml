@@ -50,10 +50,10 @@ hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS withou
 
 [engine]                    # Sage OS's own llama-server (D22.3); models and binaries live in data/engine
 port = 8790
-# This PC already has a CUDA build and models from Hermes: use them instead of downloading. A fresh
-# install leaves these out and downloads the build and models from the Models screen.
-binary = "C:/Users/you/AppData/Local/hermes/tools/llamacpp-cuda-10964-win32-x64/llama-server.exe"
-model_dirs = ["C:/Users/you/AppData/Local/hermes/models"]
+# A machine that already has llama.cpp or GGUF files can use them instead of downloading; put these in
+# config.local.toml, since the paths differ per machine (D21):
+# binary = "C:/path/to/llama-server.exe"
+# model_dirs = ["C:/path/to/models"]
 
 [bookshelf]
 vault = "data/vault"        # the knowledge base (DECISIONS D6); relative to the sage-os folder

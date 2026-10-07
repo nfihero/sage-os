@@ -1,8 +1,9 @@
 # Sage OS — status
 
-**Version 0.11.1 · 3 Oct 2026.** Checked today: `pytest` 170/170, `npm run build` clean, hub `/api/smoke`
-18/18, Hermes gateway / router / guardian sidecar all healthy, Claude Code signed in, Hermes multi-turn
-chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
+**Version 0.12.0 · 6 Oct 2026.** Checked today: `pytest` 193/193, `npm run build` clean, hub `/api/smoke`
+18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
+from the outreach playbooks with both shown in the Reading strip. **Claude Code's sign-in for Sage OS has
+expired** ("OAuth session expired"): run `claude auth login` again (README). Version history: `CHANGELOG.md`.
 
 ## Works
 
@@ -21,6 +22,10 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 | Source library (S1) | Bookshelf → Sources: read-only copy of chosen Drive folders in `data/sources/drive` (499 files, 494 searchable), Sync now, left-out list (private by name or content, media, binaries, Google shortcuts), search + text reader |
 | Notes from sources (K6) | Bookshelf → Sources → Build notes: *Propose starter notes* (markdown imported verbatim + a collection note per folder, one inbox card per area); *Draft* briefs Hermes to propose cited concept notes; collection status new / in inbox / in vault; re-runs skip what's built or waiting |
 | Guide and tour (D18) | **? GUIDE**: why Sage OS exists (team analogy, rules, limit, live counts) + a 7-step panel tour; opens on first visit or `?guide`; empty Bookshelf shows how notes arrive; notes show *Built from* with a link into Sources; demo script `docs/DEMO.md` |
+| Briefing packs (K8, D20) | each message is searched against notes and sources (key terms weighted by rarity; collection notes and duplicate copies left out); the best matches go with it as data; a **Reading** strip under the message lists them and anything the agent opened itself; ✕ leaves an item out from then on and corrects the agent (stop and resend if it is still answering); 📖 toggle per chat; every pack recorded in `data/briefings.db` |
+| Local engine (D22.3) | **MODELS**: hardware check (RAM, NVIDIA VRAM, Apple Silicon, Vulkan/CPU), catalog of 8 models rated fits / tight / too big, install of the official llama.cpp build and model downloads (resumable, SHA-256 checked; not yet run on a fresh machine), models already on disk, start/stop; serves on 127.0.0.1:8790; a leftover server from a killed hub is stopped on the next start |
+| Chat connector (D22.2) | one chat for any OpenAI-compatible AI (the engine, ChatGPT, Gemini, Ollama); Bookshelf tools as function calls run by Sage OS (no shell, no files); transcripts in hub.db; **Chat** tab in the Local pane |
+| Google Drive connector (D22.5) | Google Docs / Sheets / Slides exported through the Drive API (read-only consent, the user's own OAuth client, PKCE) and indexed like other files; **waiting for the user's OAuth client**, so not yet run live |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Bookshelf writes (K3) | agents propose (create / update / archive); inbox card shows each change's diff; *Approve & file* applies the batch through one journaled writer; History tab undoes a batch byte for byte; stale and contract-breaking proposals refused; pending proposals survive restarts |
 | Secret screening (K4) + *Save anyway* | proposals with secret-looking content (keys, tokens, passwords, card / ID / bank numbers) are held in the inbox in memory only, never stored; *Reject* or two-step *Save anyway*; only the category is ever shown or logged; sensitive notes' text stays out of search (🔒) |
@@ -38,7 +43,8 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
-- **Bookshelf** next: batch review + trust (K7), briefing packs, task records, git backup, Ask (K8–K11); updating collection notes when sources change; meaning-based search (D10); Google-native docs for sources (D15); OCR is now step S2 (D19)
+- **Bookshelf** next: batch review + trust (K7), task records, git backup, Ask (K9–K11); updating collection notes when sources change; meaning-based search (D10: packs and search are keyword-only, so wrong-but-wordy notes still slip in); OCR is now step S2 (D19)
+- D22 product work: note sync between devices (B), the optional relay (C), API keys entered in the app (today: environment variables), installers that bundle Python and the UI, Google verification for the Drive scope
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
 
@@ -52,18 +58,26 @@ chat 2/2 turns through the connector layer. Version history: `CHANGELOG.md`.
 6. Stale alias scripts `swift.bat`, `coder.bat`, `guardian.bat` in `~\.local\bin` (deleted Hermes profiles).
 7. Usage meter has no percentage until near a limit.
 8. Hermes caches the Bookshelf MCP tool list at first connect: after Sage OS adds tools, toggle `mcp_servers.bookshelf.enabled` off and on in Hermes' `config.yaml` (or restart the gateway), or Hermes won't see them.
+9. The local engine and Hermes' router share one GPU: loading a big model in both at once runs out of
+   VRAM (the engine panel reports it if its server dies).
+10. The model catalog lives in the hub package (`engine/catalog.json`); an installer must ship it.
 
 ## Next
 
-1. Rehearse `docs/DEMO.md` (demo week of 5 Oct): prep checklist, then approve one starter card live. Then K7 (batch review) or Phase 3. A1, K1–K6 and S1 done (30 Sep–2 Oct). Home, language, vault location and adopted ideas are decided (`DECISIONS.md` D2,
-   D6, D7); architecture direction recorded (D4).
-2. Phase 3 (Tailscale + login + phone).
+1. Demo of the Deal Club workflow (D22): sign Claude in again; save the Google OAuth client and connect
+   Drive so the pitch framework and target briefing (Google Docs) come in; *Build notes* on the Deal Club
+   collections and approve them; rehearse `docs/DEMO.md`.
+2. D22 product work in the order the user picks: note sync (B), meaning-based search (makes packs smarter),
+   S2 OCR, API keys in the app, installers; then phone access and the relay (C).
 3. Exercise the two untested inbox paths with a real Hermes approval and the blocked parser task.
 
 ## Gate results
 
 | Phase | Gate | Result |
 |---|---|---|
+| K8 | An agent's reply uses a fact that exists only in your notes, and the strip shows where it came from | pass — local Gemma 4 12B (no Hermes, no cloud) described the three-email outreach sequence from the two playbooks in 14 s, citing both; both shown in the strip; ✕ struck an item live; phone width checked; pytest 193/193 |
+| A5 | A machine with no local AI gets a working local model through Sage OS | partly — engine started a model from files already on disk and served chat; the download path is covered by tests (resume, checksum, unsafe archives) but not yet run against GitHub / Hugging Face |
+| S3 | A Google Doc's text is found by search | built, not run live — tests cover consent (PKCE, one-time state), path lookup, export and re-sync; needs the user's OAuth client |
 | 1 | All panels show live data | pass |
 | 1 | CLI-filed task appears on the board within 10 s | pass — 4.8 s |
 | 1 | Loading a model changes the GPU lane within 5 s | pass — 0.3 s to *loading*, 1.2 s back to idle |

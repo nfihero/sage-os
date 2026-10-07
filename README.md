@@ -1,18 +1,18 @@
 # Sage OS
 
-`SAGE//OS` (*Semi-Autonomous Agent Ground Environment*) is a hub for running AI agents on your own
-machine. Pick local or cloud models, keep conversations and topics from many programs in one place,
-run workflows on kanban boards, and grow a knowledge base your agents read and add to, with your
-approval.
+`SAGE//OS` (*Semi-Autonomous Agent Ground Environment*) is a personal knowledge hub for people who use
+several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
+every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
-**Today (v0.11.1):** Claude Code (cloud) and Hermes (local models) run side by side, and any other agent
-or OpenAI-compatible model server can plug into the same connector layer. One inbox collects every
-approval. Around it: the Hermes kanban board, live GPU and safety status, and Bookshelf, where you
-search your notes and a read-only copy of chosen Google Drive folders, and grow the vault from them:
-starter notes from your files, concept notes drafted by an agent. Both agents use Bookshelf through
-MCP tools; every change lands only after you approve it (screened for secrets, undoable byte for
-byte). Batch review, more programs and multiple workflow boards are on the [roadmap](docs/ROADMAP.md).
-Windows 11, local only.
+**Today (v0.12.0):** chat with Claude Code, a model running on your own computer (Sage OS installs and
+runs llama.cpp itself and rates each model for your hardware), ChatGPT, Gemini or Ollama. Each message
+you send carries the notes and documents that match it, shown next to the message in a *Reading* strip
+with anything the AI opened itself; ✕ on an item corrects the AI and leaves it out from then on.
+Bookshelf holds your notes and a read-only, searchable copy of your documents, Google Docs, Sheets and
+Slides included (through the Drive API, read-only). Agents propose notes; nothing is written until you
+approve it in the inbox (screened for secrets, undoable byte for byte). Hermes, its kanban board and the
+GPU lane remain for those who have them. Windows and macOS; local only. Note sync between devices,
+installers and phone access are on the [roadmap](docs/ROADMAP.md).
 
 | Read | For |
 |---|---|
@@ -35,8 +35,14 @@ Opens http://127.0.0.1:8787 when ready (first run creates `hub\.venv` and builds
 stays open while it runs. UI hot reload: keep the hub running, then `npm run dev` in `ui\` →
 http://127.0.0.1:5173.
 
-**Needs:** Hermes Agent installed at `%LOCALAPPDATA%\hermes` (gateway :8642, llama.cpp router :18434,
-guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12+, Node 20+.
+**Needs:** Python 3.12+ and Node 20+. Everything else is optional: the Claude desktop app (for
+`claude.exe`), a local model (install the engine and a model from **MODELS**, or point `[engine]` in
+`config.local.toml` at an existing `llama-server` and GGUF folder), ChatGPT / Gemini keys in environment
+variables (`[[models]]` in `config.toml`), Hermes Agent at `%LOCALAPPDATA%\hermes`.
+
+**Google Docs, Sheets and Slides** (optional): create an OAuth client of type *Desktop app* in Google
+Cloud (Drive API enabled, consent screen in testing mode with yourself as a test user), save its JSON as
+`data/google-oauth-client.json`, then **Connect Google Drive** in Bookshelf → Sources and press Sync now.
 
 **On a Mac** (D21; for development, the PC stays home base): `./start.sh`. Copy
 `config.local.example.toml` to `config.local.toml` (untracked) and set this machine's paths: it overrides
@@ -57,7 +63,9 @@ guardian sidecar :18435), the Claude desktop app (for `claude.exe`), Python 3.12
 | Area | Source | Notes |
 |---|---|---|
 | Claude Code pane | Claude Agent SDK, your subscription | session tabs, folder + model per session; tool requests → inbox; usage meter |
-| Hermes pane | Hermes gateway sessions API | the profile `default`, labelled "Hermes"; open, continue, start chats |
+| Chat pane | the **Chat** connector: any OpenAI-compatible endpoint (local engine, ChatGPT, Gemini, Ollama) | pick where and which model; the AI uses your notes and documents through Bookshelf tools; **Hermes** tab when Hermes is installed |
+| Reading strip | briefing packs (K8, D20) | under each message: what was attached (◆ notes, ▤ documents) and what the AI opened itself (·read); ✕ = wrong or not relevant; 📖 toggles packs per chat |
+| Models | `data/engine` | this computer's memory and GPU, the local engine (install, start, stop), a model catalog rated *fits / tight / too big*, models already on disk, connected cloud AIs |
 | Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change; held (secret-looking) proposals: reject / save anyway |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |

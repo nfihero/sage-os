@@ -37,7 +37,8 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K6 | Notes from whatever the user provides (redefined 2 Oct, D17): starter notes from any source (markdown imported, a collection note per folder of documents) + agent-drafted concept notes that cite their sources; an existing Obsidian vault is just another source | A source becomes approvable starter notes and agent drafts, nothing written before approval — **pass** (2 Oct, v0.9.0) |
 | S2 | **OCR**: read text from images and scanned PDFs during sync, marked as OCR text; Windows' built-in engine first (D19) | A CamScanner PDF and a photo of a page are found by search and readable by agents |
 | K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
-| K8 | Briefing packs chosen **per prompt** from notes and sources, shown to you in a *Reading* strip with everything the agent read (D20; D7 idea 2) | An agent's reply uses a fact that exists only in your notes, and the strip shows the note it came from |
+| K8 | Briefing packs chosen **per prompt** from notes and sources, shown to you in a *Reading* strip with everything the agent read (D20; D7 idea 2) | An agent's reply uses a fact that exists only in your notes, and the strip shows the note it came from — **pass** (6 Oct, v0.12.0: the local Gemma 4 12B answered the three-email sequence from the outreach playbooks, both shown in the strip) |
+| S3 | **Google Drive connector** (D22.5): Google Docs, Sheets and Slides read through the Drive API with the user's read-only consent, exported and indexed with the rest | A Google Doc's text is found by search — built (6 Oct, v0.12.0); live gate waits for the user's OAuth client |
 | K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
 | K10 | Git-backed vault: each approved batch is a commit; push to a private remote only on request (D7 idea 8; personal install only) | Undo and `git log` agree after an approve/undo cycle |
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
@@ -57,7 +58,7 @@ plug in through connectors; Hermes becomes optional. No custom llama.cpp runtime
 | A2 | Bookshelf K1–K3 as Sage OS's own (see track above) | **done** with K1–K3 (1 Oct) |
 | A3 | **Sage OS task board** any agent can work from; Hermes kanban becomes an optional source. Current Hermes kanban contents may be cleared (D5) | A task created in Sage OS is finished by an agent and approved in the inbox, with Hermes kanban unused |
 | A4 | A second local agent connector, proving Hermes is optional (candidates to verify on Windows first) | Same task runs on two different local agents |
-| A5 | Environment setup: optional `llama-server` install/manage wizard (model download, GPU-fit settings) | A machine with no local AI gets a working local model through Sage OS |
+| A5 | Environment setup: Sage OS's own `llama-server` (D22.3): hardware check, catalog rated per machine, binary + model downloads (resumable, SHA-256 checked), start/stop; one **Chat** connector for any OpenAI-compatible AI (engine, ChatGPT, Gemini, Ollama) with the Bookshelf tools | A machine with no local AI gets a working local model through Sage OS — **built** (6 Oct, v0.12.0); checked here with existing files; a fresh-machine download is the remaining check |
 
 Open checks before A3/A4: which agent tools work reliably on Windows; what the Hermes kanban does
 that a Sage OS board must match.
@@ -73,7 +74,9 @@ that a Sage OS board must match.
 
 ## Product track (open)
 
-Direction in D21: each user runs Sage OS on their own computer; signed Windows and Mac installers that
-bundle everything; first-run setup to connect their own AI (A5); phone access by same-Wi-Fi passkey,
-bring-your-own Tailscale, or an optional paid relay. Still undecided until the audience is defined
-(see `MISSION.md`): accounts, pricing, which tiers ship first.
+Audience and scope in **D22**: anyone who uses several AIs and has scattered notes. Each user runs
+Sage OS on every device they own, with notes synced through a folder they already trust (option B);
+an optional paid relay later (option C). Still to build: note sync with conflict handling, signed
+Windows and Mac installers that bundle Python and the UI, first-run setup, API-key entry in the app
+(today keys come from environment variables), Google verification for the Drive scope (or the
+narrower `drive.file` scope with a picker). Still undecided: accounts, pricing, which tiers ship first.

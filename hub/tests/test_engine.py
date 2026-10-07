@@ -100,6 +100,30 @@ def test_model_download_resumes_and_checks_the_hash(tmp_path, monkeypatch):
     assert not (tmp_path / "models" / "bad.gguf").exists() and not (tmp_path / "models" / "bad.gguf.part").exists()
 
 
+def test_orphan_reaped_only_if_it_is_llama_server(tmp_path, monkeypatch):
+    e = LocalEngine(tmp_path)
+    (tmp_path / "server.pid").write_text("4242")
+    killed = []
+
+    class P:
+        def __init__(self, pid, name):
+            self.pid, self._name = pid, name
+
+        def name(self):
+            return self._name
+
+        def terminate(self):
+            killed.append(self.pid)
+
+        def wait(self, t):
+            pass
+    monkeypatch.setattr(eng.psutil, "Process", lambda pid: P(pid, "python.exe"))
+    assert e.reap_orphan() is None and killed == []          # the pid was reused by something else: left alone
+    (tmp_path / "server.pid").write_text("4242")
+    monkeypatch.setattr(eng.psutil, "Process", lambda pid: P(pid, eng.EXE))
+    assert e.reap_orphan() == 4242 and killed == [4242] and not (tmp_path / "server.pid").exists()
+
+
 def test_local_models_found_and_start_needs_a_binary(tmp_path):
     d = tmp_path / "elsewhere"
     d.mkdir()

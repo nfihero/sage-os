@@ -31,9 +31,10 @@ mentor plans and reviews, and nothing important happens without your say.
 
 - **Today:** one person, the founder: a finance + AI student building skills, with a local GPU and a
   Claude subscription.
-- **As a product (direction set 30 Sep 2026):** people who want agents working *for* them on their own
-  machine, with their data staying local. The exact audience isn't decided yet (open question 7 in
-  `SAGE-OS-HANDOFF.md` §9).
+- **As a product (decided 6 Oct 2026, D22):** the average person who uses several AIs (ChatGPT,
+  Claude, Gemini, a local model) and keeps notes and documents in many places. Sage OS turns those into a
+  "Wikipedia for themselves" that every AI they use reads from, installed on each of their own devices,
+  with no GPU, terminal or particular AI required. Their data stays on their devices.
 
 ## Principles
 

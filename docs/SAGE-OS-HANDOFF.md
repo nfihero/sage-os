@@ -15,39 +15,42 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 3 Oct 2026, v0.11.1)
+## 0. Start here (handoff of 6 Oct 2026, v0.12.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D21), those win.
+`DECISIONS.md` (D1–D22), those win. **Read D22 first:** the product is now a shippable app for anyone
+who uses several AIs and has scattered notes; nothing may assume this PC (no Hermes, GPU or drive
+letter required).
 
 ### Where things are
-- **Version 0.11.1** (`main` = tag `v0.11.1`), tags v0.4.0–v0.11.1. Checked 3 Oct: `pytest` 170/170,
-  `npm run build` clean, `/api/smoke` 18/18, Claude CLI found and signed in. GitHub `origin/main` is
-  at `59c0d4e` (v0.10.0): **v0.10.1 through v0.11.1 are not pushed yet** (the user's Mac needs them).
-- **Built:** dashboard, Claude + Hermes chat through connectors (A1), approvals inbox, Bookshelf
-  K1–K6 (read, search, propose → approve → exact undo, secret screening, MCP tools for both agents,
-  notes built from sources), Drive source library (S1), guide + tour + demo script (D18,
-  `docs/DEMO.md`), portable hub for macOS and Windows (3a, D21).
-- **Live data:** the vault is **empty** (0 notes). The inbox holds 9 starter-note cards (51 notes,
-  from *Build notes*), Hermes' FIN 101 draft `p_90a0ac40ed` (5 notes; long titles, tags in body, no
-  `source:`), and kanban `t_549737c1` (budget parser,
-  blocked on the user's spending categories). The Drive copy has 476 files in `data/sources/drive`.
+- **Version 0.12.0** (tag `v0.12.0`), tags v0.4.0–v0.12.0. Checked 6 Oct: `pytest` 193/193,
+  `npm run build` clean, `/api/smoke` 18/18. GitHub `origin/main` is at `59c0d4e` (v0.10.0):
+  **v0.10.1 through v0.12.0 are not pushed** (the user's Mac needs them).
+- **Built:** everything through v0.11 plus, in 0.12.0: K8 briefing packs + Reading strip (D20),
+  Sage OS's own llama.cpp engine with a model catalog rated per machine (A5, D22.3), one Chat
+  connector for any OpenAI-compatible AI with the Bookshelf tools (D22.2), the Google Drive connector
+  for Google Docs/Sheets/Slides (S3, D22.5; not run live yet).
+- **This PC:** `config.local.toml` (untracked) points the engine at Hermes' CUDA llama.cpp build and
+  its models folder, so nothing is downloaded here. Engine port 8790. Gemma 4 12B tested.
+- **Live data:** the vault has **56 notes** (the user approved the starter cards). The Drive copy has
+  535 files incl. the Deal Club folder (63 added 6 Oct); the contact-distribution spreadsheet is
+  excluded. Kanban `t_549737c1` still blocked on the user's spending categories.
 
-### Next, in the order the user is leaning toward (confirm before starting)
-1. **K8 briefing packs** (D20 + amendment): per prompt, notes + source excerpts attached to each
-   message, shown **alongside** it in a *Reading* strip that also lists the agent's own reads; a ✕ on
-   any item stops/resends or corrects the next turn and drops it from later packs; per-chat toggle;
-   stored per message; phone width from the start (D21).
-2. **Phase 3b** (D21): Tailscale Serve to the PC + **passkey** login (WebAuthn), devices added from
-   the PC with a one-time code, revocable; localhost stays login-free; phone layout pass. Needs the
-   user's Tailscale account (Claude can't create accounts).
-3. **S2 OCR** (D19): Windows' built-in OCR first (`Windows.Media.Ocr`, en-US present), 37 images +
-   16 scanned PDFs waiting; behind an engine interface so a Mac engine can follow.
-4. Then K9 (save to Bookshelf from chat), K7 (batch review), Phase 4 (Claude ↔ Hermes handoff), A3
-   (own board), Phase 6 / D8 (team chat).
+### Next (6 Oct; confirm the order with the user)
+1. **Deal Club demo**: user signs Claude in again and saves the Google OAuth client; connect Drive and
+   sync (brings the Acme pitch framework and target briefing); *Build notes* on the Deal Club
+   collections; rehearse.
+2. D22 product work: note sync between devices (B), meaning-based search (packs are keyword-only),
+   S2 OCR (D19, behind an engine interface), API keys entered in the app, installers; then phone
+   access (3b, reworked for B) and the optional relay (C).
+3. Then K9 (save to Bookshelf from chat), K7 (batch review), Phase 4, A3 (own board), Phase 6 / D8.
 
 ### Waiting on the user
-- **Push** v0.10.1–v0.11.1 (`git push origin main --tags`).
+- **Claude Code sign-in for Sage OS expired** (6 Oct): `claude auth login` in a normal terminal.
+- **Google OAuth client** (Desktop app, Drive API enabled, testing mode with themselves as test user)
+  saved as `data/google-oauth-client.json`; then *Connect Google Drive* in Sources. Their account, so
+  they create it.
+- **Push** v0.10.1–v0.12.0 (`git push origin main --tags`).
 - **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
   Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
   user's explicit OK and should be shown as a diff first (D13).

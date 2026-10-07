@@ -319,7 +319,27 @@ class LocalEngine:
         with self.lock:
             self.proc = proc
             self.serving = {"id": model_id, "path": str(path), "started": time.time(), "ready": False, "pid": proc.pid}
+        (self.root / "server.pid").write_text(str(proc.pid))
         return self.serving
+
+    def reap_orphan(self) -> int | None:
+        """A hub that was killed (not shut down) leaves its llama-server holding GPU memory. On the next start,
+        stop the one recorded in server.pid, but only if that pid is still a llama-server. -> its pid."""
+        pidfile = self.root / "server.pid"
+        try:
+            pid = int(pidfile.read_text())
+        except (OSError, ValueError):
+            return None
+        pidfile.unlink(missing_ok=True)
+        try:
+            p = psutil.Process(pid)
+            if p.name().lower() != EXE.lower():
+                return None
+            p.terminate()
+            p.wait(10)
+        except (psutil.Error, OSError):
+            return None
+        return pid
 
     def alive(self) -> bool:
         """Is the served model's process still running? Raises (and clears `serving`) if it died."""
@@ -351,6 +371,7 @@ class LocalEngine:
         return ok
 
     def stop(self):
+        (self.root / "server.pid").unlink(missing_ok=True)
         with self.lock:
             proc, self.proc, self.serving = self.proc, None, None
         if proc and proc.poll() is None:

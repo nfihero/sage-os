@@ -40,3 +40,12 @@ def test_merge_does_not_mutate_inputs():
 
 def test_tracked_config_has_no_local_file_committed():
     assert "config.local.toml" in (ROOT / ".gitignore").read_text(encoding="utf-8").split()
+
+
+def test_byte_order_mark_is_accepted(tmp_path):
+    """Notepad saves UTF-8 with a BOM; the config must still load (6 Oct)."""
+    p = tmp_path / "config.toml"
+    p.write_bytes(b"\xef\xbb\xbf[hub]\nport = 9999\n")
+    (tmp_path / "config.local.toml").write_bytes(b"\xef\xbb\xbf[engine]\nport = 8799\n")
+    c = load(p)
+    assert c.port == 9999 and c.engine_port == 8799

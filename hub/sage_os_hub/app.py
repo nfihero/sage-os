@@ -572,6 +572,9 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if "chat" in hub.agents:
             hub.agents["chat"].publish()
         if hub.engine:
+            orphan = await asyncio.to_thread(hub.engine.reap_orphan)
+            if orphan:
+                log.warning("stopped llama-server %s left running by an earlier hub", orphan)
             hub.panel("engine", hub.engine.status())
         if start_adapters:
             results = await asyncio.to_thread(hub.run_smoke)

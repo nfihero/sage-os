@@ -84,9 +84,10 @@ def load(path: Path | None = None) -> Config:
     cfg = Config()
     if not path.exists() and not local.exists():
         return cfg
-    raw = tomllib.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    # utf-8-sig: Windows Notepad (and PowerShell 5) save UTF-8 with a byte-order mark, which TOML rejects
+    raw = tomllib.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
     if local.exists():
-        raw = merge(raw, tomllib.loads(local.read_text(encoding="utf-8")))
+        raw = merge(raw, tomllib.loads(local.read_text(encoding="utf-8-sig")))
     hub, hermes, ui = raw.get("hub", {}), raw.get("hermes", {}), raw.get("ui", {})
     cfg.host = hub.get("host", cfg.host)
     cfg.port = int(hub.get("port", cfg.port))
