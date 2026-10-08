@@ -17,6 +17,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -46,6 +47,11 @@ class DriveError(Exception):
     pass
 
 
+def loose(name: str) -> str:
+    """A name with only its letters and digits, lower-cased, for matching through file-name sanitising."""
+    return re.sub(r"[\W_]+", "", name, flags=re.UNICODE).casefold()
+
+
 class GoogleDrive:
     def __init__(self, client_path: Path, token_path: Path):
         self.client_path, self.token_path = Path(client_path), Path(token_path)
@@ -54,9 +60,17 @@ class GoogleDrive:
         self._folders: dict[tuple[str, str], str | None] = {}   # (parent id, name) -> folder id, per sync
 
     # -- state ---------------------------------------------------------------------------------------
+    def _client_file(self) -> Path:
+        """The configured file, or the file as Google names the download (client_secret_<id>.json) in the
+        same folder, so a user can drop it in without renaming it."""
+        if self.client_path.is_file():
+            return self.client_path
+        found = sorted(self.client_path.parent.glob("client_secret_*.json"))
+        return found[0] if len(found) == 1 else self.client_path
+
     def _client(self) -> dict | None:
         try:
-            raw = json.loads(self.client_path.read_text(encoding="utf-8"))
+            raw = json.loads(self._client_file().read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             return None
         c = raw.get("installed") or raw.get("web") or {}
@@ -81,7 +95,7 @@ class GoogleDrive:
     def status(self) -> dict:
         tok = self._token()
         return {"configured": self._client() is not None, "connected": bool(tok and tok.get("refresh_token")),
-                "client_file": str(self.client_path), "account": (tok or {}).get("account")}
+                "client_file": str(self._client_file()), "account": (tok or {}).get("account")}
 
     @property
     def connected(self) -> bool:
@@ -173,11 +187,22 @@ class GoogleDrive:
         return name.replace("\\", "\\\\").replace("'", "\\'")
 
     def _child(self, parent: str, name: str, mime: str | None = None) -> dict | None:
-        q = f"'{parent}' in parents and name = '{self._q(name)}' and trashed = false"
-        q += f" and mimeType = '{mime}'" if mime else " and mimeType = 'application/vnd.google-apps.folder'"
-        files = self._get("/files", {"q": q, "fields": "files(id,name,mimeType,modifiedTime)", "pageSize": 10,
-                                     "orderBy": "modifiedTime desc"}).get("files", [])
-        return files[0] if files else None
+        kind = f" and mimeType = '{mime}'" if mime else " and mimeType = 'application/vnd.google-apps.folder'"
+        base = f"'{parent}' in parents and trashed = false{kind}"
+        fields = {"fields": "nextPageToken, files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc"}
+        files = self._get("/files", {"q": f"{base} and name = '{self._q(name)}'", "pageSize": 10, **fields}).get("files", [])
+        if files:
+            return files[0]
+        # Drive for desktop drops characters Windows/macOS can't put in a file name ("Resume/CV" shows up as
+        # "Resume CV", "Acme Industrial: Initial..." loses the colon): compare names without punctuation.
+        want, token = loose(name), None
+        for _ in range(10):                                   # up to 10,000 siblings
+            page = self._get("/files", {"q": base, "pageSize": 1000, **fields, **({"pageToken": token} if token else {})})
+            hit = next((f for f in page.get("files", []) if loose(f["name"]) == want), None)
+            if hit or not page.get("nextPageToken"):
+                return hit
+            token = page["nextPageToken"]
+        return None
 
     def begin_sync(self):
         self._folders.clear()

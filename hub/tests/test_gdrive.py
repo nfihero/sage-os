@@ -24,8 +24,8 @@ def docx(text: str) -> bytes:
 def drive(tmp_path, monkeypatch):
     (tmp_path / "client.json").write_text(json.dumps({"installed": {"client_id": "cid", "client_secret": "csec"}}))
     calls = []
-    tree = {("root", "Deal Club"): "F1"}
-    docs = {("F1", "Pitch Framework"): "D1"}
+    tree = {("root", "Deal Club"): "F1", ("root", "Resume/CV"): "F2"}
+    docs = {("F1", "Pitch Framework"): "D1", ("F1", "Acme Industrial: Initial M&A Pitch"): "D2", ("F2", "Cover Letter"): "D3"}
 
     def post(url, data=None, timeout=None):
         calls.append(("POST", url, data))
@@ -42,11 +42,11 @@ def drive(tmp_path, monkeypatch):
             return httpx.Response(200, json={"user": {"emailAddress": "me@example.com"}})
         if url.endswith("/files"):
             q = params["q"]
-            parent, name = q.split("'")[1], q.split("name = '")[1].split("' and")[0]
-            if "folder" in q:
-                fid = tree.get((parent, name))
-            else:
-                fid = docs.get((parent, name))
+            parent, table = q.split("'")[1], tree if "folder" in q else docs
+            if "name = '" not in q:                       # listing a folder's children
+                return httpx.Response(200, json={"files": [{"id": i, "name": n} for (p, n), i in table.items() if p == parent]})
+            name = q.split("name = '")[1].rsplit("'", 1)[0]
+            fid = table.get((parent, name))
             return httpx.Response(200, json={"files": [{"id": fid, "name": name}] if fid else []})
         if url.endswith("/export"):
             return httpx.Response(200, content=docx("Sell-side pitch: buyer universe and valuation range"))
@@ -87,6 +87,13 @@ def test_no_client_file_means_not_configured(tmp_path):
         d.start("http://127.0.0.1:1/cb")
 
 
+def test_googles_download_name_is_found(tmp_path):
+    (tmp_path / "client_secret_123-abc.apps.googleusercontent.com.json").write_text(
+        json.dumps({"installed": {"client_id": "cid", "client_secret": "csec"}}))
+    d = GoogleDrive(tmp_path / "google-oauth-client.json", tmp_path / "token.json")
+    assert d.status()["configured"] and d.status()["client_file"].endswith("googleusercontent.com.json")
+
+
 def test_resolve_walks_the_path_and_refreshes_expired_tokens(drive):
     connect(drive)
     tok = json.loads(drive.token_path.read_text())
@@ -94,6 +101,9 @@ def test_resolve_walks_the_path_and_refreshes_expired_tokens(drive):
     drive.token_path.write_text(json.dumps(tok))
     assert drive.resolve("My Drive/Deal Club/Pitch Framework.gdoc")["id"] == "D1"
     assert any(c[0] == "POST" and c[2]["grant_type"] == "refresh_token" for c in drive.calls)
+    # Drive for desktop drops characters a file name can't hold: "Resume/CV" -> "Resume CV", ":" removed
+    assert drive.resolve("My Drive/Deal Club/Acme Industrial Initial M&A Pitch.gdoc")["id"] == "D2"
+    assert drive.resolve("My Drive/Resume CV/Cover Letter.gdoc")["id"] == "D3"
     with pytest.raises(DriveError):
         drive.resolve("My Drive/Nope/Pitch Framework.gdoc")
     with pytest.raises(DriveError):

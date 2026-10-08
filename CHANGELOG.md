@@ -12,6 +12,23 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.12.2] — 2026-10-08
+
+Google Drive connector, first live run (S3 gate: **pass**). Connected read-only; 10 of 13 Google Docs in
+the chosen folders exported and searchable, including the Acme pitch framework and the M&A target
+briefing. pytest 197/197.
+
+### Fixed
+- Google Docs whose names (or folder names) contain characters a file name can't hold were "not found":
+  Drive for desktop drops `/` and `:` ("Resume/CV" shows as "Resume CV"). Lookups now fall back to
+  comparing names without punctuation.
+- The OAuth client file is found under the name Google downloads it with (`client_secret_*.json` in
+  `data/`), so it needn't be renamed.
+
+### Known
+- Three Google Docs under `Resume CV/Old Resumes` still aren't found in Drive (that folder may be a
+  shortcut or shared from elsewhere).
+
 ## [0.12.1] — 2026-10-07
 
 Security pass (vibe-security, against the D14 baseline) and copy pass on 0.12.0. pytest 196/196.

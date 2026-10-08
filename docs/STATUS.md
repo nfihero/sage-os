@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
+**Version 0.12.2 · 8 Oct 2026** (Google Drive live: 10 of 13 Google Docs exported and searchable). **0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
 fixed or listed in CHANGELOG; local engine now needs a per-start key). **0.12.0 · 6 Oct:** `pytest` 193/193 (196 at 0.12.1), `npm run build` clean, hub `/api/smoke`
 18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
 from the outreach playbooks with both shown in the Reading strip. **Claude Code's sign-in for Sage OS has
@@ -78,7 +78,7 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 |---|---|---|
 | K8 | An agent's reply uses a fact that exists only in your notes, and the strip shows where it came from | pass — local Gemma 4 12B (no Hermes, no cloud) described the three-email outreach sequence from the two playbooks in 14 s, citing both; both shown in the strip; ✕ struck an item live; phone width checked; pytest 193/193 |
 | A5 | A machine with no local AI gets a working local model through Sage OS | partly — engine started a model from files already on disk and served chat; the download path is covered by tests (resume, checksum, unsafe archives) but not yet run against GitHub / Hugging Face |
-| S3 | A Google Doc's text is found by search | built, not run live — tests cover consent (PKCE, one-time state), path lookup, export and re-sync; needs the user's OAuth client |
+| S3 | A Google Doc's text is found by search | pass (8 Oct) — connected read-only; 10 of 13 Google Docs exported; "Acme pitch framework" finds the Acme Industrial pitch framework; 3 in Resume CV/Old Resumes not found in Drive |
 | 1 | All panels show live data | pass |
 | 1 | CLI-filed task appears on the board within 10 s | pass — 4.8 s |
 | 1 | Loading a model changes the GPU lane within 5 s | pass — 0.3 s to *loading*, 1.2 s back to idle |
