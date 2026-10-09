@@ -578,6 +578,43 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Costs / limits:** small local models plan less reliably than frontier ones; the role picker should say
   so, and the gates are checked with both a cloud and a local lead.
 
+## D27 — "Sign in on each device and everything just works": a Sage account with end-to-end encrypted sync
+
+- **Date / by:** 2026-10-09, user ("download on my phone, Mac and desktop, sign in on each and everything just
+  works"); design by Claude
+- **Status:** accepted as the target architecture. Builds on D25 (app data vs Library) and D22 option C (a
+  service we run is the paid tier); folder sync (D25) stays as the free, self-managed option.
+- **Decision:**
+  1. **Local-first devices.** Each device keeps its own full database and works offline; sync runs in the
+     background and never blocks the UI.
+  2. **A Sage account with passkey sign-in.** Each device makes its own key pair when enrolled; an already
+     signed-in device or the recovery key (shown at setup) approves it; devices can be revoked.
+  3. **End-to-end encryption.** One account data key, wrapped per device. The server stores only ciphertext and
+     can't read notes, files or chats.
+  4. **What syncs and how:** notes (markdown) with per-note version vectors, conflicts kept as two copies (a
+     CRDT text format is a later option); files as content-addressed encrypted chunks, fetched on demand on
+     phones; chats, inbox decisions, undo journal and digest progress as append-only per-device event logs merged
+     by time (no conflicts possible); settings last-writer-wins per key; indexes and embeddings rebuilt per
+     device (embeddings may sync so phones skip the work); secrets in the OS keychain, synced through the
+     encrypted vault only if the user opts in.
+  5. **Work goes where it can run.** Jobs sync too: a digest started on the phone is picked up (leased) by a
+     device with a GPU; a phone chat can use a cloud model or reach the desktop's local engine through the relay.
+  6. **A thin server:** encrypted blob storage (R2/S3), a small metadata database (accounts, devices, log
+     cursors), a push channel ("something new"), and the relay. No knowledge of content.
+  7. **Apps:** desktop = one installer bundling hub + UI + engine (e.g. Tauri); phone = the same React UI as a
+     native shell with the sync client and a local store (no Python, no local model at first); one sync engine
+     (TypeScript or Rust) shared by both so the protocol can't drift.
+- **Do now (no server needed), so sync is transport later, not a rewrite:** (a) stable ULIDs for every record
+  (chats, messages, inbox items, approvals, digests, settings); (b) tombstones instead of deletes; (c) chats,
+  inbox decisions and the journal as append-only events stamped with device + time; (d) a clear split between
+  synced stores and device-local ones (indexes, source copies, engine), matching D25; (e) a device identity per
+  install, recorded on every change.
+- **Costs / limits:** we run and pay for a service (storage, uptime, account recovery): the paid tier. A lost
+  recovery key with no signed-in device means lost data (setup must make the key hard to skip). The phone app
+  is a second shell to maintain, though it reuses the UI.
+- **Revisit if:** users won't accept an account (then folder sync + LAN pairing only), or E2EE blocks a must-have
+  server feature (then that feature runs on a user's device instead).
+
 ---
 
 ## Proposed, awaiting the user

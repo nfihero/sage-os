@@ -15,93 +15,102 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D26), those win. **Read D22 first:** the product is now a shippable app for anyone
-who uses several AIs and has scattered notes; nothing may assume this PC (no Hermes, GPU or drive
-letter required).
+`DECISIONS.md` (D1–D27), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+(where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
+
+### What Sage OS is now (D22)
+A shippable app for anyone who uses several AIs and has scattered notes: a "Wikipedia for yourself" built
+from your own files, which every AI you use reads from, and which grows only with your approval. Windows and
+macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal required). Any model can be the
+lead or reviewer (D26).
 
 ### Where things are
-- **Version 0.15.0** (tag `v0.15.0`), tags v0.4.0–v0.15.0, all pushed to GitHub 9 Oct at the user's request.
-  Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
-- **0.15.0 (D25 storage, D26 any-model lead):** data now lives in `%APPDATA%\Sage OS` (the Library =
-  `Library/Notes` + `Library/Files`); the old `sage-os/data` is kept as `data.moved-20261009-014252` until the
-  user OKs deleting it. **Gotcha:** files written to `AppData\Roaming` from a tool shell inside the Claude
-  desktop app (MSIX) land in its virtualized copy (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Sage OS`),
-  invisible to the hub started via WMI; the move was copied out with robocopy run through WMI. A stale
-  virtualized copy remains there (harmless; delete with the user's OK). Don't write app data from the tool shell.
-- **0.14.0:** K13 review note by note (D24); Drive folders through the API (`gdrive` source = My Drive/School);
-  textbook fixes (year rows vs Aadhaar screening, faulty bookmarks). Digest `dg_7cbf09dbad` = Kieso
-  *Intermediate Accounting* 18e, 777 sections / 45 chapters, started 9 Oct on local Gemma 4 12B (~7–8 h); it
-  pauses proposing at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
-- **0.12.2:** Google Drive live (10 of 13 Google Docs; names Drive for desktop sanitised now match).
-  **0.13.0:** K12 long documents (D23): *Digest into notes*, DIGESTS coverage map, EPUB, bigger files.
-- **Built:** everything through v0.11 plus, in 0.12.0: K8 briefing packs + Reading strip (D20),
-  Sage OS's own llama.cpp engine with a model catalog rated per machine (A5, D22.3), one Chat
-  connector for any OpenAI-compatible AI with the Bookshelf tools (D22.2), the Google Drive connector
-  for Google Docs/Sheets/Slides (S3, D22.5; not run live yet).
-- **This PC:** `config.local.toml` (untracked) points the engine at Hermes' CUDA llama.cpp build and
-  its models folder, so nothing is downloaded here; no `[storage]` override (defaults to app data). Engine port 8790. Gemma 4 12B tested.
-- **Live data:** the vault has **56 notes** (the user approved the starter cards). The Drive copy has
-  535 files incl. the Deal Club folder (63 added 6 Oct); the contact-distribution spreadsheet is
-  excluded. Kanban `t_549737c1` still blocked on the user's spending categories.
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.1**, tags v0.4.0–v0.15.1,
+  **all pushed** (9 Oct, at the user's request). Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
+- **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
+  Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
+  `...\Library\Files` (empty so far). The Library is not in a synced folder yet. The old `sage-os\data` is
+  kept as `sage-os\data.moved-20261009-014252` (git-ignored) until the user OKs deleting it.
+- **This PC's config:** `config.toml` (shared) + `config.local.toml` (untracked: the engine uses Hermes' CUDA
+  llama.cpp build `...\hermes\tools\llamacpp-cuda-10964-win32-x64\llama-server.exe` and its models folder).
+- **Sources:** `drive` = Drive for desktop `G:\` folders (545 files incl. Deal Club, 10 Google Docs via the API);
+  `gdrive` = `My Drive/School` read straight through the Drive API (the Kieso textbook); `library` = Library/Files,
+  indexed in place. Google is connected read-only as the owner's Google account.
 
-### Next (9 Oct; confirm the order with the user)
-0. **Inbox:** review the textbook chapters with REVIEW; reject the front-matter cards (drafted before the
-   "about the book itself" rule) and the older 47-note playbook card. The user is away until the 10th.
-1. **Deal Club demo**: user signs Claude in again and saves the Google OAuth client; connect Drive and
-   sync (brings the Acme pitch framework and target briefing); *Build notes* on the Deal Club
-   collections; rehearse.
-2. D22 product work: note sync between devices (B), meaning-based search (packs are keyword-only),
-   S2 OCR (D19, behind an engine interface), API keys entered in the app, installers; then phone
-   access (3b, reworked for B) and the optional relay (C).
-3. Then K9 (save to Bookshelf from chat), K7 (batch review), Phase 4, A3 (own board), Phase 6 / D8.
+### Built, by version (details in CHANGELOG)
+- 0.12: K8 briefing packs + Reading strip; own llama.cpp engine + model catalog; Chat connector for any
+  OpenAI-compatible AI; Google Drive connector; security pass (engine key per start, no web UI, no CORS).
+- 0.13: K12 digest long documents section by section with a coverage map (D23).
+- 0.14: K13 review proposals note by note: read rendered, keep/drop, edit, file only what's kept (D24).
+- 0.15: D25 storage (app data + Library + STORAGE tab: open folders, export zip, move Library, sync conflicts);
+  Drive folders through the API; textbook fixes (year rows vs Aadhaar screening, faulty bookmarks).
+
+### Running right now (check before restarting anything)
+- **Hub** on http://127.0.0.1:8787, started detached via WMI (`hub\.venv\Scripts\python.exe -m sage_os_hub`,
+  cwd `sage-os`). Restarting is safe: everything persists and the digest resumes.
+- **Engine** serving Gemma 4 12B (`file:gemma-4-12b-it-qat-q4_0`) on 127.0.0.1:8790, two 16K slots, ~10.7 GB VRAM.
+  A hub restart stops it (it's reaped and must be started again: MODELS → START, or
+  `POST /api/engine/start {"model": "file:gemma-4-12b-it-qat-q4_0"}` with header `X-Sage-OS: 1`).
+- **Digest `dg_7cbf09dbad`**: Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
+  ~35 s per section on the GPU. At handoff: 80+ sections done, every listed concept covered, 0 failed. It
+  stops sending chapters to the inbox at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
+  Its folder name is the long file stem (later digests get readable titles).
+
+### Next (confirm the order with the user)
+1. **Inbox review** (the user does this, with REVIEW): textbook chapter cards; reject the textbook's
+   front-matter cards (drafted before the "about the book itself" rule) and the older 47-note playbook card.
+2. **Y1 sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only event logs for
+   chats / inbox decisions / journal, synced vs device-local split, a device identity per install. No server.
+3. **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
+4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); meaning-based search (D10);
+   S2 OCR (D19); K7 batch review; Phases 4–5 with any-model lead (D26); A3 own board.
 
 ### Waiting on the user
-- **Claude Code sign-in for Sage OS expired** (6 Oct): `claude auth login` in a normal terminal.
-- **Google OAuth client** (Desktop app, Drive API enabled, testing mode with themselves as test user)
-  done 8 Oct (the client file sits in app data under Google's download name).
-- **Delete the old `sage-os/data.moved-20261009-014252`** once Sage OS is confirmed working from app data.
-- **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
-  Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
-  user's explicit OK and should be shown as a diff first (D13).
-- Review the inbox cards (approve course material; Downloads and Java exercises are noisy).
-- Delete the stale alias scripts (`swift.bat`, `coder.bat`, `guardian.bat`)? Still unanswered.
-- Spending categories for `t_549737c1`.
-- Who the product is for (D1 open question): gates pricing, accounts and installers (D21).
+- **Claude Code sign-in for Sage OS** still reads as signed out (9 Oct): `claude auth login` in a normal
+  terminal, using the CLI the hub found (`C:\Users\you\.local\bin\claude.EXE`).
+- **Delete** `sage-os\data.moved-20261009-014252` (362 MB) once happy, and the stale virtualized copy at
+  `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Sage OS` (see gotchas).
+- **Inbox cards** (above). **Move the Library** to a synced folder when ready (STORAGE).
+- Older, still open: guardrails hook on macOS (D13: show the diff, get an explicit OK); delete the stale alias
+  scripts `swift.bat` / `coder.bat` / `guardian.bat`; spending categories for kanban `t_549737c1`; pricing,
+  accounts and installers follow D27 but aren't decided.
 
 ### How the user wants work done
-- **Every pass:** update all docs (README, STATUS, ROADMAP, MISSION, this file, CHANGELOG), record
-  choices in `DECISIONS.md` as new entries (never rewrite history), give each roadmap step its own
-  minor version + CHANGELOG entry + local tag; docs-only = patch version. Version strings live in
-  `hub/sage_os_hub/__init__.py`, `hub/pyproject.toml`, `ui/package.json`, `ui/package-lock.json` (×2).
-- **After building:** run `/code-review high --fix`, and `no-ai-slop` on any user-facing copy;
-  `vibe-security` when auth, network exposure, secrets or agent input change (Phase 3b must re-run
-  the D14 audit). Verify UI changes in the browser pane at 1440×900 and 375×812.
-- **Commit when it makes sense; push only when the user says "push".** Ask before destructive or
-  persistent system changes (Hermes config, deleting files, models). Bonsai models are parked.
-  Never handle the user's credentials; `G:\` is read-only; `data-private/` never committed.
-- The user prefers plain-language explanations (non-CS framing), recommendations over surveys, and
-  asks before big direction changes.
+- **Every pass:** update all docs (README, STATUS, ROADMAP, MISSION, this file, CHANGELOG), record choices in
+  `DECISIONS.md` as new entries (never rewrite history), give each roadmap step its own minor version +
+  CHANGELOG entry + local tag; docs-only = patch version. Version strings live in `hub/sage_os_hub/__init__.py`,
+  `hub/pyproject.toml`, `ui/package.json`, `ui/package-lock.json` (×2 for sage-os-ui).
+- **After building:** `/code-review high --fix`; `no-ai-slop` on user-facing copy; `vibe-security` when auth,
+  network exposure, secrets or agent input change. Verify UI in the browser pane at 1440×900 and 375×812.
+- **Commit when it makes sense; push only when the user says "push".** Ask before destructive or persistent
+  system changes (Hermes config, deleting files, models). Never handle the user's credentials (they place
+  OAuth files themselves); `G:\` is read-only; `data-private/` and `data*/` never committed.
+- Plain-language explanations, recommendations over surveys; asks before big direction changes. The user
+  often follows along from the phone (Remote Control) and leaves long jobs running.
 
-### Gotchas learned 1–3 Oct (save time)
-- Long-lived processes: start detached with `Invoke-CimMethod Win32_Process Create` (the hub:
-  `hub\.venv\Scripts\python.exe -m sage_os_hub`, cwd `sage-os`); kill by matching `sage_os_hub` in
-  the command line.
-- Patch scripts: inline heredocs with backslashes or quotes break (bash or Python escapes); write the
-  script to the scratchpad and run it, or use the Edit tool. Assert each replacement count.
-- PowerShell's parser rejects some constructs (`-replace '\\','/'`, mixed `cmd /c`); use bash or Python.
-- FastAPI `TestClient`: one context per app (a second context finds its DBs closed).
-- After a UI rebuild the browser may need one Ctrl+F5 (index.html now revalidates; old caches don't).
-- The browser pane's screenshots lag CSS transitions on large shadows next to the WebGL orbs; check
-  geometry with JS, not only screenshots.
-- Hermes caches an MCP server's tool list at first connect: after adding Bookshelf tools, toggle
-  `mcp_servers.bookshelf.enabled` off and on in Hermes `config.yaml` (YAML-checked edit) and wait for
-  the reconcile line in `gateway.log`.
-- Never use the Hermes API key from `.env` in diagnostics; go through the hub.
-- A throwaway hub for UI checks: `SAGE_OS_CONFIG=<scratch>/config.toml` with its own vault and port,
-  **no `[[sources]]`** (the sources root and index are not configurable and would hit the real copy).
+### Gotchas (save time)
+- **Never write app data from the tool shell.** The shell runs inside the Claude desktop app (MSIX), so writes
+  under `%APPDATA%` land in `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\...`, invisible to the hub,
+  which runs outside the container (started via WMI). Reading app data from the shell may also show that stale
+  copy. To act on app data, go through the hub's API, or run the command via WMI (`Invoke-CimMethod
+  Win32_Process Create`), as the 9 Oct move did with robocopy.
+- Long-lived processes: start detached with `Invoke-CimMethod Win32_Process Create`; kill the hub by matching
+  `sage_os_hub` in the command line. A killed hub leaves llama-server running; the next start reaps it.
+- Tests: `tests/conftest.py` gives every test its own app data and `config.local.toml`. Keep it: a storage test
+  once wrote the real `config.local.toml`.
+- PowerShell 5: no `??`, no `&&`; `Set-Content -Encoding utf8` writes a BOM (the config loader now accepts it);
+  multi-line `.Replace()` on files with CRLF misses (normalize `\r\n` first or use the Edit tool); commit
+  messages with quotes: write them to a file and `git commit -F`.
+- pypdf floods stderr with fontTools warnings on big PDFs: redirect stderr.
+- `knowledge/__init__.py` re-exports `screen` the function: import the module via `sys.modules`.
+- Panels use `backdrop-filter`, so `position: fixed` inside a panel is relative to the panel: render overlays
+  with `createPortal(…, document.body)`. Tailwind's `md:hidden` loses to `.chip`'s display: wrap the chip.
+- FastAPI `TestClient`: one context per app. After a UI rebuild the browser may need one Ctrl+F5.
+- Hermes caches an MCP server's tool list at first connect (toggle `mcp_servers.bookshelf.enabled`); never use
+  the Hermes API key from `.env` in diagnostics.
 
 ---
 

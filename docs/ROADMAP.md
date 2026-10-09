@@ -65,6 +65,21 @@ plug in through connectors; Hermes becomes optional. No custom llama.cpp runtime
 Open checks before A3/A4: which agent tools work reliably on Windows; what the Hermes kanban does
 that a Sage OS board must match.
 
+## Sync and devices track (9 Oct 2026 — DECISIONS D25, D27)
+
+Goal: install on phone, Mac and PC, sign in on each, and everything is there. D25 (app data + Library, folder
+sync) is done; the rest builds the account-based, end-to-end encrypted sync of D27.
+
+| Step | Scope | Gate |
+|---|---|---|
+| Y0 | App data per computer; the Library (Notes + Files) in a synced folder; STORAGE tab (open, export, move, conflicts) (D25) | **Done** (9 Oct, v0.15.0) |
+| Y1 | **Sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only event logs for chats / inbox / journal, synced vs device-local stores split, a device identity | Two hub instances on one PC, sharing only the synced stores by file copy, converge with no lost or duplicated item |
+| Y2 | Keychain for secrets (Google token, API keys, engine key); API keys entered in the app | No secret is a plain file in app data |
+| Y3 | Sage account + passkey sign-in, device enrollment and revocation, recovery key | A second device joins with the first device's approval; a revoked device can't sync |
+| Y4 | E2EE sync service (thin server: blobs, metadata, push) and the shared sync engine | Notes, files, chats and inbox decisions made offline on two devices merge correctly; the server holds only ciphertext |
+| Y5 | Jobs routed to capable devices; the relay (phone ↔ desktop engine) | A digest started on the phone runs on the desktop and its proposals are approved on the phone |
+| Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers | Install on phone, Mac and PC, sign in, everything is there |
+
 ## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
 
 | Item | Scope | Starting point |

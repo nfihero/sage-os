@@ -12,6 +12,17 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-10-09
+
+Docs only: the sync architecture and a handoff for a fresh session.
+
+### Added
+- **D27**: "sign in on each device and everything just works" = a Sage account (passkeys) with end-to-end
+  encrypted, local-first sync; what syncs and how; jobs routed to capable devices; a thin server; desktop and
+  phone apps sharing one sync engine; what to change in the code now.
+- ROADMAP **sync and devices track** Y0–Y6 (Y0 = D25, done).
+- Handoff §0 rewritten for a new session (state, running jobs, next steps, what waits on the user, gotchas).
+
 ## [0.15.0] — 2026-10-09
 
 Storage (D25) and any-model lead (D26, roadmap only). This PC's data moved from `sage-os/data/` to
