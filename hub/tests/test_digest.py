@@ -57,6 +57,26 @@ def test_huge_section_split_at_paragraphs_and_tiny_ones_merged():
     assert len(secs) == 1
 
 
+def test_wrong_and_shared_bookmarks_are_repaired():
+    """A real textbook (9 Oct): 'Chapter 15' bookmarked on Chapter 14's first page, and an appendix sharing a
+    page with a sub-section bookmark. The chapter is moved to where its title appears; the appendix kept."""
+    from sage_os_hub.knowledge.sections import fix_shared_pages
+    body = "x " * 4000
+    doc = (f"Chapter 14\nStockholders' Equity\n{body}\n14.1 Corporate Capital\n{body}\n"
+           f"Dilutive Securities and Earnings per Share\n{body}\nAppendix A\n{body}")
+    ch15 = doc.index("Dilutive Securities")
+    marks = [(0, 1, "Chapter 14: Stockholders' Equity"), (0, 1, "Chapter 15: Dilutive Securities and Earnings per Share"),
+             (doc.index("14.1"), 2, "14.1 Corporate Capital"), (doc.index("Appendix A"), 3, "Review"),
+             (doc.index("Appendix A"), 1, "Appendix A: Private Company Accounting")]
+    fixed = fix_shared_pages(marks, doc)
+    assert fixed[1][0] == ch15
+    secs = tile(doc, fixed, "Book")
+    check_tiling(secs, len(doc))
+    assert list(dict.fromkeys(s.chapter for s in secs)) == [
+        "Chapter 14: Stockholders' Equity", "Chapter 15: Dilutive Securities and Earnings per Share",
+        "Appendix A: Private Company Accounting"]
+
+
 def test_markdown_document_split(tmp_path):
     p = tmp_path / "book.md"
     p.write_text(book(), encoding="utf-8")

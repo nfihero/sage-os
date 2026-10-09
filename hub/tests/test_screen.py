@@ -42,6 +42,8 @@ NEGATIVE = [
     "Set API_SERVER_KEY in the .env file.", "Use 1Password: password: see vault",
     # spreadsheet decimals (regression, 1 Oct): fraction digits passed the card/Aadhaar checksums
     "99.9999999999999", "1234.4111111111111111", "4111111111111111.5", "0,4111111111111111", "x 1.234123412346 y",
+    # rows of years in a textbook's charts and tables (regression, 9 Oct: a textbook tripped the Aadhaar checksum 16 times)
+    "2023 2024 2025", "2011 2015 2020", "Year 2026 2027 2028 totals",
 ]
 
 

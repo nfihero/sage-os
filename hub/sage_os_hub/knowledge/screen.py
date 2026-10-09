@@ -95,6 +95,9 @@ def screen(text: str | None) -> str | None:
     if _SSN.search(text):
         return GOV_ID
     for m in _AADHAAR.finditer(text):
+        groups = m.group().split()
+        if len(groups) == 3 and all(1900 <= int(g) <= 2099 for g in groups):
+            continue          # "2023 2024 2025": a row of years in a table, not an ID (1 in 10 pass the checksum)
         if _verhoeff(m.group().replace(" ", "")):
             return GOV_ID
     for m in _IBAN.finditer(text):

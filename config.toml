@@ -88,6 +88,15 @@ google = true                              # Google Docs/Sheets/Slides come thro
 notes_folder = "Drive"                     # starter notes from this source go under Drive/ in the vault (K6)
 strip = ["My Drive", "Other computers"]    # dropped from vault paths: Drive/Archive/... not Drive/My Drive/Archive/...
 
+# A Drive folder read straight through the Drive API (no Drive for desktop needed; D22.5). Needs Google Drive
+# connected in Sources. `path` is a Drive path; `include` picks folders under it.
+[[sources]]
+name = "gdrive"
+path = "My Drive"
+api = true
+include = ["School"]
+notes_folder = "Drive"
+
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before
 # running commands or editing files; answers come from the Sage OS inbox.

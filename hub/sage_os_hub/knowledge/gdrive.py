@@ -230,6 +230,60 @@ class GoogleDrive:
             raise DriveError("not found in Drive")
         return hit
 
+    # -- reading a folder straight from Drive (no Drive for desktop needed) ---------------------------
+    def folder_id(self, path: str) -> str:
+        """A Drive folder path such as "My Drive/School" -> its id."""
+        parts = [p for p in path.replace("\\", "/").split("/") if p]
+        if not parts or parts[0] not in ROOTS:
+            raise DriveError(f"Drive paths start with {', '.join(ROOTS)}")
+        fid = ROOTS[parts[0]]
+        for name in parts[1:]:
+            hit = self._child(fid, name)
+            if not hit:
+                raise DriveError(f"folder {name!r} not found in Drive")
+            fid = hit["id"]
+        return fid
+
+    def walk(self, folder: str, prefix: str = "") -> list[dict]:
+        """Every file under a Drive folder (by id), depth first: {id, rel, mimeType, size, mtime}. Google
+        Docs/Sheets/Slides get the stub extension (.gdoc...) so they're exported like Drive for desktop stubs."""
+        out, token = [], None
+        native = {v[0]: k for k, v in NATIVE.items()}
+        while True:
+            page = self._get("/files", {"q": f"'{folder}' in parents and trashed = false", "pageSize": 1000,
+                                        "fields": "nextPageToken, files(id,name,mimeType,size,modifiedTime)",
+                                        **({"pageToken": token} if token else {})})
+            for f in page.get("files", []):
+                name = f["name"].replace("/", " ")
+                if f["mimeType"] == "application/vnd.google-apps.folder":
+                    out += self.walk(f["id"], f"{prefix}{name}/")
+                    continue
+                if f["mimeType"].startswith("application/vnd.google-apps.") and f["mimeType"] not in native:
+                    continue                                  # forms, drawings, shortcuts: nothing to read
+                mtime = time.mktime(time.strptime(f["modifiedTime"][:19], "%Y-%m-%dT%H:%M:%S"))
+                out.append({"id": f["id"], "rel": prefix + name + native.get(f["mimeType"], ""), "mimeType": f["mimeType"],
+                            "size": int(f.get("size") or 0), "mtime": mtime})
+            token = page.get("nextPageToken")
+            if not token:
+                return out
+
+    def download(self, file_id: str, target: Path, limit: int) -> None:
+        """A file's bytes (not a Google Doc: those are exported) streamed to target, refusing above `limit`."""
+        tmp = target.with_name(target.name + ".part")
+        with httpx.stream("GET", f"{API}/files/{file_id}", params={"alt": "media"},
+                          headers={"Authorization": f"Bearer {self._access()}"}, timeout=httpx.Timeout(30, read=300),
+                          follow_redirects=True) as r:
+            if r.status_code != 200:
+                raise DriveError(f"Drive download failed ({r.status_code})")
+            got = 0
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_bytes(1 << 20):
+                    got += len(chunk)
+                    if got > limit:
+                        raise DriveError("file too large")
+                    f.write(chunk)
+        os.replace(tmp, target)
+
     def export(self, file_id: str, ext: str) -> bytes:
         data = self._get(f"/files/{file_id}/export", {"mimeType": NATIVE[ext][1]}, raw=True)
         if len(data) > EXPORT_LIMIT:

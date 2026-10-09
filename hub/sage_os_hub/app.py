@@ -106,7 +106,8 @@ class Hub:
         self.drive = GoogleDrive(cfg.google_client, cfg.google_token)
         self.sources = SourceLibrary(cfg.sources_root, [
             SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
-                       s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)))
+                       s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
+                       bool(s.get("api", False)))
             for s in cfg.sources], cfg.sources_index, self.drive)
         self.builder = NoteBuilder(self.vault, self.sources)
         self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)

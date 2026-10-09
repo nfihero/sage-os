@@ -127,7 +127,12 @@ def _cut(text: str, start: int, end: int, size: int) -> list[int]:
 
 def tile(text: str, markers: list[tuple[int, int, str]], fallback_title: str) -> list[Section]:
     """Sections covering all of `text` from heading markers (offset, level, title)."""
-    markers = sorted({m[0]: m for m in markers if 0 <= m[0] < len(text)}.values())
+    # Several bookmarks on one spot: keep the highest-level one (a chapter beats its first sub-section).
+    best: dict[int, tuple[int, int, str]] = {}
+    for m in markers:
+        if 0 <= m[0] < len(text) and (m[0] not in best or m[1] < best[m[0]][1]):
+            best[m[0]] = m
+    markers = sorted(best.values())
     if not markers or markers[0][0] > 0:
         markers = [(0, 1, fallback_title if not markers else "Opening")] + markers
     # Chapters are the shallowest heading level whose parts are substantial. One heading per slide, or a
@@ -189,6 +194,25 @@ def check_tiling(sections: list[Section], length: int) -> None:
         raise AssertionError(f"sections end at {pos}, document has {length} characters")
 
 
+def fix_shared_pages(markers: list[tuple[int, int, str]], doc: str) -> list[tuple[int, int, str]]:
+    """Publishers' bookmarks are sometimes wrong: "Chapter 15" pointing at Chapter 14's first page. When a
+    top-level bookmark shares its spot with the previous one, look for its title in the text after that spot
+    (as a line of its own) and move it there; if the title can't be found, leave it."""
+    out: list[tuple[int, int, str]] = []
+    for off, lvl, title in markers:
+        prev = next((m for m in reversed(out) if m[1] <= lvl), None)
+        if prev and prev[0] == off and lvl == prev[1]:
+            core = re.sub(r"^(chapter|part|unit|appendix)\s+\S+\s*[:.\-–—]?\s*", "", title, flags=re.I).strip()
+            words = [re.escape(w) for w in core.split()[:8]]
+            if words:
+                rx = re.compile(r"(?m)^\s*" + r"\s+".join(words))
+                m = rx.search(doc, off + 2000)
+                if m:
+                    off = doc.rfind("\n", 0, m.start()) + 1
+        out.append((off, lvl, title))
+    return out
+
+
 def split_document(copy_path: Path, text: str, title: str) -> tuple[str, list[Section]]:
     """-> (the text the sections index into, sections). For PDFs the text is rebuilt page by page so
     bookmarks can be placed exactly; otherwise it is the library's extracted text."""
@@ -204,7 +228,8 @@ def split_document(copy_path: Path, text: str, title: str) -> tuple[str, list[Se
         outline = pdf_outline(copy_path)
         # an outline with one bookmark per page (slide decks) or almost none says little about structure
         useful = len(outline) >= 2 and len({p for p, _, _ in outline}) > 1
-        markers = [(offsets[p], lvl, t) for p, lvl, t in outline if p < len(offsets)] if useful else text_markers(doc)
+        markers = fix_shared_pages([(offsets[p], lvl, t) for p, lvl, t in outline if p < len(offsets)], doc) \
+            if useful else text_markers(doc)
         sections = tile(doc, markers, title)
         for s in sections:
             first = max(i for i, o in enumerate(offsets) if o <= s.start) + 1

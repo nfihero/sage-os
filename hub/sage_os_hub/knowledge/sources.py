@@ -59,6 +59,21 @@ class SourceSpec:
     notes_folder: str | None = None   # vault folder for notes built from this source (K6); default: Name
     strip: list[str] = field(default_factory=list)      # leading source folders dropped in vault paths
     google: bool = False              # a Drive for desktop folder: Google Docs/Sheets/Slides come through the API (D22)
+    api: bool = False                 # `path` is a Drive path ("My Drive"), read through the Drive API: no local copy of
+                                      # Drive needed, so it works on any computer once Drive is connected (D22.5)
+
+
+@dataclass
+class RemoteFile:
+    """A file listed through the Drive API, shaped like what sync uses from a local Path."""
+    id: str
+    mime: str
+    st_size: int
+    st_mtime: float
+    suffix: str
+
+    def stat(self) -> "RemoteFile":
+        return self
 
 
 # -- text extraction ------------------------------------------------------------------------------
@@ -179,6 +194,8 @@ class SourceLibrary:
     # -- selection -------------------------------------------------------------------------------
     def plan(self, spec: SourceSpec) -> tuple[list[tuple[Path, str]], list[tuple[str, str]]]:
         """-> (files to copy as (original, relative path), skipped as (relative path, reason))."""
+        if spec.api:
+            return self._plan_api(spec)
         take, skipped = [], []
         google = spec.google and self.drive is not None and self.drive.connected
         roots = [spec.path / i for i in spec.include] if spec.include else [spec.path]
@@ -219,6 +236,38 @@ class SourceLibrary:
                         take.append((p, rel))
         return take, skipped
 
+    def _plan_api(self, spec: SourceSpec) -> tuple[list, list[tuple[str, str]]]:
+        """The same selection rules as a local folder, over a Drive folder listed through the API."""
+        take, skipped = [], []
+        if self.drive is None or not self.drive.connected:
+            return [], [("", "connect Google Drive in Sources to read this source")]
+        excl = [e.replace("\\", "/").strip("/").lower() for e in spec.exclude]
+        root = spec.path.as_posix()
+        for inc in spec.include or [""]:
+            inc = inc.replace("\\", "/").strip("/")
+            try:
+                files = self.drive.walk(self.drive.folder_id(f"{root}/{inc}" if inc else root), f"{inc}/" if inc else "")
+            except DriveError as exc:
+                skipped.append((inc, f"Drive folder not read: {exc}"))
+                continue
+            for f in files:
+                rel, low = f["rel"], f["rel"].lower()
+                ext = Path(rel).suffix.lower()
+                name = rel.rsplit("/", 1)[-1]
+                if any(low == e or low.startswith(e + "/") for e in excl) or name.startswith((".", "~$")):
+                    continue
+                if PRIVATE_NAME.search(rel):
+                    skipped.append((rel, "looks private by its name"))
+                elif ext in SKIP_REASONS and ext not in NATIVE:
+                    skipped.append((rel, SKIP_REASONS[ext]))
+                elif ext not in TEXT | RICH and ext not in NATIVE:
+                    skipped.append((rel, f"unsupported type ({ext or 'no extension'})"))
+                elif f["size"] > (MAX_BOOK if ext in (".pdf", ".epub") else MAX_FILE):
+                    skipped.append((rel, "too large"))
+                else:
+                    take.append((RemoteFile(f["id"], f["mimeType"], f["size"], f["mtime"], ext), rel))
+        return take, skipped
+
     # -- sync --------------------------------------------------------------------------------------
     def sync(self, name: str, progress=None) -> dict:
         """Copy new and changed files, drop copies no longer selected, re-extract changed text."""
@@ -249,9 +298,20 @@ class SourceLibrary:
                         continue
                     target = dest / copy_name(rel)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    if src.suffix.lower() in NATIVE:               # Google file: export it (Drive is only read)
+                    if isinstance(src, RemoteFile) and src.suffix not in NATIVE:      # a file in Drive: download it
                         try:
-                            data = self.drive.export(self.drive.resolve(rel)["id"], src.suffix.lower())
+                            self.drive.download(src.id, target, MAX_BOOK if src.suffix in (".pdf", ".epub") else MAX_FILE)
+                        except DriveError as exc:
+                            stats["errors"] += 1
+                            if old:
+                                keep.add(rel)
+                            else:
+                                skipped.append((rel, f"not downloaded from Drive: {exc}"))
+                            continue
+                    elif src.suffix.lower() in NATIVE:             # Google file: export it (Drive is only read)
+                        try:
+                            fid = src.id if isinstance(src, RemoteFile) else self.drive.resolve(rel)["id"]
+                            data = self.drive.export(fid, src.suffix.lower())
                         except DriveError as exc:
                             stats["errors"] += 1
                             if old:

@@ -87,6 +87,61 @@ def test_no_client_file_means_not_configured(tmp_path):
         d.start("http://127.0.0.1:1/cb")
 
 
+def test_a_drive_folder_is_read_through_the_api(drive, tmp_path, monkeypatch):
+    """No Drive for desktop: the folder is listed and files downloaded through the API (D22.5)."""
+    import io as _io
+    from pypdf import PdfWriter
+    buf = _io.BytesIO()
+    w = PdfWriter()
+    w.add_blank_page(100, 100)
+    w.write(buf)
+    pdf = buf.getvalue()
+    listing = {"F1": [{"id": "B1", "name": "Big Book.pdf", "mimeType": "application/pdf", "size": str(len(pdf)),
+                       "modifiedTime": "2026-10-09T07:18:55.095Z"},
+                      {"id": "D1", "name": "Pitch Framework", "mimeType": "application/vnd.google-apps.document",
+                       "modifiedTime": "2026-10-01T00:00:00Z"},
+                      {"id": "S1", "name": "Sub", "mimeType": "application/vnd.google-apps.folder", "modifiedTime": "2026-10-01T00:00:00Z"}],
+               "S1": [{"id": "T1", "name": "notes.md", "mimeType": "text/markdown", "size": "20", "modifiedTime": "2026-10-01T00:00:00Z"}]}
+    real_get = gdrive.httpx.get
+
+    def get(url, params=None, headers=None, timeout=None):
+        q = (params or {}).get("q", "")
+        if url.endswith("/files") and "name = '" not in q and "folder'" not in q:
+            parent = q.split("'")[1]
+            return httpx.Response(200, json={"files": listing.get(parent, [])})
+        return real_get(url, params=params, headers=headers, timeout=timeout)
+    monkeypatch.setattr(gdrive.httpx, "get", get)
+
+    class Stream:
+        def __init__(self, data):
+            self.status_code, self.data = 200, data
+
+        def iter_bytes(self, n):
+            yield self.data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+    downloads = []
+
+    def stream(method, url, **kw):
+        downloads.append(url)
+        return Stream(pdf if "B1" in url else b"# Notes\nbuyer universe")
+    monkeypatch.setattr(gdrive.httpx, "stream", stream)
+    connect(drive)
+    spec = SourceSpec("gdrive", __import__("pathlib").Path("My Drive"), ["Deal Club"], api=True)
+    lib = SourceLibrary(tmp_path / "copy", [spec], tmp_path / "idx.db", drive)
+    stats = lib.sync("gdrive")
+    rels = sorted(r for r, st in lib.files("gdrive") if st != "skipped")
+    assert rels == ["Deal Club/Big Book.pdf", "Deal Club/Pitch Framework.gdoc", "Deal Club/Sub/notes.md"]
+    assert stats["google"] == 1 and (tmp_path / "copy" / "gdrive" / "Deal Club" / "Big Book.pdf").exists()
+    n = len(downloads)
+    lib.sync("gdrive")                                    # unchanged in Drive: nothing downloaded again
+    assert len(downloads) == n
+
+
 def test_googles_download_name_is_found(tmp_path):
     (tmp_path / "client_secret_123-abc.apps.googleusercontent.com.json").write_text(
         json.dumps({"installed": {"client_id": "cid", "client_secret": "csec"}}))
