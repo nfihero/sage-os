@@ -538,6 +538,46 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** reviews get long enough that drafts must survive a reload (save them server-side), or
   batch approval across cards is wanted (K7).
 
+## D25 — App data per computer; a Library of notes and files that moves between devices
+
+- **Date / by:** 2026-10-09, user ("the idea of the app is ease of access: any common file types should be
+  able to move between a user's devices, including the markdown notes that make the agent search possible;
+  keep an app-data area, with a button to go to the file location, and export the notes"); design by Claude
+- **Status:** accepted. Makes D22.6 (sync, option B) concrete; replaces "data/ next to the code" (D6's
+  "app's data folder" now means the OS's app-data folder).
+- **Decision:**
+  1. **App data** (`%APPDATA%\Sage OS`, `~/Library/Application Support/Sage OS`, `~/.local/share/sage-os`):
+     databases, indexes, copies of sources, models, sign-ins. Per computer; never synced; untouched by
+     updates and reinstalls.
+  2. **The Library** = `Notes/` (the vault, which agent search runs on) + `Files/` (any documents the user
+     drops in, indexed where they are, never copied). Default `<app data>/Library`; the user points it at a
+     folder their sync service already syncs, and every device then sees the same notes and files.
+  3. **Moving the Library merges, never overwrites:** a second device pointing at an existing Library adopts
+     it; a file that differs on both sides is kept twice ("name (from PC).md"). The old folder stays.
+  4. **Conflicts are shown, not resolved silently:** sync services' second copies (OneDrive "-PCNAME", iCloud
+     " 2", Dropbox "conflicted copy", Syncthing ".sync-conflict-") are listed in STORAGE.
+  5. **Open and export:** buttons open the app-data, Library, Notes and Files folders; notes (optionally with
+     files) export as a zip.
+  6. Older installs move with `python -m sage_os_hub move-data` (copied, checked, old folder kept).
+- **Costs / limits:** undo history (the journal) is per computer, so a batch approved on one device can be
+  undone only there; chats and inbox items are per computer for now; secrets (Google token) still sit as
+  files in app data until the keychain step; two devices digesting into one Library at once may both propose
+  the same notes.
+- **Revisit if:** users want chats and history on every device (then append-only files in the Library), or
+  a sync service mangles the vault (then a Sage-run sync).
+
+## D26 — Any model can lead: orchestrator and reviewer are roles, not Claude
+
+- **Date / by:** 2026-10-09, user ("replace Claude with any frontier model, or even a personal local model as
+  the fleet command if needed")
+- **Status:** accepted. Amends Phases 4–5 and D8's "lead agent answers by default".
+- **Decision:** the lead (orchestrator) and the reviewer are roles the user assigns to any connected model:
+  Claude, ChatGPT, Gemini or a local model on the engine. Fleet tools (Phase 4) and review (Phase 5) are
+  Sage OS tools offered to whichever model holds the role, through the connector layer (A1, D22.2); nothing
+  in them may depend on one vendor's SDK. `[agents] lead` already names the lead; a `reviewer` setting joins it.
+- **Costs / limits:** small local models plan less reliably than frontier ones; the role picker should say
+  so, and the gates are checked with both a cloud and a local lead.
+
 ---
 
 ## Proposed, awaiting the user

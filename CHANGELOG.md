@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-10-09
+
+Storage (D25) and any-model lead (D26, roadmap only). This PC's data moved from `sage-os/data/` to
+`%APPDATA%\Sage OS` (644 files checked; the old folder kept as `data.moved-20261009-014252`); the textbook digest
+resumed where it was. pytest 227/227, smoke 18/18.
+
+### Added
+- **App data** in the OS's app-data folder: databases, indexes, source copies, models, sign-ins. Per computer,
+  never synced, untouched by updates. `python -m sage_os_hub move-data` moves an older install (copied, checked,
+  old folder kept).
+- **The Library**: `Notes/` (the markdown notes agents search) and `Files/` (any documents you drop in, indexed
+  where they are, never copied). Point it at a OneDrive / iCloud / Dropbox / Syncthing folder and every device
+  shares the same notes and files; moving it merges without overwriting.
+- **STORAGE** tab in Bookshelf: open the Library, Notes, Files and app-data folders; export notes (and files) as
+  a zip; move the Library; files a sync service kept twice (edited on two devices) are listed.
+- **D26:** the lead (orchestrator) and reviewer are roles any connected model can hold, cloud or local;
+  roadmap Phases 4–5 reworded.
+
+### Changed
+- `config.toml` no longer pins data paths; `[storage] data / library` go in `config.local.toml`.
+- Tests run against their own app-data folder and their own `config.local.toml` (a storage test briefly wrote
+  the real one during this build; caught and fixed before it mattered).
+
 ## [0.14.0] — 2026-10-09
 
 K13, review note by note (D24), plus what a real textbook taught us. Gate: pass (tests; the review screen

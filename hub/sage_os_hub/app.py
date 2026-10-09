@@ -27,7 +27,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, hermes_cli
+from . import __version__, hermes_cli, storage
 from .adapters.kanban import KanbanAdapter
 from .adapters.safety import SafetyAdapter
 from .adapters.sessions import SessionsAdapter
@@ -104,11 +104,16 @@ class Hub:
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
         self.drive = GoogleDrive(cfg.google_client, cfg.google_token)
-        self.sources = SourceLibrary(cfg.sources_root, [
-            SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
-                       s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
-                       bool(s.get("api", False)))
-            for s in cfg.sources], cfg.sources_index, self.drive)
+        specs = [SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
+                            s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
+                            api=bool(s.get("api", False)))
+                 for s in cfg.sources]
+        if cfg.library is not None:                   # the Library's Files/ (D25): indexed where they are, never copied
+            for sub in ("Notes", "Files"):
+                (cfg.library / sub).mkdir(parents=True, exist_ok=True)
+            if not any(s.name == "library" for s in specs):
+                specs.append(SourceSpec("library", cfg.library / "Files", notes_folder="Files", copy=False))
+        self.sources = SourceLibrary(cfg.sources_root, specs, cfg.sources_index, self.drive)
         self.builder = NoteBuilder(self.vault, self.sources)
         self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)
         self.digests = Digests(cfg.store.with_name("digest.db"), self)
@@ -364,6 +369,49 @@ class Hub:
         self.event("knowledge", "bookshelf", "notes.draft_started", {"source": name, "collection": c.dir, "agent": agent_id})
         return {"agent": agent_id, "session": session["id"], "collection": c.dir, "title": c.title}
 
+    # -- storage (D25) ----------------------------------------------------------------------------------
+    def storage_info(self) -> dict:
+        cfg = self.cfg
+        data_bytes, data_files = storage.folder_size(cfg.data_dir)
+        out = {"data": {"path": str(cfg.data_dir), "bytes": data_bytes, "files": data_files,
+                        "legacy": cfg.data_dir == ROOT / "data"},
+               "library": None, "vault": str(self.vault.root)}
+        lib = cfg.library
+        if lib is not None:
+            nb, nn = storage.folder_size(lib / "Notes")
+            fb, fn = storage.folder_size(lib / "Files")
+            notes = sum(1 for _ in self.vault._files())
+            out["library"] = {"path": str(lib), "notes": notes, "notes_bytes": nb, "files": fn, "files_bytes": fb,
+                              "sync": storage.sync_service(lib), "conflicts": storage.conflicts(lib)}
+        return out
+
+    def move_library(self, new: Path) -> dict:
+        """Point the Library somewhere else (usually a synced folder). What's here is merged in without
+        overwriting anything there (a second device adopts the first's Library); the old folder is left as is."""
+        old = self.cfg.library
+        if old is None:
+            raise ValueError("this install keeps notes in the old data/ folder; move it to app data first")
+        new = new.resolve()
+        if new == old.resolve():
+            raise ValueError("that's already the Library")
+        if old.resolve() in new.parents or new in old.resolve().parents:
+            raise ValueError("the new Library can't be inside the current one, or the other way round")
+        new.mkdir(parents=True, exist_ok=True)
+        with self.writer.lock:
+            merged = {sub: storage.merge_into(old / sub, new / sub) for sub in ("Notes", "Files")}
+            for sub in ("Notes", "Files"):
+                (new / sub).mkdir(parents=True, exist_ok=True)
+            self.vault.root = new / "Notes"
+            self.vault._cache.clear()
+            self.vault.ensure()
+            self.index.rebuild(self.vault.scan(), self.vault.read_body)
+            if "library" in self.sources.specs:
+                self.sources.specs["library"].path = new / "Files"
+            self.cfg.library = new
+            storage.set_local_setting(self.cfg.local_config, "storage", "library", str(new))
+        self.event("system", "storage", "storage.library_moved", {"to": str(new), **merged["Notes"]})
+        return {"library": str(new), "old": str(old), "merged": merged}
+
     # -- local engine (D22.3) --------------------------------------------------------------------------
     def engine_state(self) -> dict:
         e = self.engine
@@ -519,6 +567,14 @@ class NewSession(BaseModel):
     cwd: str | None = None             # agents with the "workspaces" capability
     model: str | None = Field(default=None, max_length=200)   # agents with the "model_pick" capability
     provider: str | None = Field(default=None, max_length=100)  # the model chat: which endpoint (D22.2)
+
+
+class OpenFolder(BaseModel):
+    which: str = Field(pattern=r"^(data|library|notes|files)$")
+
+
+class LibraryMove(BaseModel):
+    path: str = Field(min_length=3, max_length=1000)
 
 
 class DigestRequest(BaseModel):
@@ -748,7 +804,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     def sources_open(name: str):
         if name not in hub.sources.specs:
             raise HTTPException(404, f"no source {name!r} in config.toml")
-        folder = hub.sources.root / name
+        folder = hub.sources.folder(name)
         folder.mkdir(parents=True, exist_ok=True)
         open_folder(folder)
         return {"ok": True, "path": str(folder)}
@@ -953,6 +1009,44 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         await asyncio.to_thread(e.stop)
         hub.panel("engine", e.status())
         return {"ok": True}
+
+    # -- storage (D25) ------------------------------------------------------------------------------------
+    @app.get("/api/storage")
+    async def storage_get():
+        return await asyncio.to_thread(hub.storage_info)
+
+    @app.post("/api/storage/open", dependencies=W)
+    def storage_open(body: OpenFolder):
+        """Show one of Sage OS's own folders in Explorer / Finder. The browser names which, never a path."""
+        lib = cfg.library
+        folders = {"data": cfg.data_dir, "library": lib, "notes": hub.vault.root, "files": lib / "Files" if lib else None}
+        folder = folders.get(body.which)
+        if folder is None:
+            raise HTTPException(404, "no such folder")
+        folder.mkdir(parents=True, exist_ok=True)
+        open_folder(folder)
+        return {"ok": True, "path": str(folder)}
+
+    @app.get("/api/storage/export")
+    async def storage_export(files: bool = False):
+        """Your notes as a zip (and the Library's files with ?files=1) to keep or move anywhere."""
+        lib = cfg.library
+        z = await asyncio.to_thread(storage.export_notes, hub.vault.root, (lib / "Files") if (files and lib) else None)
+        return FileResponse(z, media_type="application/zip", filename=z.name)
+
+    @app.post("/api/storage/library", dependencies=W)
+    async def storage_library(body: LibraryMove):
+        path = Path(body.path).expanduser()
+        if not path.is_absolute():
+            raise HTTPException(400, "give the full path of a folder, e.g. C:\\Users\\you\\OneDrive\\Sage Library")
+        try:
+            r = await asyncio.to_thread(hub.move_library, path)
+        except (ValueError, OSError) as exc:
+            raise HTTPException(400, str(exc))
+        hub.refresh_vault()
+        if "library" in hub.sources.specs and not hub.sources.syncing:
+            asyncio.create_task(hub.sync_source("library"))
+        return r
 
     # -- digesting long documents into notes (K12, D23) ----------------------------------------------------
     @app.get("/api/digest/preview")

@@ -59,6 +59,8 @@ class SourceSpec:
     notes_folder: str | None = None   # vault folder for notes built from this source (K6); default: Name
     strip: list[str] = field(default_factory=list)      # leading source folders dropped in vault paths
     google: bool = False              # a Drive for desktop folder: Google Docs/Sheets/Slides come through the API (D22)
+    copy: bool = True                 # False: index the files where they are (the Library's Files/, D25); never
+                                      # copied, and sync never deletes or changes them
     api: bool = False                 # `path` is a Drive path ("My Drive"), read through the Drive API: no local copy of
                                       # Drive needed, so it works on any computer once Drive is connected (D22.5)
 
@@ -292,13 +294,16 @@ class SourceLibrary:
                 try:
                     st = src.stat()
                     old = have.get(rel)
-                    if not stale and old and old[1] == st.st_size and old[2] == st.st_mtime and (dest / copy_name(rel)).exists():
+                    target = src if not spec.copy else dest / copy_name(rel)
+                    if not stale and old and old[1] == st.st_size and old[2] == st.st_mtime and target.exists():
                         stats["unchanged"] += 1
                         keep.add(rel)
                         continue
-                    target = dest / copy_name(rel)
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    if isinstance(src, RemoteFile) and src.suffix not in NATIVE:      # a file in Drive: download it
+                    if spec.copy:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                    if not spec.copy:
+                        pass                                       # indexed where it is
+                    elif isinstance(src, RemoteFile) and src.suffix not in NATIVE:      # a file in Drive: download it
                         try:
                             self.drive.download(src.id, target, MAX_BOOK if src.suffix in (".pdf", ".epub") else MAX_FILE)
                         except DriveError as exc:
@@ -331,7 +336,8 @@ class SourceLibrary:
                         status, reason = "indexed", None
                     category = screen(text) if text else None
                     if category:                                 # K4: private content never stays in the copy
-                        target.unlink(missing_ok=True)
+                        if spec.copy:                            # (a file indexed in place is the user's: left alone)
+                            target.unlink(missing_ok=True)
                         skipped.append((rel, f"looks like it contains {category}"))
                         stats["private_content"] += 1
                         self._forget(name, rel)
@@ -344,10 +350,12 @@ class SourceLibrary:
                     skipped.append((rel, f"copy failed ({exc.strerror or type(exc).__name__})"))
                     stats["errors"] += 1
             for rel in set(have) - keep:                         # deselected, deleted on Drive, or now private
-                (dest / copy_name(rel)).unlink(missing_ok=True)
+                if spec.copy:
+                    (dest / copy_name(rel)).unlink(missing_ok=True)
                 self._forget(name, rel)
                 stats["removed"] += 1
-            self._prune_dirs(dest)
+            if spec.copy:
+                self._prune_dirs(dest)
             stats["skipped"] = len(skipped)
             with self.lock:
                 self.db.execute("DELETE FROM files WHERE source=? AND status='skipped'", (name,))
@@ -401,7 +409,7 @@ class SourceLibrary:
                 last = self.db.execute("SELECT finished, stats FROM runs WHERE source=? ORDER BY id DESC LIMIT 1", (name,)).fetchone()
                 skipped = self.db.execute("SELECT rel, reason FROM files WHERE source=? AND status='skipped' ORDER BY rel", (name,)).fetchall()
                 out.append({"name": name, "path": str(spec.path), "copy": str(self.root / name),
-                            "include": spec.include, "files": counts.get("indexed", 0) + counts.get("copied", 0),
+                            "in_place": not spec.copy, "include": spec.include, "files": counts.get("indexed", 0) + counts.get("copied", 0),
                             "indexed": counts.get("indexed", 0), "last_sync": last[0] if last else None,
                             "last_stats": json.loads(last[1]) if last else None,
                             "skipped": [{"path": r, "reason": why} for r, why in skipped],
@@ -434,6 +442,15 @@ class SourceLibrary:
         return {"q": text, "ms": round((time.perf_counter() - t0) * 1000, 1),
                 "results": [{"source": s, "path": r, "title": Path(r).name, "snippet": sn, "score": round(-sc, 3)}
                             for s, r, sn, sc in rows]}
+
+    def file_path(self, source: str, rel: str) -> Path:
+        """Where a library file is on disk: its copy, or the original for a source indexed in place."""
+        spec = self.specs[source]
+        return (spec.path / rel) if not spec.copy else self.root / source / copy_name(rel)
+
+    def folder(self, source: str) -> Path:
+        spec = self.specs[source]
+        return spec.path if not spec.copy else self.root / source
 
     def full_text(self, source: str, rel: str) -> str | None:
         """A document's whole extracted text (read() pages it out 50,000 characters at a time)."""

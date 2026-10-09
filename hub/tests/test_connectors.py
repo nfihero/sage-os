@@ -20,7 +20,7 @@ def fake_hermes(home, *, key=True, pinned=True):
 
 
 def make(tmp_path, **kw):
-    cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db", vault_journal=tmp_path / "journal.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)],
+    cfg = Config(data_dir=tmp_path / "data", hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "index.db", vault_journal=tmp_path / "journal.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)],
                  profile_labels={"default": "Hermes"}, **kw)
     return create_app(cfg, start_adapters=False)
 

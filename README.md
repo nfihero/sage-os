@@ -38,6 +38,12 @@ Opens http://127.0.0.1:8787 when ready (first run creates `hub\.venv` and builds
 stays open while it runs. UI hot reload: keep the hub running, then `npm run dev` in `ui\` →
 http://127.0.0.1:5173.
 
+**Where your data lives** (D25): app data in `%APPDATA%\Sage OS` (Windows) or `~/Library/Application Support/Sage OS`
+(Mac): databases, indexes, source copies, models, sign-ins, per computer. Your notes and files are in its
+`Library` folder (`Notes/`, `Files/`); point the Library at a OneDrive / iCloud / Dropbox / Syncthing folder in
+Bookshelf → **STORAGE** to have them on every device. An install from before 0.15 keeps `sage-os\data` until you
+stop it and run `hub\.venv\Scripts\python -m sage_os_hub move-data`.
+
 **Needs:** Python 3.12+ and Node 20+. Everything else is optional: the Claude desktop app (for
 `claude.exe`), a local model (install the engine and a model from **MODELS**, or point `[engine]` in
 `config.local.toml` at an existing `llama-server` and GGUF folder), ChatGPT / Gemini keys in environment

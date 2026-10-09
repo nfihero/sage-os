@@ -18,7 +18,12 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 8787
     remote_hosts: list[str] = field(default_factory=list)     # [hub] remote_hosts: exact names (Phase 3)
-    store: Path = ROOT / "data" / "hub.db"
+    # [storage] (D25): app data is per computer and never synced; the Library (Notes/ + Files/) is what moves
+    # between a user's devices. Paths left as None are derived from them in __post_init__.
+    data_dir: Path | None = None
+    library: Path | None = None
+    local_config: Path = ROOT / "config.local.toml"   # where per-computer settings (like the Library) are written
+    store: Path | None = None
     keep_events: int = 5000
     hermes_home: Path = field(default_factory=lambda: default_hermes_home())
     gateway: str = "http://127.0.0.1:8642"
@@ -26,16 +31,16 @@ class Config:
     sidecar: str = "http://127.0.0.1:18435"
     poll: dict[str, float] = field(default_factory=lambda: {
         "board": 5, "gpu": 3, "health": 2, "safety": 1, "sessions": 30, "vault": 5})
-    vault: Path = ROOT / "data" / "vault"         # [bookshelf] vault (D6)
-    vault_index: Path = ROOT / "data" / "bookshelf-index.db"   # [bookshelf] index: a rebuildable cache (D10)
-    vault_journal: Path = ROOT / "data" / "bookshelf.db"       # [bookshelf] journal: proposals + undo history (D11)
+    vault: Path | None = None                     # [bookshelf] vault (D6): Library/Notes (D25)
+    vault_index: Path | None = None               # [bookshelf] index: a rebuildable cache (D10)
+    vault_journal: Path | None = None             # [bookshelf] journal: proposals + undo history (D11)
     # [[sources]]: read-only copies of folders, searchable by the user and agents (D15)
     sources: list[dict] = field(default_factory=list)
-    sources_root: Path = ROOT / "data" / "sources"
-    sources_index: Path = ROOT / "data" / "sources-index.db"
+    sources_root: Path | None = None
+    sources_index: Path | None = None
     # [google]: the user's own OAuth client (Desktop app) and where the read-only Drive token is kept (D22)
-    google_client: Path = ROOT / "data" / "google-oauth-client.json"
-    google_token: Path = ROOT / "data" / "google-token.json"
+    google_client: Path | None = None
+    google_token: Path | None = None
     pinned_profiles: list[str] = field(default_factory=lambda: ["default"])
     hidden_profiles: list[str] = field(default_factory=list)
     profile_labels: dict[str, str] = field(default_factory=dict)
@@ -50,10 +55,47 @@ class Config:
     chat_enabled: bool = True                                  # [agents] chat: the OpenAI-compatible chat (D22.2)
     # [engine]: Sage OS's own llama-server (D22.3)
     engine_enabled: bool = True
-    engine_root: Path = ROOT / "data" / "engine"
+    engine_root: Path | None = None
     engine_port: int = 8790
     engine_binary: str | None = None                           # an existing llama-server instead of a download
     engine_model_dirs: list[str] = field(default_factory=list)  # folders with GGUF files already on this computer
+
+
+    def __post_init__(self):
+        d = self.data_dir = Path(self.data_dir) if self.data_dir else default_data_dir()
+        for name, default in (("store", d / "hub.db"), ("vault_index", d / "bookshelf-index.db"),
+                              ("vault_journal", d / "bookshelf.db"), ("sources_root", d / "sources"),
+                              ("sources_index", d / "sources-index.db"), ("google_client", d / "google-oauth-client.json"),
+                              ("google_token", d / "google-token.json"), ("engine_root", d / "engine")):
+            if getattr(self, name) is None:
+                setattr(self, name, default)
+        if self.vault is None:
+            if self.library is None and (d / "vault").is_dir():
+                self.vault = d / "vault"                  # an install from before D25 (data/vault): until it is moved
+            else:
+                self.library = Path(self.library) if self.library else d / "Library"
+                self.vault = self.library / "Notes"
+        elif self.library is not None:
+            self.library = Path(self.library)
+
+
+def app_data_dir() -> Path:
+    """Where an installed app keeps a user's data on this OS (D25)."""
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming") / "Sage OS"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Sage OS"
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "sage-os"
+
+
+def default_data_dir() -> Path:
+    """SAGE_OS_DATA, else an existing pre-D25 data/ folder next to the code (until it is moved), else app data."""
+    if os.environ.get("SAGE_OS_DATA"):
+        return Path(os.environ["SAGE_OS_DATA"]).expanduser()
+    legacy = ROOT / "data"
+    if (legacy / "hub.db").exists():
+        return legacy
+    return app_data_dir()
 
 
 def default_hermes_home() -> Path:
@@ -81,25 +123,26 @@ def merge(base: dict, over: dict) -> dict:
 def load(path: Path | None = None) -> Config:
     path = path or Path(os.environ.get("SAGE_OS_CONFIG", ROOT / "config.toml"))
     local = path.with_name(path.stem + ".local.toml")
-    cfg = Config()
     if not path.exists() and not local.exists():
-        return cfg
+        return Config()
     # utf-8-sig: Windows Notepad (and PowerShell 5) save UTF-8 with a byte-order mark, which TOML rejects
     raw = tomllib.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
     if local.exists():
         raw = merge(raw, tomllib.loads(local.read_text(encoding="utf-8-sig")))
     hub, hermes, ui = raw.get("hub", {}), raw.get("hermes", {}), raw.get("ui", {})
+    storage, shelf0 = raw.get("storage", {}), raw.get("bookshelf", {})
+    # Storage first: every data path not set explicitly is derived from these (D25).
+    cfg = Config(data_dir=here(storage["data"]) if storage.get("data") else None,
+                 library=here(storage["library"]) if storage.get("library") else None,
+                 vault=here(shelf0["vault"]) if shelf0.get("vault") else None,
+                 store=here(hub["store"]) if hub.get("store") else None, local_config=local)
     cfg.host = hub.get("host", cfg.host)
     cfg.port = int(hub.get("port", cfg.port))
     cfg.remote_hosts = [str(h).lower() for h in hub.get("remote_hosts", cfg.remote_hosts)]
     if any("*" in h for h in cfg.remote_hosts):
         raise ValueError("config.toml [hub] remote_hosts takes exact host names, no wildcards")
-    if "store" in hub:
-        cfg.store = here(hub["store"])
     cfg.keep_events = int(hub.get("keep_events", cfg.keep_events))
-    shelf = raw.get("bookshelf", {})
-    if "vault" in shelf:
-        cfg.vault = here(shelf["vault"])
+    shelf = shelf0
     for s in raw.get("sources", []):
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,40}", str(s.get("name", ""))) or not s.get("path"):
             raise ValueError(f"config.toml [[sources]] needs a lower-case name (letters, digits, -) and a path: {s}")

@@ -15,16 +15,22 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.14.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D23), those win. **Read D22 first:** the product is now a shippable app for anyone
+`DECISIONS.md` (D1–D26), those win. **Read D22 first:** the product is now a shippable app for anyone
 who uses several AIs and has scattered notes; nothing may assume this PC (no Hermes, GPU or drive
 letter required).
 
 ### Where things are
-- **Version 0.14.0** (tag `v0.14.0`), tags v0.4.0–v0.14.0. GitHub has up to v0.12.1 (pushed 7 Oct);
-  **v0.12.2–v0.14.0 are local only**. Checked 9 Oct: `pytest` 219/219, `npm run build` clean.
+- **Version 0.15.0** (tag `v0.15.0`), tags v0.4.0–v0.15.0, all pushed to GitHub 9 Oct at the user's request.
+  Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
+- **0.15.0 (D25 storage, D26 any-model lead):** data now lives in `%APPDATA%\Sage OS` (the Library =
+  `Library/Notes` + `Library/Files`); the old `sage-os/data` is kept as `data.moved-20261009-014252` until the
+  user OKs deleting it. **Gotcha:** files written to `AppData\Roaming` from a tool shell inside the Claude
+  desktop app (MSIX) land in its virtualized copy (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Sage OS`),
+  invisible to the hub started via WMI; the move was copied out with robocopy run through WMI. A stale
+  virtualized copy remains there (harmless; delete with the user's OK). Don't write app data from the tool shell.
 - **0.14.0:** K13 review note by note (D24); Drive folders through the API (`gdrive` source = My Drive/School);
   textbook fixes (year rows vs Aadhaar screening, faulty bookmarks). Digest `dg_7cbf09dbad` = Kieso
   *Intermediate Accounting* 18e, 777 sections / 45 chapters, started 9 Oct on local Gemma 4 12B (~7–8 h); it
@@ -36,7 +42,7 @@ letter required).
   connector for any OpenAI-compatible AI with the Bookshelf tools (D22.2), the Google Drive connector
   for Google Docs/Sheets/Slides (S3, D22.5; not run live yet).
 - **This PC:** `config.local.toml` (untracked) points the engine at Hermes' CUDA llama.cpp build and
-  its models folder, so nothing is downloaded here. Engine port 8790. Gemma 4 12B tested.
+  its models folder, so nothing is downloaded here; no `[storage]` override (defaults to app data). Engine port 8790. Gemma 4 12B tested.
 - **Live data:** the vault has **56 notes** (the user approved the starter cards). The Drive copy has
   535 files incl. the Deal Club folder (63 added 6 Oct); the contact-distribution spreadsheet is
   excluded. Kanban `t_549737c1` still blocked on the user's spending categories.
@@ -55,8 +61,8 @@ letter required).
 ### Waiting on the user
 - **Claude Code sign-in for Sage OS expired** (6 Oct): `claude auth login` in a normal terminal.
 - **Google OAuth client** (Desktop app, Drive API enabled, testing mode with themselves as test user)
-  saved as `data/google-oauth-client.json`; then *Connect Google Drive* in Sources. Their account, so
-  they create it.
+  done 8 Oct (the client file sits in app data under Google's download name).
+- **Delete the old `sage-os/data.moved-20261009-014252`** once Sage OS is confirmed working from app data.
 - **Guardrails hook on macOS:** `.claude/settings.json` calls `hub/.venv/Scripts/python.exe`, so on a
   Mac the hook fails open. A one-line OS-neutral command is proposed; edits to the hook need the
   user's explicit OK and should be shown as a diff first (D13).

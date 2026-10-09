@@ -28,7 +28,6 @@ from pathlib import Path
 import httpx
 
 from .sections import split_document
-from .sources import copy_name
 
 log = logging.getLogger("sage_os")
 MAX_NOTES_PER_PROPOSAL = 50
@@ -156,7 +155,7 @@ class Digests:
         if full is None:
             raise KeyError(f"{source}/{rel}")
         title = Path(rel).stem.removesuffix(".gdoc").removesuffix(".gsheet").removesuffix(".gslides")
-        return split_document(lib.root / source / copy_name(rel), full, title)
+        return split_document(lib.file_path(source, rel), full, title)
 
     def preview(self, source: str, rel: str) -> dict:
         text, secs = self.plan(source, rel)

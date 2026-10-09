@@ -5,6 +5,7 @@ import { get, post } from "../api";
 import type { Batch, DigestJob, NoteFull, NoteMeta, SearchResult, SourcesPanel, VaultPanel } from "../types";
 import Sources from "./Sources";
 import Digests from "./Digests";
+import Storage from "./Storage";
 import { ago, useNow } from "../util";
 
 /** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
@@ -21,7 +22,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
   const [hits, setHits] = useState<SearchResult | null>(null);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const searching = q.trim().length > 0;
-  const [view, setView] = useState<"notes" | "history" | "sources" | "digests">("notes");
+  const [view, setView] = useState<"notes" | "history" | "sources" | "digests" | "storage">("notes");
   const [cited, setCited] = useState<{ source: string; path: string } | null>(null);
   const showSource = (doc: { source: string; path: string } | null) => { setCited(doc); setView("sources"); };
 
@@ -74,6 +75,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
             <button className={`htab ${view === "history" ? "on" : ""}`} onClick={() => setView("history")}>HISTORY</button>
             <button className={`htab ${view === "sources" ? "on" : ""}`} onClick={() => showSource(null)}>SOURCES</button>
             <button className={`htab ${view === "digests" ? "on" : ""}`} onClick={() => setView("digests")} title="Long documents turned into notes, section by section">DIGESTS</button>
+            <button className={`htab ${view === "storage" ? "on" : ""}`} onClick={() => setView("storage")} title="Where your notes and files live, syncing them between devices, export">STORAGE</button>
           </span>
           <span className="ml-auto flex min-w-0 items-center gap-2">
             {vault && <span className="hidden min-w-0 truncate font-mono text-[11px] normal-case tracking-normal text-mute md:inline" title={vault.root}>{vault.root}</span>}
@@ -83,7 +85,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
         </div>
         {openErr && <div className="border-b border-red/40 px-3 py-1 text-[12px] text-red">{openErr}</div>}
 
-        {view === "digests" ? <Digests jobs={digests?.jobs ?? []} /> : view === "sources" ? <Sources key={cited ? cited.source + cited.path : ""} panel={sources} doc={cited} /> : view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {view === "storage" ? <Storage /> : view === "digests" ? <Digests jobs={digests?.jobs ?? []} /> : view === "sources" ? <Sources key={cited ? cited.source + cited.path : ""} panel={sources} doc={cited} /> : view === "history" ? <History changed={vault?.notes} /> : <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className={`flex min-h-0 flex-col border-cyan/20 md:w-[330px] md:shrink-0 md:border-r ${current ? "hidden md:flex" : "flex flex-1 md:flex-none"}`}>
             <div className="flex items-center gap-2 border-b border-cyan/20 p-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes…" aria-label="Search notes"
