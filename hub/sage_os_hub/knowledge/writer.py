@@ -23,7 +23,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .proposals import Entry, ProposalError, normalize, plan, screen_proposal, sha
+from .proposals import Entry, ProposalError, apply_review, normalize, plan, screen_proposal, sha
 from .vault import Vault
 
 
@@ -69,10 +69,14 @@ class Writer:
           CREATE TABLE IF NOT EXISTS entries(batch_id INTEGER, seq INTEGER, path TEXT NOT NULL,
             before BLOB, after BLOB, PRIMARY KEY(batch_id, seq));
         """)
-        if "screened" not in [r[1] for r in self.db.execute("PRAGMA table_info(proposals)")]:
+        cols = [r[1] for r in self.db.execute("PRAGMA table_info(proposals)")]
+        if "screened" not in cols:
             # K4 override: the screening category the user chose to save anyway (never the content)
             self.db.execute("ALTER TABLE proposals ADD COLUMN screened TEXT")
-            self.db.commit()
+        if "original" not in cols:      # review (K13): the proposal as the agent sent it, and what the user kept/edited
+            self.db.execute("ALTER TABLE proposals ADD COLUMN original TEXT")
+            self.db.execute("ALTER TABLE proposals ADD COLUMN review TEXT")
+        self.db.commit()
 
     # -- proposals -----------------------------------------------------------------------------
     def propose(self, agent: str, summary: str, changes: list, *, override: str | None = None) -> dict:
@@ -142,12 +146,23 @@ class Writer:
         self.db.commit()
 
     # -- applying --------------------------------------------------------------------------------
-    def approve(self, pid: str, note: str = "") -> dict:
-        """Apply an approved proposal as one batch. Only the inbox's resolver calls this (I1)."""
+    def approve(self, pid: str, note: str = "", review: dict | None = None) -> dict:
+        """Apply an approved proposal as one batch. Only the inbox's resolver calls this (I1).
+
+        `review` is the user's keep/edit pass ({"keep": [indexes], "edits": {index: {title, body, tags}}}): only
+        kept changes are filed, edited ones as edited. The proposal as sent is kept in `original`."""
         with self.lock:
             p = self.proposal(pid)
             if p is None or p["status"] != "pending":
                 raise ProposalError(f"proposal {pid} is not pending")
+            reviewed = None
+            if review is not None:
+                changes, summary = apply_review(p["changes"], review.get("keep"), review.get("edits"))
+                if not changes:
+                    raise ProposalError("nothing kept: reject the proposal instead")
+                screen_proposal(p["agent"], p["summary"] or "", [c for c in changes if c.get("edited_by")])  # K4 on edits
+                reviewed = (changes, summary)
+                p["changes"] = changes            # recorded on the proposal only once it has been filed
             bases = json.loads(self.db.execute("SELECT bases FROM proposals WHERE id=?", (pid,)).fetchone()[0])
             entries = [e for x in plan(self.vault, p["changes"], p["agent"], bases) for e in x.entries]
             batch = self._journal(pid, p["agent"], p["summary"], entries)
@@ -162,6 +177,9 @@ class Writer:
                 self._finish(batch, "rolled_back")
                 raise ProposalError(f"writing {len(done) + 1} of {len(entries)} failed ({exc}); nothing was changed") from exc
             self._finish(batch, "applied")
+            if reviewed:                          # the agent's version stays in `original`
+                self.db.execute("UPDATE proposals SET original=COALESCE(original, changes), changes=?, review=? WHERE id=?",
+                                (json.dumps(reviewed[0]), json.dumps(reviewed[1]), pid))
             self._decide(pid, "applied", note, batch)
         return self.batch(batch)
 

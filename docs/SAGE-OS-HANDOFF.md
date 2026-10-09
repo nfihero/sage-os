@@ -15,7 +15,7 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 8 Oct 2026, v0.13.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.14.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
 `DECISIONS.md` (D1–D23), those win. **Read D22 first:** the product is now a shippable app for anyone
@@ -23,8 +23,12 @@ who uses several AIs and has scattered notes; nothing may assume this PC (no Her
 letter required).
 
 ### Where things are
-- **Version 0.13.0** (tag `v0.13.0`), tags v0.4.0–v0.13.0. GitHub has up to v0.12.1 (pushed 7 Oct);
-  **v0.12.2 and v0.13.0 are local only**. Checked 8 Oct: `pytest` 208/208, `npm run build` clean.
+- **Version 0.14.0** (tag `v0.14.0`), tags v0.4.0–v0.14.0. GitHub has up to v0.12.1 (pushed 7 Oct);
+  **v0.12.2–v0.14.0 are local only**. Checked 9 Oct: `pytest` 219/219, `npm run build` clean.
+- **0.14.0:** K13 review note by note (D24); Drive folders through the API (`gdrive` source = My Drive/School);
+  textbook fixes (year rows vs Aadhaar screening, faulty bookmarks). Digest `dg_7cbf09dbad` = Kieso
+  *Intermediate Accounting* 18e, 777 sections / 45 chapters, started 9 Oct on local Gemma 4 12B (~7–8 h); it
+  pauses proposing at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
 - **0.12.2:** Google Drive live (10 of 13 Google Docs; names Drive for desktop sanitised now match).
   **0.13.0:** K12 long documents (D23): *Digest into notes*, DIGESTS coverage map, EPUB, bigger files.
 - **Built:** everything through v0.11 plus, in 0.12.0: K8 briefing packs + Reading strip (D20),
@@ -37,9 +41,9 @@ letter required).
   535 files incl. the Deal Club folder (63 added 6 Oct); the contact-distribution spreadsheet is
   excluded. Kanban `t_549737c1` still blocked on the user's spending categories.
 
-### Next (8 Oct; confirm the order with the user)
-0. **Inbox:** two playbook digests (the first, 47 notes with repeats, came before de-duplication; the user
-   will likely reject it), the options-lecture digest. Try a real textbook (PDF with bookmarks or EPUB).
+### Next (9 Oct; confirm the order with the user)
+0. **Inbox:** review the textbook chapters with REVIEW; reject the front-matter cards (drafted before the
+   "about the book itself" rule) and the older 47-note playbook card. The user is away until the 10th.
 1. **Deal Club demo**: user signs Claude in again and saves the Google OAuth client; connect Drive and
    sync (brings the Acme pitch framework and target briefing); *Build notes* on the Deal Club
    collections; rehearse.

@@ -203,6 +203,39 @@ def normalize(changes: list) -> list[dict]:
     return out
 
 
+REVIEWER = "user"     # who `edited_by` names when the user edits a note while reviewing it
+
+
+def apply_review(changes: list[dict], keep, edits) -> tuple[list[dict], dict]:
+    """The user's review of a pending proposal: keep some changes, edit some (title, body, tags).
+    -> (the changes to file, a summary of the review). Edited notes are marked edited_by: user."""
+    if not isinstance(keep, list) or not all(isinstance(i, int) and 0 <= i < len(changes) for i in keep):
+        raise ProposalError("keep must list the indexes of the changes to file")
+    keep = sorted(set(keep))
+    edits = edits or {}
+    if not isinstance(edits, dict):
+        raise ProposalError("edits must map change indexes to new fields")
+    out, edited = [], []
+    for i in keep:
+        ch = dict(changes[i])
+        e = edits.get(str(i)) or edits.get(i)
+        if e:
+            if ch["op"] == "archive":
+                raise ProposalError("an archive change can be kept or dropped, not edited")
+            unknown = set(e) - {"title", "body", "tags"}
+            if unknown:
+                raise ProposalError(f"only title, body and tags can be edited ({', '.join(sorted(unknown))} can't)")
+            new = _clean_fields({k: e[k] for k in ("title", "body", "tags") if k in e})
+            if "body" in new and not new["body"].strip():
+                raise ProposalError("a note's body can't be empty")
+            if any(ch.get(k) != v for k, v in new.items()):
+                ch |= new
+                ch["edited_by"] = [REVIEWER]
+                edited.append(i)
+        out.append(ch)
+    return out, {"kept": len(keep), "dropped": len(changes) - len(keep), "edited": edited}
+
+
 @dataclass
 class Entry:
     """One file change: bytes before and after (None = no file). The journal stores exactly these."""
@@ -262,7 +295,7 @@ def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | 
                 fm |= {"origin": "imported", "imported_by": agent}     # the user's own text, brought in (K6)
             else:
                 fm |= {"origin": "agent", "agent": agent}               # anyone else writing is an agent (D11)
-            for k in ("source", "tags", "links"):
+            for k in ("source", "tags", "links", "edited_by"):      # edited_by: the user changed it in review
                 if ch.get(k):
                     fm[k] = ch[k]
             after = compose(fm, ch["body"])
@@ -291,6 +324,9 @@ def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | 
                 updates = {k: ch[k] for k in EDITABLE if k in ch} | {"updated": now}
                 if not (fm.get("origin") == "agent" and fm.get("agent") == agent):
                     updates["edited_by"] = list(dict.fromkeys([*(fm.get("edited_by") or []), agent]))
+                if ch.get("edited_by"):                                 # the user changed it in review
+                    updates["edited_by"] = list(dict.fromkeys([*(updates.get("edited_by") or fm.get("edited_by") or []),
+                                                               *ch["edited_by"]]))
                 if "body" in ch:
                     body = ch["body"] if ch["body"].endswith("\n") else ch["body"] + "\n"
                 after = f"---\n{edit_frontmatter(raw, updates)}---\n{body}".encode("utf-8")

@@ -118,6 +118,7 @@ class Hub:
         self.adapters = [self.kanban, GpuAdapter(self, cfg), HealthAdapter(self, cfg),
                          SafetyAdapter(self, cfg), SessionsAdapter(self, cfg), self.vault_adapter]
         self.inbox = Inbox(self.publish, self.event)
+        self.reviews: dict[str, dict] = {}      # proposal id -> the review sent with its approval (one request)
         self.bookshelf_tools = BookshelfTools(self)
         self.engine = LocalEngine(cfg.engine_root, cfg.engine_port, cfg.engine_binary,
                                   [Path(d) for d in cfg.engine_model_dirs], on_change=self.publish_engine_soon) \
@@ -187,8 +188,9 @@ class Hub:
         pid = p["id"]
 
         async def resolver(choice, note):
+            review = self.reviews.pop(pid, None)          # the user's keep/edit pass from the review screen
             if choice == "approve":
-                batch = await asyncio.to_thread(self.writer.approve, pid, note)
+                batch = await asyncio.to_thread(self.writer.approve, pid, note, review)
                 self.event("knowledge", "bookshelf", "proposal.applied",
                            {"proposal": pid, "batch": batch["id"], "agent": p["agent"], "files": batch["files"]})
             else:
@@ -562,6 +564,8 @@ class BriefingDrop(BaseModel):
 class Decision(BaseModel):
     choice: str
     note: str = Field(default="", max_length=20_000)
+    # Bookshelf proposals reviewed note by note: {"keep": [indexes], "edits": {index: {title, body, tags}}}
+    review: dict | None = None
 
 
 def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAPI:
@@ -752,6 +756,14 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     @app.get("/api/vault/proposals")
     def vault_proposals(status: str | None = None, limit: int = 100):
         return hub.writer.proposals(status, max(1, min(limit, 500)))
+
+    @app.get("/api/vault/proposals/{pid}")
+    async def vault_proposal(pid: str):
+        """One proposal with its full notes, for the review screen."""
+        p = await asyncio.to_thread(hub.writer.proposal, pid)
+        if p is None:
+            raise HTTPException(404, "no such proposal")
+        return p
 
     @app.get("/api/vault/history")
     def vault_history(limit: int = 100):
@@ -1054,6 +1066,14 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.post("/api/inbox/{item_id}", dependencies=W)
     async def inbox_decide(item_id: str, body: Decision):
+        if body.review is not None:
+            item = next((i for i in hub.inbox.items() if i["id"] == item_id), None)
+            pid = (item or {}).get("context", {}).get("proposal_id")
+            if not pid or body.choice != "approve":
+                raise HTTPException(400, "a review goes with approving a Bookshelf proposal")
+            if len(json.dumps(body.review)) > 5_000_000:
+                raise HTTPException(413, "review too large")
+            hub.reviews[pid] = body.review
         try:
             return await hub.inbox.resolve(item_id, body.choice, body.note)
         except KeyError:

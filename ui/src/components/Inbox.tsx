@@ -3,6 +3,7 @@ import { post } from "../api";
 import type { InboxItem } from "../types";
 import { ago, useNow } from "../util";
 import Scramble from "./Scramble";
+import Review from "./Review";
 
 const LABEL: Record<string, string> = {
   allow_once: "Allow once", allow_session: "Allow for session", allow_always: "Always allow", deny: "Deny",
@@ -12,6 +13,7 @@ const SOURCE_TONE: Record<string, string> = { claude: "orange", hermes: "", kanb
 
 export default function Inbox({ items, onOpenTask }: { items: InboxItem[]; onOpenTask: (id: string) => void }) {
   const now = useNow(5000);
+  const [reviewing, setReviewing] = useState<InboxItem | null>(null);
   return (
     <aside className="panel min-h-0" data-testid="inbox">
       <div className="panel-head">
@@ -20,8 +22,9 @@ export default function Inbox({ items, onOpenTask }: { items: InboxItem[]; onOpe
       </div>
       <div className="panel-body flex flex-col gap-2">
         {items.length === 0 && <div className="m-auto text-center text-[12.5px] text-mute">Nothing needs you.<br />Claude permission requests, Hermes approvals, worker questions and Bookshelf proposals land here.</div>}
-        {items.map((it) => <Card key={it.id} it={it} now={now} onOpenTask={onOpenTask} />)}
+        {items.map((it) => <Card key={it.id} it={it} now={now} onOpenTask={onOpenTask} onReview={setReviewing} />)}
       </div>
+      {reviewing && <Review item={reviewing} onClose={() => setReviewing(null)} />}
     </aside>
   );
 }
@@ -31,6 +34,10 @@ type Change = { op: string; title: string; path: string; from_path: string | nul
 /** A Bookshelf proposal's changes: what file each one touches, with its diff one click away. */
 function Changes({ changes }: { changes: Change[] }) {
   const [open, setOpen] = useState<number | null>(changes.length === 1 ? 0 : null);
+  const [all, setAll] = useState(changes.length <= 3);     // long proposals: REVIEW is the way in; files on request
+  if (!all) {
+    return <button className="mt-1 text-left text-[11px] text-mute hover:text-cyan" onClick={() => setAll(true)}>▸ {changes.length} files and their diffs</button>;
+  }
   return (
     <div className="mt-1 flex flex-col gap-1">
       {changes.map((c, i) => (
@@ -53,7 +60,7 @@ function Changes({ changes }: { changes: Change[] }) {
   );
 }
 
-function Card({ it, now, onOpenTask }: { it: InboxItem; now: number; onOpenTask: (id: string) => void }) {
+function Card({ it, now, onOpenTask, onReview }: { it: InboxItem; now: number; onOpenTask: (id: string) => void; onReview: (it: InboxItem) => void }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -79,6 +86,12 @@ function Card({ it, now, onOpenTask }: { it: InboxItem; now: number; onOpenTask:
       </div>
       <div className="mt-1 text-[13px] text-ink">{it.title}</div>
       {it.detail && <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-cyan/15 bg-void/70 p-1.5 text-[12px] text-ink/85">{it.detail}</pre>}
+      {it.source === "bookshelf" && !held && it.context.proposal_id && (it.context.changes ?? []).length > 0 && (
+        <button className="chip mt-1.5 h-7 px-2.5" onClick={() => onReview(it)}
+          title="Read each note, keep or drop it, edit it, then approve only what you kept">
+          REVIEW {(it.context.changes ?? []).length} NOTE{(it.context.changes ?? []).length === 1 ? "" : "S"}
+        </button>
+      )}
       {it.source === "bookshelf" && (!held || show) && <Changes changes={it.context.changes ?? []} />}
       {held && !show && (
         <button className="mt-1 text-left text-[11.5px] text-amber underline" onClick={() => setShow(true)}>

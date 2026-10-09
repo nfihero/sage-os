@@ -520,6 +520,24 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** concept lists prove unreliable (add an independent term check), or approval per chapter is
   still too much (K7 batch review).
 
+## D24 — Proposals are reviewed note by note: read, keep or drop, edit, then file (K13)
+
+- **Date / by:** 2026-10-09, user ("when you open a card to see the note it proposed, does it open in a clean,
+  easy to read md editor?" It didn't: raw diffs, all-or-nothing); chose the full version
+- **Status:** accepted
+- **Decision:**
+  1. Every Bookshelf card has **REVIEW**: a full-screen reader with each note rendered as markdown (title,
+     tags, folder, source), previous/next, keyboard (← → / x), one note per screen on a phone.
+  2. **Keep or drop per note.** Approving files only the kept notes; dropping all means reject.
+  3. **Edit before filing** (title, body, tags) with a live preview. Edited notes are filed with
+     `edited_by: user` next to the agent's provenance; the user's edits go through the K4 screen.
+  4. Same writer, same journal: the reviewed set is one batch and undoes byte for byte (I2). The agent's
+     proposal as sent is kept (`original`) with a summary of the review, recorded only once filed.
+- **Costs / limits:** a review lives in the browser until Approve (closing the screen loses unsaved edits);
+  folder and links can't be edited in review; edits to an `update` change replace its body like the agent's.
+- **Revisit if:** reviews get long enough that drafts must survive a reload (save them server-side), or
+  batch approval across cards is wanted (K7).
+
 ---
 
 ## Proposed, awaiting the user

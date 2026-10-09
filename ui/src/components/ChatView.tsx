@@ -9,7 +9,7 @@ type Tone = "orange" | "cyan";
 
 /** Agent output is untrusted: images never auto-load (a prompt-injected reply could beacon data out
  *  through an image URL), and only http(s) links are clickable, opening in a new tab. */
-const SAFE_MD: Components = {
+export const SAFE_MD: Components = {
   img: ({ alt, src }) => <span className="text-mute" title={String(src ?? "")}>[image: {alt || "untitled"}]</span>,
   a: ({ href, children }) => /^https?:\/\//.test(href ?? "")
     ? <a href={href} target="_blank" rel="noreferrer noopener">{children}</a> : <span title={href}>{children}</span>,

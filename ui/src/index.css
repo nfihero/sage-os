@@ -200,6 +200,12 @@ button.chip:hover { background: color-mix(in oklab, currentColor 12%, transparen
 .md table { border-collapse: collapse; margin: .5em 0; font-size: .92em; }
 .md th, .md td { border: 1px solid color-mix(in oklab, var(--a) 22%, transparent); padding: .2em .5em; }
 .md blockquote { border-left: 2px solid color-mix(in oklab, var(--a) 45%, transparent); padding-left: .7em; color: var(--color-mute); }
+/* reading a note (review, K13): a calmer face and real heading sizes, for pages rather than chat lines */
+.md.reading { font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif; max-width: 72ch; }
+.md.reading p { margin: .6em 0; }
+.md.reading h1 { font-size: 1.35em; } .md.reading h2 { font-size: 1.2em; } .md.reading h3 { font-size: 1.05em; }
+.md.reading li { margin: .2em 0; }
+.md.reading strong { color: color-mix(in oklab, var(--color-ink) 85%, var(--a)); }
 .caret { display: inline-block; width: .55em; height: 1em; background: var(--a); vertical-align: text-bottom; margin-left: 2px; animation: blink 1s steps(2) infinite; }
 .md-orange .caret { background: var(--c); }
 .dots::after { content: ""; animation: dots 1.2s steps(4) infinite; }

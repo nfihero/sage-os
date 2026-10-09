@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-10-09
+
+K13, review note by note (D24), plus what a real textbook taught us. Gate: pass (tests; the review screen
+checked in the browser at 1440×900 and 375×812 on a real 47-note card, nothing approved). pytest 219/219.
+A 1,588-page accounting textbook (Kieso, *Intermediate Accounting* 18e) is being digested on the local model:
+777 sections in 45 chapters, roughly 7–8 hours.
+
+### Added
+- **REVIEW** on every Bookshelf card: each note rendered as markdown, previous/next and keyboard, keep or drop
+  per note, edit title / body / tags with a live preview (write/preview tabs on a phone), approve only what
+  you kept. Edited notes are filed with `edited_by: user`; the agent's original proposal is kept.
+- **Drive folders read through the API** (`[[sources]] api = true`): list, download, export Google Docs, with
+  no Drive for desktop. The School folder is the first; it brought in the textbook before Drive for desktop did.
+
+### Fixed
+- Screening: rows of years ("2023 2024 2025") passed the Aadhaar checksum 16 times in the textbook and kept
+  it out; three year-like groups are now years.
+- Faulty PDF bookmarks: several on one page keep the chapter; a chapter bookmark pointing at the previous
+  chapter's page is moved to where its title appears (the book's "Chapter 15" pointed at Chapter 14).
+- The model server restarting no longer fails sections (they wait and retry).
+- Prompts: material about the book itself (what's new, pedagogy, resources) counts as no study content.
+- Long inbox cards list their files on request; new digests get readable titles.
+
 ## [0.13.0] — 2026-10-08
 
 K12, long documents into notes (D23). Gate: pass. On the local Gemma 4 12B, unattended: the outreach

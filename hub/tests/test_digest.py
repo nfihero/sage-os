@@ -103,6 +103,13 @@ def test_epub_and_word_headings_become_markdown(tmp_path):
     assert "# Intro" in extract_text(d)
 
 
+def test_readable_title():
+    from sage_os_hub.knowledge.digest import readable_title
+    assert readable_title("School/Intermediate_Accounting__18th_Edition_Kieso_--_Kieso__Weygandt_--_Wiley_--_96f0ad.pdf") \
+        == "Intermediate Accounting 18th Edition Kieso"
+    assert readable_title("x/Draft Email.gdoc") == "Draft Email" and readable_title("a/b_c.md") == "b c"
+
+
 def test_parse_and_coverage():
     reply = '```json\n{"concepts": ["Net present value", "Discount rate"], "notes": [{"title": "NPV", "body": "Net present value sums discounted cash flows.", "covers": ["Net present value"]}]}\n```'
     data = parse_json(reply)
@@ -227,6 +234,22 @@ def test_long_documents_are_split_whole(env, tmp_path):
     hub.sources.sync("drive")
     pv = client.get("/api/digest/preview", params={"source": "drive", "path": "long.md"}).json()
     assert pv["chars"] == len(long) and pv["chapters"] == 8
+
+
+def test_unreachable_model_doesnt_fail_sections(env):
+    hub, client, calls = env
+    job = client.post("/api/digest", json={"source": "drive", "path": "finance-book.md"}, headers=H).json()
+    real = hub.digests.complete
+
+    async def down(*a, **k):
+        raise httpx.ConnectError("All connection attempts failed")
+    hub.digests.complete = down
+    did = asyncio.run_coroutine_threadsafe(hub.digests.step(), hub.loop).result(10)
+    j = client.get(f"/api/digest/{job['id']}").json()
+    assert did is False and j["counts"] == {"pending": j["sections_total"]} and "retrying" in j["error"]
+    hub.digests.complete = real
+    run_all(hub)
+    assert client.get(f"/api/digest/{job['id']}").json()["status"] == "done"
 
 
 def test_digest_routes_need_the_header(env):

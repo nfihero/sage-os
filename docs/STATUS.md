@@ -1,6 +1,7 @@
 # Sage OS — status
 
-**Version 0.13.0 · 8 Oct 2026** (K12: long documents digested into notes section by section, with a coverage map; pytest 208/208). **0.12.2 · 8 Oct 2026** (Google Drive live: 10 of 13 Google Docs exported and searchable). **0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
+**Version 0.14.0 · 9 Oct 2026** (K13: review proposals note by note, keep / drop / edit; Drive folders read through
+the API; a 1,588-page textbook being digested overnight on the local model; pytest 219/219). **0.13.0 · 8 Oct 2026** (K12: long documents digested into notes section by section, with a coverage map; pytest 208/208). **0.12.2 · 8 Oct 2026** (Google Drive live: 10 of 13 Google Docs exported and searchable). **0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
 fixed or listed in CHANGELOG; local engine now needs a per-start key). **0.12.0 · 6 Oct:** `pytest` 193/193 (196 at 0.12.1), `npm run build` clean, hub `/api/smoke`
 18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
 from the outreach playbooks with both shown in the Reading strip. **Claude Code's sign-in for Sage OS has
@@ -27,6 +28,8 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 | Local engine (D22.3) | **MODELS**: hardware check (RAM, NVIDIA VRAM, Apple Silicon, Vulkan/CPU), catalog of 8 models rated fits / tight / too big, install of the official llama.cpp build and model downloads (resumable, SHA-256 checked; not yet run on a fresh machine), models already on disk, start/stop; serves on 127.0.0.1:8790; a leftover server from a killed hub is stopped on the next start |
 | Chat connector (D22.2) | one chat for any OpenAI-compatible AI (the engine, ChatGPT, Gemini, Ollama); Bookshelf tools as function calls run by Sage OS (no shell, no files); transcripts in hub.db; **Chat** tab in the Local pane |
 | Google Drive connector (D22.5) | Google Docs / Sheets / Slides exported through the Drive API (read-only consent, the user's own OAuth client, PKCE) and indexed like other files; **waiting for the user's OAuth client**, so not yet run live |
+| Review note by note (K13, D24) | **REVIEW** on every Bookshelf card: notes rendered as markdown, keep / drop each, edit with live preview, file only what's kept (`edited_by: user`), undo exact; phone layout |
+| Drive folders via the API (D22.5) | `[[sources]] api = true`: a Drive folder listed and downloaded through the Drive API, no Drive for desktop; source `gdrive` = My Drive/School |
 | Long documents (K12, D23) | Sources → *Digest into notes*: sections that tile the document, one local-model call per section, concept coverage check, one inbox card per chapter; **DIGESTS** coverage map; pause / resume / cancel; EPUB books; PDFs to 400 MB |
 | Approvals inbox (Claude) | allow once / for session / deny with note — verified end to end |
 | Bookshelf writes (K3) | agents propose (create / update / archive); inbox card shows each change's diff; *Approve & file* applies the batch through one journaled writer; History tab undoes a batch byte for byte; stale and contract-breaking proposals refused; pending proposals survive restarts |

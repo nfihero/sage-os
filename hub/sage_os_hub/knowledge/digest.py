@@ -64,8 +64,10 @@ def section_prompt(doc: str, sec: dict, text: str, earlier: list[str] | None = N
             "related ones. title: 2-8 plain words, no formulas. body: markdown, 60-350 words, from this section only. "
             "tags: 1-4 lowercase topic words. covers: the concept names from step 1 that this note covers.\n"
             "3. Every concept must be covered by at least one note.\n"
-            "4. If the section has no study content (a table of contents, an index, copyright or signature pages, "
-            "blank pages), reply {\"concepts\": [], \"notes\": []}.")
+            "4. If the section has no study content, reply {\"concepts\": [], \"notes\": []}. No study content means: "
+            "a table of contents, an index, copyright, licence or signature pages, blank pages, acknowledgments, "
+            "and anything about the book or course itself rather than its subject (what's new in this edition, "
+            "teaching features, online resources, author biographies).")
 
 
 def followup_prompt(missing: list[str]) -> str:
@@ -108,6 +110,17 @@ def parse_json(text: str) -> dict:
                           "tags": [re.sub(r"[^a-z0-9-]+", "-", str(t).lower()).strip("-")[:40] for t in (n.get("tags") or [])][:4],
                           "covers": [str(c)[:120] for c in (n.get("covers") or [])][:30]})
     return {"concepts": concepts, "notes": notes[:12]}
+
+
+def readable_title(rel: str) -> str:
+    """A file name as a title: "Intermediate_Accounting__18th_Edition_Kieso_--_Kieso__Weygandt_--_Wiley.pdf"
+    -> "Intermediate Accounting 18th Edition Kieso" (download sites append authors, publisher and hashes)."""
+    stem = Path(rel).stem
+    for ext in (".gdoc", ".gsheet", ".gslides"):
+        stem = stem.removesuffix(ext)
+    stem = re.split(r"_--_| -- ", stem)[0]
+    stem = re.sub(r"[_\s]+", " ", stem).strip(" -")
+    return stem or Path(rel).stem
 
 
 def folder_part(s: str, limit: int = 60) -> str:
@@ -156,7 +169,7 @@ class Digests:
         if not secs or not text.strip():
             raise ValueError("this document has no text to digest (a scan needs OCR first)")
         jid, now = f"dg_{uuid.uuid4().hex[:10]}", time.time()
-        title = Path(rel).stem.removesuffix(".gdoc")
+        title = readable_title(rel)
         chapters = list(dict.fromkeys(s.chapter for s in secs))
         with self.lock:
             self.db.execute("INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -294,6 +307,10 @@ class Digests:
         except asyncio.CancelledError:
             self._set_sec(job["id"], sec["idx"], status="pending")
             raise
+        except httpx.TransportError:                  # the model server is restarting or gone: not the section's fault
+            self._set_sec(job["id"], sec["idx"], status="pending")
+            await asyncio.to_thread(self._job_note, job["id"], "can't reach the model; retrying shortly")
+            return False
         except Exception as exc:                      # noqa: BLE001 -- recorded on the section
             with self.lock:
                 attempts = self.db.execute("SELECT attempts FROM secs WHERE job=? AND idx=?", (job["id"], sec["idx"])).fetchone()[0] + 1
