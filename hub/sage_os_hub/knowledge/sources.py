@@ -27,7 +27,7 @@ from .screen import screen
 
 TEXT = {".md", ".txt", ".csv", ".tsv", ".json", ".tex", ".rtf", ".py", ".java", ".js", ".ts", ".tsx", ".c", ".cpp",
         ".h", ".cs", ".r", ".m", ".sql", ".sh", ".yaml", ".yml", ".toml", ".xml", ".vtt", ".srt"}
-RICH = {".pdf", ".docx", ".pptx", ".xlsx", ".xlsm", ".html", ".htm", ".ipynb"}
+RICH = {".pdf", ".docx", ".pptx", ".xlsx", ".xlsm", ".html", ".htm", ".ipynb", ".epub"}
 SKIP_REASONS = {                      # extension -> why it isn't copied
     **dict.fromkeys((".mp4", ".mov", ".m4a", ".mp3", ".wav", ".avi", ".mkv"), "media"),
     **dict.fromkeys((".jpg", ".jpeg", ".png", ".gif", ".heic", ".webp", ".bmp", ".svg"), "image (no text yet)"),
@@ -45,8 +45,9 @@ PRIVATE_NAME = re.compile(
     r"pay[ _-]?(stub|slip)|salary[ _-]?slip|passport|aadhaa?r|(?<![a-z])(pan|ssn)(?![a-z])|social[ _-]?security|"
     r"driv\w*[ _-]?licen[cs]e|(?<![a-z])visa(?![a-z])|invoice|receipt|medical|insurance|"
     r"(?<![a-z])passwords?(?![a-z])|credentials?|secrets?(?![a-z])|\.env\b|data-private", re.I)
-MAX_FILE = 50 * 1024 * 1024           # bigger documents are skipped (too big to be useful text)
-MAX_TEXT = 2_000_000                  # characters of extracted text kept per file
+MAX_FILE = 50 * 1024 * 1024           # bigger files are skipped (too big to be useful text)...
+MAX_BOOK = 400 * 1024 * 1024          # ...except PDFs and EPUBs, where textbooks with images are often far bigger (K12)
+MAX_TEXT = 20_000_000                 # characters of extracted text kept per file (a long textbook is ~3M)
 
 
 @dataclass
@@ -61,9 +62,50 @@ class SourceSpec:
 
 
 # -- text extraction ------------------------------------------------------------------------------
-EXTRACT_VERSION = 2   # bump when extraction changes, so the next sync re-extracts every file
+EXTRACT_VERSION = 3   # bump when extraction changes, so the next sync re-extracts every file
 # 2: spreadsheet cells (and Word table cells) are tab-separated. Version 1 glued neighbouring cells
 #    together ("4","1","1","1" -> "4111"), which made long digit runs look like card or ID numbers.
+# 3: headings in Word, HTML and EPUB become markdown `#` lines (chapters for K12); EPUB read; no PDF page cap.
+
+HTML_HEAD = re.compile(r"(?is)<h([1-3])\b[^>]*>(.*?)</h\1>")
+
+
+def _html_text(raw: str) -> str:
+    """HTML to text, keeping h1-h3 as markdown headings."""
+    raw = re.sub(r"(?is)<(script|style)\b.*?</\1>", "", raw)
+    raw = HTML_HEAD.sub(lambda m: "\n\n" + "#" * int(m.group(1)) + " "
+                        + re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(2))).strip() + "\n\n", raw)
+    raw = re.sub(r"(?i)</(p|div|li|tr|br|h[4-6])>|<br\s*/?>", "\n", raw)
+    return html.unescape(re.sub(r"<[^>]+>", " ", raw))
+
+
+def _epub_text(z: zipfile.ZipFile) -> str:
+    """An EPUB's chapters in reading order (its spine), headings kept."""
+    names = z.namelist()
+    container = z.read("META-INF/container.xml").decode("utf-8", "replace") if "META-INF/container.xml" in names else ""
+    m = re.search(r'full-path="([^"]+)"', container)
+    order = []
+    if m and m.group(1) in names:
+        opf_path = m.group(1)
+        opf = z.read(opf_path).decode("utf-8", "replace")
+        base = opf_path.rsplit("/", 1)[0] + "/" if "/" in opf_path else ""
+        items = dict(re.findall(r'<item\b[^>]*\bid="([^"]+)"[^>]*\bhref="([^"]+)"', opf))
+        items |= {i: h for h, i in re.findall(r'<item\b[^>]*\bhref="([^"]+)"[^>]*\bid="([^"]+)"', opf)}
+        order = [base + items[i] for i in re.findall(r'<itemref\b[^>]*\bidref="([^"]+)"', opf) if i in items]
+    order = [n for n in order if n in names] or sorted(n for n in names if n.lower().endswith((".xhtml", ".html", ".htm")))
+    return "\n\n".join(_html_text(z.read(n).decode("utf-8", "replace")) for n in order)
+
+
+def _docx_text(data: bytes) -> str:
+    """Word XML to text: Heading 1-3 paragraphs become markdown headings; table cells tab-separated."""
+    s = data.decode("utf-8", "replace")
+
+    def para(m):
+        p = m.group(0)
+        style = re.search(r'<w:pStyle w:val="(?:Heading|heading|Titre|berschrift)?\s?([1-3])"', p)
+        text = html.unescape(re.sub(r"<[^>]+>", "", re.sub(r"</w:tc>", "\t", p)))
+        return ("#" * int(style.group(1)) + " " + text.strip() + "\n") if style and text.strip() else text + "\n"
+    return re.sub(r"(?s)<w:p\b.*?</w:p>", para, s.replace("</w:tc>", "\t</w:tc>"))
 
 
 def _xml_text(data: bytes, para_tags: tuple[str, ...], cell_tags: tuple[str, ...] = ()) -> str:
@@ -83,13 +125,15 @@ def extract_text(path: Path) -> str:
         reader = PdfReader(str(path))
         if reader.is_encrypted:
             raise ValueError("encrypted PDF")
-        return "\n\n".join((p.extract_text() or "") for p in reader.pages[:500])
-    if ext in (".docx", ".pptx", ".xlsx", ".xlsm"):
+        return "\n\n".join((p.extract_text() or "") for p in reader.pages)
+    if ext in (".docx", ".pptx", ".xlsx", ".xlsm", ".epub"):
         with zipfile.ZipFile(path) as z:
             names = z.namelist()
+            if ext == ".epub":
+                return _epub_text(z)
             if ext == ".docx":
                 parts = [n for n in names if re.match(r"word/(document|footnotes|endnotes)\d*\.xml$", n)]
-                return "\n".join(_xml_text(z.read(n), ("w:p",), ("w:tc",)) for n in parts)
+                return "\n".join(re.sub(r"<[^>]+>", "", _docx_text(z.read(n))) for n in parts)
             if ext == ".pptx":
                 slides = sorted((n for n in names if re.match(r"ppt/slides/slide\d+\.xml$", n)),
                                 key=lambda n: int(re.findall(r"\d+", n)[-1]))
@@ -103,8 +147,7 @@ def extract_text(path: Path) -> str:
         cells = json.loads(raw).get("cells", [])
         return "\n\n".join("".join(c.get("source", "")) for c in cells)
     if ext in (".html", ".htm"):
-        raw = re.sub(r"(?is)<(script|style)\b.*?</\1>", "", raw)
-        return html.unescape(re.sub(r"<[^>]+>", " ", raw))
+        return _html_text(raw)
     return raw
 
 
@@ -166,8 +209,9 @@ class SourceLibrary:
                         skipped.append((rel, f"unsupported type ({ext or 'no extension'})"))
                     else:
                         try:
-                            if p.stat().st_size > MAX_FILE:
-                                skipped.append((rel, "larger than 50 MB"))
+                            limit = MAX_BOOK if ext in (".pdf", ".epub") else MAX_FILE
+                            if p.stat().st_size > limit:
+                                skipped.append((rel, f"larger than {limit // 2**20} MB"))
                                 continue
                         except OSError:
                             skipped.append((rel, "can't be read"))

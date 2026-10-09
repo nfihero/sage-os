@@ -41,6 +41,7 @@ from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
 from .knowledge.briefing import Briefings
+from .knowledge.digest import Digests
 from .knowledge.builder import NoteBuilder, source_path
 from .knowledge.gdrive import DriveError, GoogleDrive
 from .knowledge.proposals import IMPORTER
@@ -109,6 +110,7 @@ class Hub:
             for s in cfg.sources], cfg.sources_index, self.drive)
         self.builder = NoteBuilder(self.vault, self.sources)
         self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)
+        self.digests = Digests(cfg.store.with_name("digest.db"), self)
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
@@ -516,6 +518,13 @@ class NewSession(BaseModel):
     provider: str | None = Field(default=None, max_length=100)  # the model chat: which endpoint (D22.2)
 
 
+class DigestRequest(BaseModel):
+    source: str = Field(min_length=1, max_length=100)
+    path: str = Field(min_length=1, max_length=2000)
+    provider: str | None = Field(default=None, max_length=100)   # default: the local engine
+    model: str | None = Field(default=None, max_length=300)
+
+
 class EngineModel(BaseModel):
     model: str = Field(min_length=1, max_length=300)
 
@@ -571,6 +580,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.publish_sources()
         if "chat" in hub.agents:
             hub.agents["chat"].publish()
+        hub.digests.publish()
         if hub.engine:
             orphan = await asyncio.to_thread(hub.engine.reap_orphan)
             if orphan:
@@ -580,6 +590,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             results = await asyncio.to_thread(hub.run_smoke)
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
             tasks.append(asyncio.create_task(hub.watch_engine(), name="engine"))
+            tasks.append(asyncio.create_task(hub.digests.run(), name="digest"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
             bad = [r for r in results if not r["ok"]]
             url = f"http://{cfg.host}:{cfg.port}"
@@ -599,6 +610,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.writer.close()
         hub.sources.close()
         hub.briefings.close()
+        hub.digests.close()
         hub.store.close()
 
     # No /docs, /redoc or /openapi.json: nothing to browse the API with but the UI.
@@ -928,6 +940,57 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         await asyncio.to_thread(e.stop)
         hub.panel("engine", e.status())
         return {"ok": True}
+
+    # -- digesting long documents into notes (K12, D23) ----------------------------------------------------
+    @app.get("/api/digest/preview")
+    async def digest_preview(source: str = Query(max_length=100), path: str = Query(max_length=2000)):
+        try:
+            return await asyncio.to_thread(hub.digests.preview, source, path)
+        except KeyError:
+            raise HTTPException(404, "no such source file")
+        except Exception as exc:                          # noqa: BLE001 -- e.g. an unreadable PDF
+            raise HTTPException(400, f"couldn't split this document: {exc}")
+
+    @app.get("/api/digest")
+    async def digest_list():
+        return {"jobs": await asyncio.to_thread(hub.digests.jobs)}
+
+    @app.get("/api/digest/{jid}")
+    async def digest_get(jid: str):
+        try:
+            return await asyncio.to_thread(hub.digests.job, jid)
+        except KeyError:
+            raise HTTPException(404, "no such digest")
+
+    @app.post("/api/digest", dependencies=W)
+    async def digest_start(body: DigestRequest):
+        provider = body.provider or "engine"
+        if provider not in hub.providers:
+            raise HTTPException(400, f"no model provider {provider!r}")
+        model = body.model or (hub.engine.serving or {}).get("id") if provider == "engine" and hub.engine else body.model
+        if not model:
+            raise HTTPException(400, "start a model in MODELS first, or pick one")
+        try:
+            job = await asyncio.to_thread(hub.digests.create, body.source, body.path, provider, model)
+        except KeyError:
+            raise HTTPException(404, "no such source file")
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        hub.digests.publish()
+        hub.event("knowledge", "bookshelf", "digest.started", {"job": job["id"], "sections": job["sections_total"]})
+        return job
+
+    @app.post("/api/digest/{jid}/{action}", dependencies=W)
+    async def digest_action(jid: str, action: str):
+        status = {"pause": "paused", "resume": "running", "cancel": "cancelled"}.get(action)
+        if not status:
+            raise HTTPException(404, "pause, resume or cancel")
+        try:
+            job = await asyncio.to_thread(hub.digests.set_status, jid, status)
+        except KeyError:
+            raise HTTPException(404, "no such digest")
+        hub.digests.publish()
+        return job
 
     # -- Google Drive (D22.5) ---------------------------------------------------------------------------
     # Google sends the browser back to this machine. Loopback only: a remote device can't finish sign-in.
