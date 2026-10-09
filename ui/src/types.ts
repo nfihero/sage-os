@@ -94,7 +94,19 @@ export type ProviderInfo = { id: string; label: string; base_url: string; kind: 
   key_present: boolean | null; models: { id: string; state: string | null }[]; error: string | null };
 export type ChatSessionInfo = { id: string; title: string; provider: string; model: string; created: number; updated: number; status: "idle" | "running" };
 
+// -- K12 digests -------------------------------------------------------------------------------------
+export type DigestSection = { idx: number; chapter: string; title: string; pages: number[]; status: string; concepts: number;
+  covered: number; missing: string[]; notes: string[]; error: string | null; ms: number | null; chars: number };
+export type DigestJob = { id: string; source: string; path: string; title: string; provider: string; model: string;
+  status: "running" | "paused" | "done" | "cancelled"; created: number; updated: number; chars: number; error: string | null;
+  sections_total: number; counts: Record<string, number>; notes: number; concepts: number; covered: number;
+  chapters_total: number; chapters_done: number;
+  sections?: DigestSection[]; chapters?: { chapter: string; status: string; proposals: string[]; error: string | null }[] };
+export type DigestPreview = { source: string; path: string; chars: number; sections: number; chapters: number;
+  outline: { chapter: string; sections: string[] }[] };
+
 export type Panels = {
+  digests?: { jobs: DigestJob[] };
   engine?: EnginePanel;
   chat?: { sessions: ChatSessionInfo[] };
   board?: Board; gpu?: Gpu; health?: Health; safety?: Guard[]; sessions?: ProfileSessions[];

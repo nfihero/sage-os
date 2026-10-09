@@ -15,16 +15,18 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 6 Oct 2026, v0.12.0)
+## 0. Start here (handoff of 8 Oct 2026, v0.13.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D22), those win. **Read D22 first:** the product is now a shippable app for anyone
+`DECISIONS.md` (D1–D23), those win. **Read D22 first:** the product is now a shippable app for anyone
 who uses several AIs and has scattered notes; nothing may assume this PC (no Hermes, GPU or drive
 letter required).
 
 ### Where things are
-- **Version 0.12.1** (tag `v0.12.1`; 7 Oct security + copy pass), tags v0.4.0–v0.12.1, **pushed to
-  GitHub 7 Oct** at the user's request. Checked: `pytest` 196/196, `npm run build` clean, `/api/smoke` 18/18.
+- **Version 0.13.0** (tag `v0.13.0`), tags v0.4.0–v0.13.0. GitHub has up to v0.12.1 (pushed 7 Oct);
+  **v0.12.2 and v0.13.0 are local only**. Checked 8 Oct: `pytest` 208/208, `npm run build` clean.
+- **0.12.2:** Google Drive live (10 of 13 Google Docs; names Drive for desktop sanitised now match).
+  **0.13.0:** K12 long documents (D23): *Digest into notes*, DIGESTS coverage map, EPUB, bigger files.
 - **Built:** everything through v0.11 plus, in 0.12.0: K8 briefing packs + Reading strip (D20),
   Sage OS's own llama.cpp engine with a model catalog rated per machine (A5, D22.3), one Chat
   connector for any OpenAI-compatible AI with the Bookshelf tools (D22.2), the Google Drive connector
@@ -35,7 +37,9 @@ letter required).
   535 files incl. the Deal Club folder (63 added 6 Oct); the contact-distribution spreadsheet is
   excluded. Kanban `t_549737c1` still blocked on the user's spending categories.
 
-### Next (6 Oct; confirm the order with the user)
+### Next (8 Oct; confirm the order with the user)
+0. **Inbox:** two playbook digests (the first, 47 notes with repeats, came before de-duplication; the user
+   will likely reject it), the options-lecture digest. Try a real textbook (PDF with bookmarks or EPUB).
 1. **Deal Club demo**: user signs Claude in again and saves the Google OAuth client; connect Drive and
    sync (brings the Acme pitch framework and target briefing); *Build notes* on the Deal Club
    collections; rehearse.

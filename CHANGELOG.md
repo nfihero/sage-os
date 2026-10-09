@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-10-08
+
+K12, long documents into notes (D23). Gate: pass. On the local Gemma 4 12B, unattended: the outreach
+playbook (32 pages, no bookmarks) became 34 notes in one inbox card with 55/55 listed concepts covered
+(about 4 min); the options lecture (55 pages, one bookmark per slide) became 12 notes, 36/36 (about 3.5
+min). pytest 208/208.
+
+### Added
+- **Digest into notes** on any long document in Bookshelf → Sources: a preview of its chapters and sections,
+  then the local model reads every section and writes notes; one inbox card per chapter.
+- **DIGESTS** tab: every job with a coverage map (one square per section: waiting, being read, drafted, no
+  study content, failed; an amber outline where a concept wasn't covered), pause / resume / cancel.
+- Sections tile the document (checked); chapters from PDF bookmarks, headings or even chunks; concept
+  coverage check with one follow-up call; earlier titles passed on and same-titled notes merged.
+- EPUB books; Word, HTML and EPUB headings kept as markdown; PDFs and EPUBs up to 400 MB, 20M characters,
+  no page cap (the next sync re-extracts everything once).
+
+### Changed
+- The local engine runs a 16K context per request and two request slots on a GPU (a chat doesn't wait
+  behind a digest); replies are capped and a looping reply is retried warmer.
+- Review fixes: digests of non-PDF documents read the whole text (not the first 50,000 characters); the
+  worker is woken safely from other threads; proposal lookups take the writer's lock.
+
 ## [0.12.2] — 2026-10-08
 
 Google Drive connector, first live run (S3 gate: **pass**). Connected read-only; 10 of 13 Google Docs in

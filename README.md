@@ -4,7 +4,9 @@
 several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
 every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
-**Today (v0.12.0):** chat with Claude Code, a model running on your own computer (Sage OS installs and
+**Today (v0.13.0):** a long document (a textbook, a handbook, a long report) can be digested into notes:
+the local model reads it section by section, and a coverage map shows that every part was read.
+Also: chat with Claude Code, a model running on your own computer (Sage OS installs and
 runs llama.cpp itself and rates each model for your hardware), ChatGPT, Gemini or Ollama. Each message
 you send carries the notes and documents that match it, shown next to the message in a *Reading* strip
 with anything the AI opened itself; ✕ on an item corrects the AI and leaves it out from then on.
@@ -65,6 +67,7 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 | Claude Code pane | Claude Agent SDK, your subscription | session tabs, folder + model per session; tool requests → inbox; usage meter |
 | Chat pane | the **Chat** connector: any OpenAI-compatible endpoint (local engine, ChatGPT, Gemini, Ollama) | pick where and which model; the AI uses your notes and documents through Bookshelf tools; **Hermes** tab when Hermes is installed |
 | Reading strip | briefing packs (K8, D20) | under each message: what was attached (◆ notes, ▤ documents) and what the AI opened itself (·read); ✕ = wrong or not relevant; 📖 toggles packs per chat |
+| Digests | `data/digest.db` (K12, D23) | Bookshelf → Sources → *Digest into notes* on a long document; Bookshelf → **DIGESTS**: a coverage map with one square per section, concepts covered, pause / resume / cancel; one inbox card per chapter |
 | Models | `data/engine` | this computer's memory and GPU, the local engine (install, start, stop), a model catalog rated *fits / tight / too big*, models already on disk, connected cloud AIs |
 | Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change; held (secret-looking) proposals: reject / save anyway |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |

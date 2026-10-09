@@ -35,7 +35,7 @@ RELEASES = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=15
 HF_FILE = "https://huggingface.co/{repo}/resolve/main/{file}"
 EXE = "llama-server.exe" if sys.platform == "win32" else "llama-server"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-CTX = 16384               # one request at a time gets all of it: a book section + its notes fit (K12)
+CTX = 16384               # per request slot: a book section + its notes fit (K12)
 
 
 class EngineError(Exception):
@@ -68,9 +68,16 @@ def hardware() -> dict:
     return hw
 
 
+def has_gpu(hw: dict) -> bool:
+    """A GPU the engine can use: NVIDIA, Apple Silicon, or one Vulkan reported (a "vulkan" label alone is the build choice)."""
+    return hw["backend"] in ("cuda", "metal") or bool(hw.get("gpu"))
+
+
 def fit(size_bytes: int, hw: dict) -> tuple[str, float]:
     """-> ("fits" | "tight" | "too big", memory needed in GB) for a model file on this machine."""
     need = size_bytes / 2**30 * 1.1 + 1.2       # weights + KV cache for a 16K context (small for small models) + runtime
+    if has_gpu(hw):
+        need += 0.6                              # a second request slot on GPUs (see start)
     ram, gpu = hw["ram_gb"], hw.get("gpu")
     if hw["backend"] == "metal":
         state = "fits" if need <= ram * 0.65 else "tight" if need <= ram * 0.8 else "too big"
@@ -315,8 +322,9 @@ class LocalEngine:
         # Locked down: llama-server answers any web page by default (CORS *, no key) and its /slots and web
         # UI can show recent prompts, which carry the user's notes. A fresh key per start, passed in the
         # environment (not the command line, which other processes can read); no web UI; no CORS origin.
-        args = [str(b), "-m", str(path), "--host", "127.0.0.1", "--port", str(self.port), "-c", str(CTX),
-                "--jinja", "--alias", model_id, "-np", "1", "-ngl", "999" if hw["backend"] != "cpu" else "0",
+        slots = 2 if has_gpu(hw) else 1     # two on a GPU: a chat needn't wait behind a digest section
+        args = [str(b), "-m", str(path), "--host", "127.0.0.1", "--port", str(self.port), "-c", str(CTX * slots),
+                "--jinja", "--alias", model_id, "-np", str(slots), "-ngl", "999" if hw["backend"] != "cpu" else "0",
                 "--no-webui", "--cors-origins", "http://127.0.0.1:1"]
         self.api_key = secrets.token_urlsafe(32)
         env = {**os.environ, "LLAMA_API_KEY": self.api_key}

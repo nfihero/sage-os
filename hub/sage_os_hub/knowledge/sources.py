@@ -102,7 +102,7 @@ def _docx_text(data: bytes) -> str:
 
     def para(m):
         p = m.group(0)
-        style = re.search(r'<w:pStyle w:val="(?:Heading|heading|Titre|berschrift)?\s?([1-3])"', p)
+        style = re.search(r'<w:pStyle w:val="(?:Heading|heading|Titre|berschrift) ?([1-3])"', p)
         text = html.unescape(re.sub(r"<[^>]+>", "", re.sub(r"</w:tc>", "\t", p)))
         return ("#" * int(style.group(1)) + " " + text.strip() + "\n") if style and text.strip() else text + "\n"
     return re.sub(r"(?s)<w:p\b.*?</w:p>", para, s.replace("</w:tc>", "\t</w:tc>"))
@@ -374,6 +374,13 @@ class SourceLibrary:
         return {"q": text, "ms": round((time.perf_counter() - t0) * 1000, 1),
                 "results": [{"source": s, "path": r, "title": Path(r).name, "snippet": sn, "score": round(-sc, 3)}
                             for s, r, sn, sc in rows]}
+
+    def full_text(self, source: str, rel: str) -> str | None:
+        """A document's whole extracted text (read() pages it out 50,000 characters at a time)."""
+        with self.lock:
+            row = self.db.execute("SELECT fts.body FROM files f JOIN fts ON fts.rowid = f.id WHERE f.source=? AND f.rel=?",
+                                  (source, rel)).fetchone()
+        return row[0] if row else None
 
     def read(self, source: str, rel: str, offset: int = 0, limit: int = 20_000) -> dict | None:
         with self.lock:

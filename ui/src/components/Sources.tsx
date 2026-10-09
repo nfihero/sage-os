@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { get, post } from "../api";
 import type { BuildResult, GoogleStatus, SourceCollection, SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
 import { ago, useNow } from "../util";
+import { DigestStart } from "./Digests";
 
 /** The source library (D15): read-only copies of chosen folders, searchable, citable, never edited. */
 export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { source: string; path: string } | null }) {
@@ -218,6 +219,7 @@ function DocView({ hit, onBack }: { hit: SourceHit; onBack: () => void }) {
       <div className="panel-body">
         {err && <div className="text-red">{err}</div>}
         {pages[0]?.note && <div className="mb-2 text-[12px] text-amber">{pages[0].note}</div>}
+        {last && last.chars > 4000 && <div className="mb-2"><DigestStart key={hit.path} source={hit.source} path={hit.path} /></div>}
         <pre className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-ink/85">{pages.map((p) => p.text).join("")}</pre>
         {last?.more && <button className="chip mt-2" onClick={() => load(last.offset + last.text.length)}>LOAD MORE</button>}
       </div>

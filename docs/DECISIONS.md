@@ -492,6 +492,34 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** sync conflicts are common (then a home-base mode as in D21), or Google verification
   is out of reach (then `drive.file` + picker).
 
+## D23 — Long documents are digested section by section, with a coverage map (K12)
+
+- **Date / by:** 2026-10-08, user ("if I added a massive textbook, would it break it down into appropriate
+  notes without missing something?"; chose this as the next build); design by Claude
+- **Status:** accepted
+- **Why:** before this, a textbook could be skipped (over 50 MB), cut off (500 PDF pages, 2M characters) or
+  drafted from a sliver ("read at least three documents", 3–6 notes), with nothing showing what was missed.
+- **Decision:**
+  1. **Split so the pieces add up to the whole.** Chapters and sections come from PDF bookmarks, then
+     headings (Word, EPUB and HTML headings are kept as markdown), then even chunks. The sections tile the
+     text: every character is in exactly one section, checked in code. A heading level counts as chapters
+     only if its parts average 6,000+ characters (one bookmark per slide isn't a chapter).
+  2. **Draft every section**, in order, on the model the user picks (the local engine by default: free,
+     private, unattended). The model lists the section's key concepts, then writes notes covering them;
+     it sees earlier notes' titles to avoid repeats, and same-titled notes are merged with both sources.
+  3. **Check coverage.** A listed concept no note covers gets one follow-up call; the map shows covered /
+     listed per section and flags gaps. Limit: "listed" means listed by the model; a concept the model
+     never lists isn't counted.
+  4. **One inbox card per chapter** (split at 50 notes), so a 30-chapter book is 30 decisions, not 400.
+     Nothing is written before approval (I1); screening applies (K4).
+  5. **Resumable and visible.** Jobs survive restarts; pause / resume / cancel; a section that fails twice is
+     marked and can be retried; the engine not running means "waiting", not "failed".
+- **Costs / limits:** a 500-page book is roughly 150–200 sections, about 1.5–3 hours on a 16 GB GPU with a
+  12B model and many more on a laptop CPU. Keyword-free concept checks depend on the model's own list.
+  Scanned books still need OCR (S2). Near-duplicate titles across chapters aren't merged.
+- **Revisit if:** concept lists prove unreliable (add an independent term check), or approval per chapter is
+  still too much (K7 batch review).
+
 ---
 
 ## Proposed, awaiting the user

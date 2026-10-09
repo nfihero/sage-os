@@ -180,6 +180,35 @@ def test_digest_waits_for_the_engine_and_resumes_failed_sections(env, monkeypatc
     assert j["counts"].get("failed", 0) == 0 and j["status"] == "done"
 
 
+def test_same_title_notes_merge_and_later_sections_see_earlier_titles(env):
+    hub, client, calls = env
+    job = client.post("/api/digest", json={"source": "drive", "path": "finance-book.md"}, headers=H).json()
+    d = hub.digests
+    with d.lock:                                          # two sections of one chapter wrote "Present value"
+        rows = d.db.execute("SELECT idx, chapter FROM secs WHERE job=? ORDER BY idx", (job["id"],)).fetchall()
+        ch = rows[0][1]
+        same = [i for i, c in rows if c == ch][:2]
+        for i in same:
+            d.db.execute("UPDATE secs SET status='drafted', notes=?, concepts='[]', covered='[]' WHERE job=? AND idx=?",
+                         (json.dumps([{"title": "Present value", "body": f"Part from section {i}.", "tags": ["pv"]}]), job["id"], i))
+        d.db.commit()
+    assert d.earlier_titles(job["id"], same[1]) == ["Present value"]
+    changes, _ = d.chapter_changes({"id": job["id"], "title": "finance-book", "source": "drive", "rel": "finance-book.md"}, ch)
+    pv = [c for c in changes if c["title"] == "Present value"]
+    assert len(pv) == 1 and pv[0]["body"].count("Part from section") == 2 and pv[0]["body"].count("\n- ") == 2
+
+
+def test_long_documents_are_split_whole(env, tmp_path):
+    """read() pages text out 50,000 characters at a time; a digest must see all of it (review 8 Oct)."""
+    hub, client, calls = env
+    long = book(chapters=8, sections=4, words=1500)
+    assert len(long) > 200_000
+    (tmp_path / "G" / "long.md").write_bytes(long.encode())      # bytes: write_text would add \r on Windows
+    hub.sources.sync("drive")
+    pv = client.get("/api/digest/preview", params={"source": "drive", "path": "long.md"}).json()
+    assert pv["chars"] == len(long) and pv["chapters"] == 8
+
+
 def test_digest_routes_need_the_header(env):
     hub, client, calls = env
     assert client.post("/api/digest", json={"source": "drive", "path": "finance-book.md"}).status_code == 403

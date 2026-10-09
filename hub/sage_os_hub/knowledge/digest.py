@@ -48,11 +48,16 @@ SCHEMA = {"type": "object", "required": ["concepts", "notes"], "properties": {
         "covers": {"type": "array", "items": {"type": "string"}}}}}}}
 
 
-def section_prompt(doc: str, sec: dict, text: str) -> str:
+def section_prompt(doc: str, sec: dict, text: str, earlier: list[str] | None = None) -> str:
     pages = f", pages {sec['pages'][0]}–{sec['pages'][1]}" if sec.get("pages") else ""
     n = max(1, min(8, round(len(text) / 1800)))
+    seen = ""
+    if earlier:
+        seen = ("Notes already written from earlier sections of this document (don't write these again; if this "
+                "section adds something to one, use exactly the same title and write only the addition): "
+                + json.dumps(earlier[-80:], ensure_ascii=False) + "\n\n")
     return (f"Document: \"{doc}\". Chapter: \"{sec['chapter']}\". Section: \"{sec['title']}\"{pages}.\n\n"
-            f"<<<\n{text}\n>>>\n\n"
+            f"{seen}<<<\n{text}\n>>>\n\n"
             "1. concepts: list every key concept in this section (definitions, formulas, methods, rules, named "
             "examples, figures that matter) as short names, 2 to 25 of them.\n"
             f"2. notes: about {n} notes (fewer if the section is thin), each covering one concept or a few closely "
@@ -134,10 +139,9 @@ class Digests:
     # -- creating -------------------------------------------------------------------------------------
     def plan(self, source: str, rel: str) -> tuple[str, list]:
         lib = self.hub.sources
-        doc = lib.read(source, rel, 0, 1)
-        if doc is None:
+        full = lib.full_text(source, rel)               # all of it: read() pages out 50,000 characters at a time
+        if full is None:
             raise KeyError(f"{source}/{rel}")
-        full = lib.read(source, rel, 0, 50_000_000)["text"] if doc["chars"] else ""
         title = Path(rel).stem.removesuffix(".gdoc").removesuffix(".gsheet").removesuffix(".gslides")
         return split_document(lib.root / source / copy_name(rel), full, title)
 
@@ -162,7 +166,7 @@ class Digests:
             self.db.executemany("INSERT INTO chapters(job, chapter, ord, status, proposals) VALUES (?,?,?,?,?)",
                                 [(jid, c, i, "open", "[]") for i, c in enumerate(chapters)])
             self.db.commit()
-        self.wake.set()
+        self.nudge()
         return self.job(jid)
 
     def set_status(self, jid: str, status: str) -> dict:
@@ -173,8 +177,17 @@ class Digests:
                 self.db.execute("UPDATE secs SET status='pending', attempts=0, error=NULL WHERE job=? AND status='failed'", (jid,))
             self.db.execute("UPDATE jobs SET status=?, updated=?, error=NULL WHERE id=?", (status, time.time(), jid))
             self.db.commit()
-        self.wake.set()
+        self.nudge()
         return self.job(jid)
+
+    def nudge(self):
+        """Wake the worker. Routes call create/set_status in worker threads, and asyncio.Event is not
+        thread-safe, so the set happens on the event loop."""
+        loop = getattr(self.hub, "loop", None)
+        if loop and loop.is_running():
+            loop.call_soon_threadsafe(self.wake.set)
+        else:
+            self.wake.set()
 
     # -- reading ----------------------------------------------------------------------------------------
     def jobs(self) -> list[dict]:
@@ -196,7 +209,8 @@ class Digests:
         decided = {}
         for _, _, props, _ in chs:
             for pid in json.loads(props or "[]"):
-                p = self.hub.writer.proposal(pid)
+                with self.hub.writer.lock:          # the writer's connection is shared with approvals
+                    p = self.hub.writer.proposal(pid)
                 decided[pid] = p["status"] if p else "missing"
         sections = []
         for idx, chapter, title, pages, st, concepts, cov, notes, err, ms, chars in secs:
@@ -293,9 +307,21 @@ class Digests:
         self.publish(job["id"])
         return True
 
+    def earlier_titles(self, jid: str, idx: int) -> list[str]:
+        with self.lock:
+            rows = self.db.execute("SELECT notes FROM secs WHERE job=? AND idx<? AND status='drafted' ORDER BY idx", (jid, idx)).fetchall()
+        return list(dict.fromkeys(n["title"] for r in rows for n in json.loads(r[0] or "[]")))
+
     async def draft(self, provider, job: dict, sec: dict) -> dict:
-        msgs = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": section_prompt(job["title"], sec, sec["text"])}]
-        reply = await self.complete(provider, job["model"], msgs)
+        earlier = await asyncio.to_thread(self.earlier_titles, job["id"], sec["idx"])
+        msgs = [{"role": "system", "content": SYSTEM},
+                {"role": "user", "content": section_prompt(job["title"], sec, sec["text"], earlier)}]
+        try:
+            reply = await self.complete(provider, job["model"], msgs)
+        except RuntimeError as exc:
+            if "cut off" not in str(exc) and "didn't reply with JSON" not in str(exc):
+                raise
+            reply = await self.complete(provider, job["model"], msgs, temperature=0.7)   # a warmer try breaks a loop
         data = parse_json(reply)
         concepts, notes = data["concepts"], data["notes"]
         for _ in range(FOLLOW_UPS):
@@ -303,17 +329,19 @@ class Digests:
             if not missing:
                 break
             msgs += [{"role": "assistant", "content": reply}, {"role": "user", "content": followup_prompt(missing)}]
-            reply = await self.complete(provider, job["model"], msgs)
             try:
+                reply = await self.complete(provider, job["model"], msgs)
                 notes += parse_json(reply)["notes"]
-            except ValueError:
+            except (RuntimeError, ValueError):    # the first draft stands; its gaps stay visible on the map
                 break
         return {"concepts": concepts, "notes": notes, "covered": covered(concepts, notes)}
 
-    async def complete(self, provider, model: str, msgs: list[dict]) -> str:
+    async def complete(self, provider, model: str, msgs: list[dict], temperature: float = 0.2) -> str:
         key = provider.key()
-        body = {"model": model, "messages": msgs, "temperature": 0.2,
+        body = {"model": model, "messages": msgs, "temperature": temperature, "max_tokens": 6000,
                 "response_format": {"type": "json_schema", "json_schema": {"name": "notes", "schema": SCHEMA}}}
+        if provider.id == "engine":           # llama.cpp only (cloud APIs reject unknown fields): small models can
+            body["repeat_penalty"] = 1.08     # loop inside a JSON string until the context is full
         async with httpx.AsyncClient(timeout=httpx.Timeout(30, read=900)) as c:
             r = await c.post(f"{provider.base_url.rstrip('/')}/chat/completions", json=body,
                              headers={"Authorization": f"Bearer {key}"} if key else {})
@@ -323,7 +351,13 @@ class Digests:
                                  headers={"Authorization": f"Bearer {key}"} if key else {})
         if r.status_code >= 400:
             raise RuntimeError(f"{provider.label}: HTTP {r.status_code}: {r.text[:300]}")
-        return r.json()["choices"][0]["message"].get("content") or ""
+        choice = r.json()["choices"][0]
+        text = choice["message"].get("content") or ""
+        if choice.get("finish_reason") == "length":
+            raise RuntimeError(f"the model's reply was cut off at {len(text):,} characters (it ran out of room)")
+        if not re.search(r"\{.*\}", text, re.S):
+            raise RuntimeError(f"the model didn't reply with JSON: {text[:160]!r} … {text[-120:]!r}")
+        return text
 
     # -- chapters -> inbox ----------------------------------------------------------------------------------
     def _ready_chapters(self) -> list[tuple[dict, str]]:
@@ -349,7 +383,8 @@ class Digests:
                                    "WHERE job=? AND chapter=? AND proposed=0 ORDER BY idx", (job["id"], chapter)).fetchall()
         doc = folder_part(job["title"])
         folder = f"Books/{doc}" + ("" if chapter == job["title"] else f"/{folder_part(chapter)}")
-        changes, n_concepts, n_cov, failed = [], 0, 0, 0
+        by_title: dict[str, dict] = {}            # notes with the same title (a concept the document revisits) merge
+        n_concepts, n_cov, failed = 0, 0, 0
         for title, pages, notes, concepts, cov, st in secs:
             failed += st == "failed"
             n_concepts += len(json.loads(concepts or "[]"))
@@ -357,10 +392,22 @@ class Digests:
             pg = json.loads(pages or "[]")
             where = f"{job['title']}, {title}" + (f", pages {pg[0]}–{pg[1]}" if pg else "")
             for n in json.loads(notes or "[]"):
-                changes.append({"op": "create", "folder": folder, "title": n["title"], "type": "note",
-                                "body": f"{n['body']}\n\n## Source\n- {where}",
-                                "tags": list(dict.fromkeys(n.get("tags") or []))[:4],
-                                "source": f"sources/{job['source']}/{job['rel']}"})
+                key = loose(n["title"])
+                if key in by_title:
+                    m = by_title[key]
+                    m["parts"].append(n["body"])
+                    m["where"].append(where)
+                    m["tags"] = list(dict.fromkeys(m["tags"] + (n.get("tags") or [])))[:4]
+                else:
+                    by_title[key] = {"title": n["title"], "parts": [n["body"]], "where": [where],
+                                     "tags": list(dict.fromkeys(n.get("tags") or []))[:4]}
+        changes = []
+        for m in by_title.values():
+            body = "\n\n".join(dict.fromkeys(m["parts"]))
+            sources = "\n".join(f"- {w}" for w in dict.fromkeys(m["where"]))
+            changes.append({"op": "create", "folder": folder, "title": m["title"], "type": "note",
+                            "body": f"{body}\n\n## Source\n{sources}", "tags": m["tags"],
+                            "source": f"sources/{job['source']}/{job['rel']}"})
         return changes, {"concepts": n_concepts, "covered": n_cov, "failed": failed, "sections": len(secs)}
 
     async def propose_ready(self) -> bool:
@@ -432,8 +479,17 @@ class Digests:
             self.publish(jid)
 
     def publish(self, jid: str | None = None):
-        """Every job's summary as the `digests` panel (the coverage map itself is fetched per job)."""
-        self.hub.panel("digests", {"jobs": self.jobs()})
+        """Every job's summary as the `digests` panel (the coverage map itself is fetched per job). With a job id,
+        only that job is recomputed; the others come from the last publish."""
+        if jid is None or not hasattr(self, "_summaries"):
+            self._summaries = {j["id"]: j for j in self.jobs()}
+        else:
+            try:
+                self._summaries[jid] = self.job(jid, detail=False)
+            except KeyError:
+                self._summaries.pop(jid, None)
+        jobs = sorted(self._summaries.values(), key=lambda j: -j["created"])[:50]
+        self.hub.panel("digests", {"jobs": jobs})
 
     def close(self):
         with self.lock:

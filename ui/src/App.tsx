@@ -150,7 +150,7 @@ export default function App() {
       </div>
       <SafetyDrawer open={safety.open} safety={panels.safety ?? []} events={hub.events} onClose={safety.close} onOpenTask={setOpenTask} />
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
-      {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} proposals={inbox.filter((i) => i.source === "bookshelf").length} onClose={() => setShelf(false)} />}
+      {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} digests={panels.digests} proposals={inbox.filter((i) => i.source === "bookshelf").length} onClose={() => setShelf(false)} />}
       {models && <Models panel={panels.engine} onClose={() => setModels(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
