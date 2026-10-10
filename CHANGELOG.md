@@ -12,6 +12,18 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.15.2] — 2026-10-10
+
+Docs only: the user's Y1 choices and a new roadmap step.
+
+### Added
+- **D28**: Y1 specifics: every record, existing ones included, gets a fresh ULID; changes are written to an
+  append-only log alongside the current tables.
+- **D29**: game mode: notice another program using the GPU on any vendor (no `nvidia-smi`), pause local jobs and
+  unload the model, offer a micro model for light background work if it fits (with the user's OK), resume when the
+  program closes.
+- ROADMAP **shared hardware track** with step **G1** (game mode).
+
 ## [0.15.1] — 2026-10-09
 
 Docs only: the sync architecture and a handoff for a fresh session.

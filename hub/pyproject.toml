@@ -1,6 +1,6 @@
 [project]
 name = "sage-os-hub"
-version = "0.15.1"
+version = "0.15.2"
 description = "Sage OS hub: one event stream over Hermes, Claude Code and the local GPU (Phase 1: read-only)"
 requires-python = ">=3.12"
 dependencies = [

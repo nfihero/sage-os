@@ -80,6 +80,18 @@ sync) is done; the rest builds the account-based, end-to-end encrypted sync of D
 | Y5 | Jobs routed to capable devices; the relay (phone ↔ desktop engine) | A digest started on the phone runs on the desktop and its proposals are approved on the phone |
 | Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers | Install on phone, Mac and PC, sign in, everything is there |
 
+Y1 specifics (10 Oct, D28): every existing ID is rewritten to a fresh ULID; changes go to an append-only log
+written alongside the current tables.
+
+## Shared hardware track (10 Oct 2026 — DECISIONS D29)
+
+Goal: Sage OS shares the computer. When a game or another heavy program needs the graphics card, the local
+model steps aside and comes back when the card is free. Order against Y1 not decided.
+
+| Step | Scope | Gate |
+|---|---|---|
+| G1 | **Game mode**: detect another program using the GPU on any vendor (Windows per-program GPU counters + full-screen state; macOS memory pressure); pause local jobs and unload the model; offer a micro model (Gemma 4 E2B class) for light background work if it fits, with the user's OK; resume when the program closes; *always / ask / never* setting and a *Pause for a game* button; the hardware check no longer needs `nvidia-smi` | With a game running on this PC, Sage OS frees the GPU within 10 s, asks about the micro model only when it fits, does one light job on it, and the digest resumes on the main model within 5 min of the game closing; detection also checked on a non-Nvidia GPU or a Mac |
+
 ## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
 
 | Item | Scope | Starting point |

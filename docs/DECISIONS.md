@@ -615,6 +615,63 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** users won't accept an account (then folder sync + LAN pairing only), or E2EE blocks a must-have
   server feature (then that feature runs on a user's device instead).
 
+## D28 — Y1 specifics: every record gets a fresh ULID; a change log next to the tables
+
+- **Date / by:** 2026-10-10, user ("rewrite the ULIDs fresh, change log alongside the current table"); options
+  laid out by Claude
+- **Status:** accepted; not built yet (the user asked to wait). Refines D27 "do now" (a) and (c).
+- **Decision:**
+  1. **All IDs are rewritten to ULIDs**, existing ones included: chats (`ch_…`), Claude sessions (`cs_…`), digests
+     (`dg_…`), proposals, batches, chat items, briefings. The one-time migration maps old IDs to new ones and
+     updates every reference (including the digest's note folders and any IDs the UI keeps), after backing up
+     each database. Old IDs are not kept as aliases.
+  2. **A change log alongside the current tables (an outbox).** Each change to a synced record writes the table row
+     as today *and* an entry in an append-only `changes` log (ULID, device, time, stream, record, operation, data),
+     in the same transaction. The tables stay what the UI reads; the log is what Y4 sends to other devices.
+     Making the log the source of truth was set aside for now: a larger rewrite with no gain before sync exists.
+- **Costs / limits:** rewriting IDs touches every store and breaks any bookmarked URL or copied ID from before the
+  migration; the migration has to be exact and is tested on a copy of real-shaped data. Each change is stored
+  twice (row + log).
+- **Revisit if:** the rows and the log ever disagree (then make the log the source and rebuild rows from it).
+
+## D29 — Game mode: Sage OS notices when another program needs the hardware and steps aside
+
+- **Date / by:** 2026-10-10, user ("for the hub to be aware when other apps are using the hardware, and the agents
+  can work around that"; "don't use the nvidia-smi as it only works for nvidia cards"; "if the agent determines a
+  micromodel (think e2b) could fit while the other program is running for background tasks, it can ask the user to
+  continue working in the back"); design by Claude. Prompted by a game failing while the engine held 10.6 of
+  16 GB of graphics memory.
+- **Status:** accepted as roadmap step G1; order against Y1 not decided.
+- **Decision:**
+  1. **Detection works on any graphics card.** Windows: the OS's own per-program GPU memory and activity counters
+     (the numbers Task Manager shows; every vendor, integrated graphics included), each adapter's memory budget,
+     and the system's "full-screen game running" state. macOS: memory pressure, the frontmost app, and the memory
+     Metal says a model may use (memory is shared). Linux later, from the driver's per-program counters. The same
+     source replaces `nvidia-smi` in the hardware check, so the MODELS panel stops being Nvidia-only.
+  2. **What counts as "another program needs it":** a full-screen game, or a program other than Sage OS holding a
+     lot of graphics memory or keeping the GPU busy for more than about 30 seconds. The user can mark programs as
+     always or never counting.
+  3. **Step aside, in order:** pause local jobs (the digest drops its current section and redoes it later), then
+     unload the local model. Local chats say "paused while <program> runs" and offer a connected cloud model.
+     Cloud AIs and Claude Code are unaffected: they don't use this computer's GPU.
+  4. **A micro model may keep working, with the user's OK.** After unloading, Sage OS measures what is left. If a
+     micro model (Gemma 4 E2B class, about 2–3 GB, added to the catalog) fits with a safety margin, it asks once:
+     *Keep working in the background with a small model?* **Keep working** / **Pause until I'm done**. The answer
+     can be remembered per program. The micro model takes light work only (tagging, short summaries, sorting
+     proposals, short chats); digests stay queued for the main model so note quality doesn't drop. If the other
+     program's use grows into the margin, the micro model stops at once.
+  5. **Come back on its own:** once the program has closed (or dropped below the threshold) for a few minutes,
+     reload the main model and resume queued jobs, and say so.
+  6. **The user decides:** a setting *Step aside for games: always / ask / never*, and a manual *Pause for a game*
+     button in MODELS.
+  7. With sync (D27.5, Y5), a paused job can instead go to another device that is free.
+- **Costs / limits:** Windows' counters need a modern driver and lag about a second; macOS has no per-program GPU
+  memory, so it decides from memory pressure; heavy non-game programs (video editors, 3D apps) also count, which is
+  usually right. Each unload and reload costs 20–30 s. The micro model writes weaker text, so it gets only light
+  work. Downloading the micro model needs the user's OK like any model.
+- **Revisit if:** false alarms annoy users (then *ask* becomes the default and detection gets stricter), or the
+  engine can shrink instead of unloading (smaller context, fewer layers on the GPU).
+
 ---
 
 ## Proposed, awaiting the user

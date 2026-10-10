@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 10 Oct, v0.15.2)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D27), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D29), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,8 +28,8 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.1**, tags v0.4.0–v0.15.1,
-  **all pushed** (9 Oct, at the user's request). Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.2** (local tag, not pushed; v0.4.0–v0.15.1
+  pushed 9 Oct at the user's request). Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
   `...\Library\Files` (empty so far). The Library is not in a synced folder yet. The old `sage-os\data` is
@@ -51,19 +51,22 @@ lead or reviewer (D26).
 ### Running right now (check before restarting anything)
 - **Hub** on http://127.0.0.1:8787, started detached via WMI (`hub\.venv\Scripts\python.exe -m sage_os_hub`,
   cwd `sage-os`). Restarting is safe: everything persists and the digest resumes.
-- **Engine** serving Gemma 4 12B (`file:gemma-4-12b-it-qat-q4_0`) on 127.0.0.1:8790, two 16K slots, ~10.7 GB VRAM.
-  A hub restart stops it (it's reaped and must be started again: MODELS → START, or
+- **Engine STOPPED** (10 Oct, at the user's request, to free the GPU for a game). When running it serves Gemma 4
+  12B (`file:gemma-4-12b-it-qat-q4_0`) on 127.0.0.1:8790, two 16K slots, ~10.7 GB VRAM. A hub restart stops it (it's reaped and must be started again: MODELS → START, or
   `POST /api/engine/start {"model": "file:gemma-4-12b-it-qat-q4_0"}` with header `X-Sage-OS: 1`).
 - **Digest `dg_7cbf09dbad`**: Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
-  ~35 s per section on the GPU. At handoff: 80+ sections done, every listed concept covered, 0 failed. It
+  ~35 s per section on the GPU. On 10 Oct: all 777 sections drafted (2,741 notes, 4,987/4,987 concepts),
+  13/45 chapters sent to the inbox; the rest wait for inbox space (and the engine) to continue. It
   stops sending chapters to the inbox at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
   Its folder name is the long file stem (later digests get readable titles).
 
 ### Next (confirm the order with the user)
 1. **Inbox review** (the user does this, with REVIEW): textbook chapter cards; reject the textbook's
    front-matter cards (drafted before the "about the book itself" rule) and the older 47-note playbook card.
-2. **Y1 sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only event logs for
-   chats / inbox decisions / journal, synced vs device-local split, a device identity per install. No server.
+2. **Y1 sync-ready data model** (D27 "do now", D28): fresh ULIDs for every record (existing IDs rewritten),
+   tombstones, a change log written alongside the tables for chats / inbox decisions / journal / digest progress,
+   synced vs device-local split, a device identity per install. No server. **The user said wait before building.**
+   **G1 game mode** (D29) is the other candidate; ask which comes first.
 3. **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); meaning-based search (D10);
    S2 OCR (D19); K7 batch review; Phases 4–5 with any-model lead (D26); A3 own board.

@@ -21,7 +21,7 @@ installers and phone access are on the [roadmap](docs/ROADMAP.md).
 |---|---|
 | [docs/MISSION.md](docs/MISSION.md) | Why it exists, pillars, principles, why "Sage" |
 | [docs/STATUS.md](docs/STATUS.md) | What works, what's untested, known issues, next |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and gates; the Bookshelf and architecture tracks |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and gates; the Bookshelf, architecture, sync and shared-hardware tracks |
 | [docs/DEMO.md](docs/DEMO.md) | 5–7 minute demo script: prep checklist, walkthrough, fixes |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what was decided, why, costs, when to revisit |
 | [CHANGELOG.md](CHANGELOG.md) | Version history: one version and tag per roadmap step that passes its gate |
