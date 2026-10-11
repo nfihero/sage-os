@@ -30,6 +30,12 @@ installers and phone access are on the [roadmap](docs/ROADMAP.md).
 
 ## Run
 
+**Desktop app (W1):** open **Sage OS** from the Start menu. It starts the hub (or uses one already running), and
+closing the window keeps it in the tray; Quit is in the tray menu. Build it from `desktop\` with `npx tauri build`
+(needs Rust and the MSVC build tools); the installer lands in `desktop\src-tauri\target\release\bundle\nsis`.
+
+**From a terminal:**
+
 ```
 start.cmd
 ```

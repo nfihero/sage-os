@@ -12,6 +12,27 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-11
+
+W1, the desktop app (D33), and a UI pass (D34). **Gate: pass** — installed, closed to the tray and reopened, quit with
+nothing left running. pytest 295.
+
+### Added
+- **Desktop app** (`desktop/`, Tauri 2): window + tray around the hub, loading page, close to tray, Start at sign-in
+  (off by default), Quit, one copy at a time, remembered size, outside links in the browser; per-user Windows installer.
+- Hub: `POST /api/quit` (stops cleanly, unloading the local model), `--log FILE` with crash traces, `/api/ping` names the app.
+- **Empty agent cards:** the lead-agent slot says how to connect Claude Code until it's installed and signed in.
+- Inbox: a line confirming what was filed after approving.
+- `docs/mockups/home-library-first.html`: mockup of a library-first home (batch C), for review.
+
+### Changed
+- Services report up / down / off / absent; red only for something that stopped; Hermes' checks optional without
+  Hermes; the GPU lane shows the Sage OS engine and drops temperature and power.
+- Disabled controls dimmed and dashed; a 1 px press; nothing under 11 px; sentences in a sans face; amber theme's muted
+  text 4.8:1.
+- Inbox order: requests first (newest first), then proposals oldest first; digest cards titled with book and chapter.
+- The Hermes tab appears once Hermes has run.
+
 ## [0.17.0] — 2026-10-11
 
 G1, game mode (D29). **Gate: partly** — built and partly checked (11 Oct): a GPU-heavy stand-in program made game mode step aside 35 s after it got busy (13.3 → 5.0 GB in use), offer the micro model with the right sizes, and reload the main model 3 min after it closed; the probe reads the AMD integrated GPU here as well as the RTX. Still to do: a real game, the micro model's light job, and a Mac (with F1).

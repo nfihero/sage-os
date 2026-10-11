@@ -757,6 +757,42 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** more than a couple of testers (then sign and notarize, and consider a report endpoint), or the
   bundle size or start-up time hurts (then Tauri with a slimmer runtime).
 
+## D33 — The desktop app is Tauri, now: a window and a tray around the hub (W1)
+
+- **Date / by:** 2026-10-11, user ("let's make Sage a desktop UI as I tend to close the tab a lot"; "let's go with
+  Tauri, better to start with what we will eventually use"); design by Claude
+- **Status:** accepted; built in 0.18.0. Brings D27.7's shell forward; F1 builds the Mac `.dmg` from it, Y6 signs it.
+- **Decision:**
+  1. **Tauri 2** (Rust core, the OS's own web view: WebView2 on Windows, WebKit on macOS) rather than a Python window:
+     installers, a signed updater, tray, autostart and later phones come with it.
+  2. **The window shows the hub's own page** (`http://127.0.0.1:8787`), so the hub's security rules apply unchanged; no
+     Tauri command is exposed to any page. Links that leave the hub, or ask for a new window, open in the default browser.
+  3. **The app owns the hub's life:** it starts the hub (the bundled one when packaged, F1; this checkout's Python hub
+     for a developer build) or attaches to one that answers `/api/ping` as Sage OS; shows a loading page until then.
+  4. **Closing keeps Sage OS running in the tray** (digests, game mode and agents carry on); the tray has Open, Start at
+     sign-in (off by default; then it starts in the tray) and Quit, which stops the hub cleanly (`POST /api/quit`, the
+     local model unloaded on the way out). One copy at a time; the window remembers its size.
+  5. **Windows installer:** per-user NSIS (no admin prompt), unsigned for now (SmartScreen asks once).
+- **Costs / limits:** a Rust toolchain and the MSVC build tools to build on Windows, a Mac to build the Mac app (GitHub
+  Actions in F1); a developer build depends on the checkout staying where it was built; unsigned installers warn.
+- **Revisit if:** the web view can't do something the UI needs (then a native piece through a narrowly scoped command).
+
+## D34 — Not connected is not broken; sentences read in a sans face; proposals read in order (UI pass, 11 Oct)
+
+- **Date / by:** 2026-10-11, user (approved batches A and B of the redesign audit; "the agent cards should be blank besides
+  the local until the user connects their own"; inbox cards "not starting from chapter 1"); design by Claude
+- **Status:** accepted; built in 0.18.0. Puts D22.1 into the UI. Batch C (a library-first home) is a mockup awaiting the user.
+- **Decision:**
+  1. **Red means something stopped.** Services report up / down / off / absent; red only for *down* (it ran earlier and
+     stopped); what was never set up is hidden or grey; Hermes' checks are optional where Hermes isn't installed.
+  2. **Agents appear when connected.** The lead-agent slot is an empty "Connect an agent" card (how to connect, past
+     sessions one click away) until Claude Code is installed and signed in; the Hermes tab appears once Hermes has run.
+  3. **Type:** sentences (help text, card details, the guide) in a sans face; names, paths, numbers and chat in mono;
+     nothing under 11 px; disabled controls dimmed and dashed; a 1 px press.
+  4. **The inbox reads in order:** requests that hold an agent up first, newest first; note proposals after them, oldest
+     first, so a book reads from its first chapter; digest cards name the book and chapter; a line confirms what was filed.
+- **Costs / limits:** someone who wants a chat with Claude must sign in first (the card says how).
+
 ---
 
 ## Proposed, awaiting the user

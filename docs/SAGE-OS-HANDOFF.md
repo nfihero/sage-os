@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.17.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.18.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D32), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D34), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.17.0** (0.15.2–0.17.0 local tags, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.18.0** (0.15.2–0.18.0 local tags, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -53,11 +53,13 @@ lead or reviewer (D26).
   devices yet (Y3–Y4).
 
 ### Running right now (check before restarting anything)
-- **Hub** on http://127.0.0.1:8787, started detached via WMI (`hub\.venv\Scripts\python.exe -m sage_os_hub`,
-  cwd `sage-os`). Restarting is safe: everything persists and the digest resumes. Since 11 Oct its output goes
-  to `sage-os\data-y1check\hub-start.log` (git-ignored; that folder also holds the copy used to check the
-  migration and can be deleted with the user's OK).
-- **Engine STOPPED** (10 Oct, at the user's request, to free the GPU for a game). When running it serves Gemma 4
+- **The desktop app** (installed 11 Oct at `%LOCALAPPDATA%\Sage OS\sage-os.exe`, Start menu "Sage OS") runs the hub
+  on http://127.0.0.1:8787 as its child, logging to `%APPDATA%\Sage OS\logs\hub.log` (+ `hub-console.log`). Its
+  Quit (tray) stops the hub cleanly. Without the app: start the hub detached via WMI (`hub\.venv\Scripts\python.exe
+  -m sage_os_hub --log <file>`, cwd `sage-os`); a running hub is adopted by the app. Build the app: `desktop\`,
+  `npx tauri build` (needs Rust + MSVC build tools, installed 11 Oct). `sage-os\data-y1check\` (git-ignored) holds
+  the copy used to check the Y1 migration and the G1 stand-in scripts; delete with the user's OK.
+- **Engine** started and stopped by the user (MODELS) or game mode. When running it serves Gemma 4
   12B (`file:gemma-4-12b-it-qat-q4_0`) on 127.0.0.1:8790, two 16K slots, ~10.7 GB VRAM. A hub restart stops it (it's reaped and must be started again: MODELS → START, or
   `POST /api/engine/start {"model": "file:gemma-4-12b-it-qat-q4_0"}` with header `X-Sage-OS: 1`).
 - **Digest `dg_01M4FT8XM5VHAMWA7DC4DC6H72`** (`dg_7cbf09dbad` before 0.16): Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
@@ -92,7 +94,8 @@ lead or reviewer (D26).
 - **Every pass:** update all docs (README, STATUS, ROADMAP, MISSION, this file, CHANGELOG), record choices in
   `DECISIONS.md` as new entries (never rewrite history), give each roadmap step its own minor version +
   CHANGELOG entry + local tag; docs-only = patch version. Version strings live in `hub/sage_os_hub/__init__.py`,
-  `hub/pyproject.toml`, `ui/package.json`, `ui/package-lock.json` (×2 for sage-os-ui).
+  `hub/pyproject.toml`, `ui/package.json`, `ui/package-lock.json` (×2 for sage-os-ui), and for the desktop app
+  `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `desktop/src-tauri/tauri.conf.json` (rebuild the installer).
 - **After building:** `/code-review high --fix`; `no-ai-slop` on user-facing copy; `vibe-security` when auth,
   network exposure, secrets or agent input change. Verify UI in the browser pane at 1440×900 and 375×812.
 - **Commit when it makes sense; push only when the user says "push".** Ask before destructive or persistent

@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (11 Oct 2026 — DECISIONS D30, D32)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7 → K14 → F1 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7 → K14 → F1 → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -107,6 +107,13 @@ Kept as they are: notes' own `uid` (it lives in each markdown file, D9, and is a
 would edit every file in the Library); Claude Code's own session IDs (they belong to the CLI); the numbered rows
 of search indexes and the dashboard feed (they never leave the computer). The digest is paused during the
 migration and resumes under its new ID with its progress. Links copied before 0.16 stop working (D28).
+
+## Desktop app track (11 Oct 2026 — DECISIONS D33)
+
+| Step | Scope | Gate |
+|---|---|---|
+| W1 | **Tauri desktop app**: a window and tray around the hub; starts or attaches to the hub; close to tray, Start at sign-in, Quit stops the hub cleanly; one copy; outside links to the browser; per-user Windows installer | The user installs it, closes and reopens the window from the tray, and quits it with nothing left running — **pass** (11 Oct, v0.18.0) |
+| W2 | (proposed) **Library-first home** (D34 batch C): search, recent notes, what waits for you, agents and chats; the board, GPU lane and safety feed move to Systems | Mockup `docs/mockups/home-library-first.html`, awaiting the user |
 
 ## Friends and testers track (11 Oct 2026 — DECISIONS D32)
 
