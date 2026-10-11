@@ -226,6 +226,38 @@ def fullscreen_game() -> bool:
     return state.value == QUNS_RUNNING_D3D_FULL_SCREEN
 
 
+class _MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT), ("rcWork", wintypes.RECT),
+                ("dwFlags", wintypes.DWORD)]
+
+
+DESKTOP_CLASSES = {"Progman", "WorkerW", "Shell_TrayWnd"}
+
+
+def foreground_covers_screen() -> bool:
+    """True when the window in front fills its whole monitor (borderless full screen, which most games use and
+    the shell's full-screen state doesn't report). The desktop itself doesn't count."""
+    u = ctypes.windll.user32
+    hwnd = u.GetForegroundWindow()
+    if not hwnd:
+        return False
+    cls = ctypes.create_unicode_buffer(64)
+    u.GetClassNameW(hwnd, cls, 64)
+    if cls.value in DESKTOP_CLASSES:
+        return False
+    rect = wintypes.RECT()
+    if not u.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return False
+    u.MonitorFromWindow.restype = wintypes.HANDLE
+    mon = u.MonitorFromWindow(hwnd, 2)                  # MONITOR_DEFAULTTONEAREST
+    info = _MONITORINFO()
+    info.cbSize = ctypes.sizeof(_MONITORINFO)
+    if not mon or not u.GetMonitorInfoW(mon, ctypes.byref(info)):
+        return False
+    m = info.rcMonitor
+    return rect.left <= m.left and rect.top <= m.top and rect.right >= m.right and rect.bottom >= m.bottom
+
+
 def foreground_pid() -> int | None:
     hwnd = ctypes.windll.user32.GetForegroundWindow()
     if not hwnd:

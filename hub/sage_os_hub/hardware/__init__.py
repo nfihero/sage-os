@@ -83,7 +83,7 @@ class Probe:
             self._names.clear()
         fg = w.foreground_pid()
         return {"os": "windows", "adapters": adapters, "programs": sorted(programs, key=lambda p: -p["vram_bytes"]),
-                "fullscreen": w.fullscreen_game(),
+                "fullscreen": w.fullscreen_game(), "covers_screen": w.foreground_covers_screen(),
                 "foreground": {"pid": fg, "name": _name(fg, self._names)} if fg else None, "ts": raw["ts"]}
 
     def _read_macos(self) -> dict:

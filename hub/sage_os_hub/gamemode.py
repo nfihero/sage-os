@@ -39,6 +39,7 @@ class Rules:
     memory_share: float = 0.15      # ... (or this share of the card, if larger) ...
     busy_with_memory: float = 10.0  # ... while keeping the GPU at least this busy (%), or ...
     busy_alone: float = 40.0        # ... keeping it this busy whatever it holds ...
+    busy_full_screen: float = 20.0  # a window filling the screen counts at once when its program is this busy
     sustain_s: float = 30.0         # ... for this long
     resume_after_s: float = 180.0   # back this long after the program closes
     margin_gb: float = 1.5          # free memory kept for the program when a micro model runs
@@ -86,6 +87,8 @@ class Detector:
             c = cands.get(fg.lower(), {"name": fg, "pid": (reading.get("foreground") or {}).get("pid"),
                                        "vram_bytes": 0, "busy": 0.0})
             return {**c, "why": "full-screen game"}
+        if reading.get("covers_screen") and fg.lower() in cands and cands[fg.lower()]["busy"] >= r.busy_full_screen:
+            return {**cands[fg.lower()], "why": "full-screen game"}       # borderless full screen, as most games use
         cards = reading.get("adapters") or []
         total = cards[0]["vram_bytes"] if cards else 0
         heavy_mem = max(r.memory_gb * GB, r.memory_share * total)

@@ -324,3 +324,13 @@ def test_the_note_says_when_the_model_is_back(tmp_path):
         await gm.tick(reading())                               # ready on the next reading
         assert gm.note == "file:gemma-12b is back"
     run(go())
+
+
+def test_a_busy_borderless_full_screen_window_counts_at_once():
+    d = Detector()
+    r = reading(("Cyberpunk2077.exe", 50, 9, 80), fg="Cyberpunk2077.exe")
+    r["covers_screen"] = True
+    assert d.update(r, now=0)["why"] == "full-screen game"
+    video = reading(("chrome.exe", 5, 0.4, 6), fg="chrome.exe")              # a full-screen video
+    video["covers_screen"] = True
+    assert d.update(video, now=0) is None
