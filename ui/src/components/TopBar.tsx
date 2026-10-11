@@ -14,9 +14,9 @@ const SERVICES = [
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
-  onBookshelf: () => void; onGuide: () => void;
+  onBookshelf: () => void; onGuide: () => void; onModels: () => void;
 }) {
   const vault = hub.panels.vault;
   const now = useNow(1000);
@@ -64,6 +64,18 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         <SafetyChip safety={hub.panels.safety ?? []} unseen={unseen} onClick={onSafety} />
         <span className={`chip ${inboxCount ? "amber pulse-amber" : "mute"}`} title="Items waiting for you in the inbox">INBOX <span className="font-dot text-[15px] leading-none">{inboxCount}</span></span>
         <button className="chip" onClick={onGuide} data-tour="guide" title="Why Sage OS exists, and a tour of the screen">? GUIDE</button>
+        {(() => {          // game mode (G1): always visible, opens its settings in MODELS
+          const g = hub.panels.gamemode;
+          if (!g) return null;
+          const aside = g.state === "aside" || g.state === "micro";
+          const label = aside ? (g.state === "micro" ? "SMALL MODEL" : "STEPPED ASIDE") : g.state === "asking" ? "ASKING" : g.mode === "never" ? "OFF" : "WATCHING";
+          const tip = aside ? `Local model unloaded while ${g.program?.name ?? "a program"} uses the graphics card` : g.mode === "never" ? "Game mode is off" : "Watching for games on the graphics card";
+          return (
+            <button className={`chip ${aside || g.state === "asking" ? "amber" : g.mode === "never" ? "mute" : ""}`} onClick={onModels} title={`${tip}. Click for game mode settings.`} data-testid="gamemode-chip">
+              GAME MODE{!compact && <span className="text-ink/70"> · {label}</span>}
+            </button>
+          );
+        })()}
         <button className="chip" onClick={onBookshelf} data-testid="bookshelf-open"
           title={vault ? `Bookshelf: ${vault.count} notes${vault.problems ? `, ${vault.problems} with problems` : ""}` : "Bookshelf"}>
           BOOKSHELF <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>

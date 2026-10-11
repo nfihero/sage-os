@@ -115,7 +115,7 @@ export default function App() {
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} />
+        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col p-2">
