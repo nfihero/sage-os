@@ -672,6 +672,28 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** false alarms annoy users (then *ask* becomes the default and detection gets stricter), or the
   engine can shrink instead of unloading (smaller context, fewer layers on the GPU).
 
+
+## D30 — Build order after 0.15; K10 (git-backed vault) dropped
+
+- **Date / by:** 2026-10-11, user ("agree on the order and drop K10"); order proposed by Claude
+- **Status:** accepted. Sets the order STATUS *Next* follows; drops roadmap step K10 (from D7 idea 8).
+- **Decision:**
+  1. **Order: Y1 → G1 → K7 → K14 → A3 → Y2**, then Y3–Y6 and the remaining steps (S2 OCR, K9, K11, Phases 4–6).
+     - Y1 first so everything built after it gets ULIDs and the change log from the start, with no second
+       migration.
+     - G1 next: small, and fixes a real clash (a game failing while the engine held the GPU).
+     - K7 (review at scale) clears the textbook backlog (2,741 draft notes, 45 chapter cards) that note-by-note
+       review (K13) can't keep up with.
+     - **K14 = meaning-based search** (D10's later step, now numbered): briefing packs still pick wordy but wrong
+       notes. K11 (Ask) builds on it.
+     - A3 (Sage OS task board) after Y1, so the new store is sync-ready from day one; K9 and Phases 4–5 build on it.
+  2. **K10 is dropped.** A git repository per vault was planned before D27. The undo journal and the Y1 change log
+     now carry the history, and git doesn't fit end-to-end encrypted sync, a phone, or a non-technical user. Anyone
+     who wants git can still keep the Library folder in a repository themselves.
+- **Costs / limits:** no `git log` view of note history inside Sage OS; history browsing, if wanted, is built on the
+  change log later.
+- **Revisit if:** users ask for a portable, tool-readable history of their notes outside Sage OS.
+
 ---
 
 ## Proposed, awaiting the user

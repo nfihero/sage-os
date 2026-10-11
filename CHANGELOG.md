@@ -12,6 +12,17 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.15.4] — 2026-10-11
+
+Docs only.
+
+### Added
+- **D30**: build order Y1 → G1 → K7 → K14 → A3 → Y2; ROADMAP *Build order* section.
+- ROADMAP step **K14**: meaning-based search (D10's later step, now numbered).
+
+### Removed
+- Roadmap step **K10** (git-backed vault), dropped by D30: the undo journal and the Y1 change log carry the history.
+
 ## [0.15.3] — 2026-10-11
 
 Docs only.

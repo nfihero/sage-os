@@ -5,6 +5,12 @@ starts. No dates; the order is the plan. Source: the design doc
 ([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
 on 30 Sep 2026 with the Bookshelf track.
 
+## Build order (11 Oct 2026 — DECISIONS D30)
+
+**Y1 → G1 → K7 → K14 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
+the right notes; A3's new board store starts with ULIDs and the change log.
+
 ## Agent hub track
 
 | Phase | Scope | Gate | Status |
@@ -42,12 +48,12 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K12 | **Long documents** (D23): split a textbook or long report into sections that tile its text, draft notes per section on the local model, check concept coverage, one inbox card per chapter, coverage map | A long document becomes per-chapter proposals with every section accounted for — **pass** (8 Oct, v0.13.0: outreach playbook 32 pages → 34 notes, 55/55 concepts; options lecture 55 pages → 12 notes, 36/36) |
 | K13 | **Review note by note** (D24): read each proposed note rendered, keep or drop it, edit it with a live preview, file only what was kept | Kept notes filed (edited ones marked), dropped ones not, undo exact — **pass** (9 Oct, v0.14.0, tests + browser at desktop and phone width) |
 | K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
-| K10 | Git-backed vault: each approved batch is a commit; push to a private remote only on request (D7 idea 8; personal install only) | Undo and `git log` agree after an approve/undo cycle |
+| ~~K10~~ | ~~Git-backed vault: each approved batch is a commit~~ — **dropped** (11 Oct, D30: the journal and the Y1 change log carry the history) | — |
+| K14 | **Meaning-based search** (D10's later step): notes and sources searched by meaning as well as keywords, used by search, briefing packs and Ask; embeddings rebuilt per device (D27.4) | A question worded differently from the note still finds it, and a wordy but wrong note no longer makes the briefing pack |
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
 | later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
-Done: K1–K6, K8, K12, K13, S1, S3. Open: S2, K7, K9–K11, the editor; meaning-based search (D10) is not yet a
-step. Order after Y1 is chosen with the user (see STATUS *Next*).
+Done: K1–K6, K8, K12, K13, S1, S3. Open: K7, K14, S2, K9, K11, the editor. K10 dropped (D30).
 
 ## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
 
@@ -104,7 +110,7 @@ migration and resumes under its new ID with its progress. Links copied before 0.
 ## Shared hardware track (10 Oct 2026 — DECISIONS D29)
 
 Goal: Sage OS shares the computer. When a game or another heavy program needs the graphics card, the local
-model steps aside and comes back when the card is free. Order against Y1 not decided.
+model steps aside and comes back when the card is free. Built right after Y1 (D30).
 
 | Step | Scope | Gate |
 |---|---|---|
