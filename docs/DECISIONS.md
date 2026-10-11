@@ -725,6 +725,38 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** the log grows faster than expected before Y4 (then log only changed columns), or field-level
   conflicts matter (then per-field entries or a CRDT for notes, as D27 allows).
 
+
+## D32 — F1: a Mac build a friend can install from a .dmg, start from nothing and report bugs from
+
+- **Date / by:** 2026-10-11, user ("a base app with no files, a simple .dmg installer for her, and the ability for
+  her to start using the app and reporting bugs"; chose: after K7 and K14, bug reports by email with a report file,
+  the .dmg built on GitHub Actions); design by Claude
+- **Status:** accepted as roadmap step F1. Brings the Mac half of Y6 (installers) forward, and the key-entry half
+  of Y2. Doubles as A5's open check (engine and model downloaded on a machine with nothing installed).
+- **Decision:**
+  1. **App bundle:** a macOS `.app` holding the hub (Python, bundled with PyInstaller), the built UI and the model
+     catalog; opening it starts the hub and opens Sage OS. Apple Silicon first. The Tauri shell of D27.7 can
+     replace the launcher later without touching the user's data.
+  2. **.dmg built on GitHub Actions** (a macOS runner, on demand, from the private repo). A Windows PC can't build
+     it. Needs the build workflow pushed, which happens only when the user says "push".
+  3. **Unsigned at first:** no Apple Developer account yet, so the tester approves the app once (right-click →
+     Open, or Privacy & Security → Open Anyway). A one-page first-open sheet with screenshots ships with it.
+     Signing and notarization when there are more testers.
+  4. **Starts from nothing (D22):** empty Library, no Hermes, Google, GPU or terminal assumed. First run opens the
+     guide and an empty Library with "add your first notes" and "connect an AI"; anything missing reads *not
+     connected*. Checked on a blank macOS user account.
+  5. **Her own AI:** API keys entered in the app and kept in the macOS Keychain (pulled forward from Y2); or a small
+     local model from MODELS on Apple Silicon (Metal).
+  6. **Report a problem:** a button that writes a report file (her description, app version, macOS version, recent
+     errors and what she was doing; never notes, files or chat text) and opens an email to the user's address; she
+     attaches the file. She sees everything the report contains before sending.
+  7. **Updates:** a new .dmg replaces the app; her data stays in app data (D25).
+- **Costs / limits:** unsigned apps scare non-technical users and macOS may tighten this further; PyInstaller
+  bundles are large (hundreds of MB) and need a build per CPU type; GitHub Actions macOS minutes count ten times
+  against the free allowance; email reports depend on her sending them.
+- **Revisit if:** more than a couple of testers (then sign and notarize, and consider a report endpoint), or the
+  bundle size or start-up time hurts (then Tauri with a slimmer runtime).
+
 ---
 
 ## Proposed, awaiting the user

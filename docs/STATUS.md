@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.16.0 · 11 Oct 2026** (Y1 sync-ready data model: ULIDs on every record, a change log, tombstones, a device identity; your data moved over with a backup; pytest 264/264). **0.15.4 · 11 Oct 2026** (docs: D30 build order Y1 → G1 → K7 → K14 → A3 → Y2; K10 dropped). **0.15.3 · 11 Oct 2026** (docs: Y1 plan in seven parts in ROADMAP). **0.15.2 · 10 Oct 2026** (docs: D28 Y1 specifics, D29 game mode = roadmap step G1). **0.15.1 · 9 Oct 2026** (docs: D27 sync architecture, ROADMAP sync track Y0–Y6, fresh-session handoff). **0.15.0 · 9 Oct 2026** (D25 storage: data in `%APPDATA%\Sage OS`, a Library of Notes + Files that can sit in a synced folder, STORAGE tab with open/export/move; D26 any model can lead; pytest 227/227). **0.14.0 · 9 Oct 2026** (K13: review proposals note by note, keep / drop / edit; Drive folders read through
+**Version 0.16.1 · 11 Oct 2026** (docs: D32 F1, a friend's Mac build with a .dmg and bug reports; build order). **0.16.0 · 11 Oct 2026** (Y1 sync-ready data model: ULIDs on every record, a change log, tombstones, a device identity; your data moved over with a backup; pytest 264/264). **0.15.4 · 11 Oct 2026** (docs: D30 build order Y1 → G1 → K7 → K14 → A3 → Y2; K10 dropped). **0.15.3 · 11 Oct 2026** (docs: Y1 plan in seven parts in ROADMAP). **0.15.2 · 10 Oct 2026** (docs: D28 Y1 specifics, D29 game mode = roadmap step G1). **0.15.1 · 9 Oct 2026** (docs: D27 sync architecture, ROADMAP sync track Y0–Y6, fresh-session handoff). **0.15.0 · 9 Oct 2026** (D25 storage: data in `%APPDATA%\Sage OS`, a Library of Notes + Files that can sit in a synced folder, STORAGE tab with open/export/move; D26 any model can lead; pytest 227/227). **0.14.0 · 9 Oct 2026** (K13: review proposals note by note, keep / drop / edit; Drive folders read through
 the API; a 1,588-page textbook being digested overnight on the local model; pytest 219/219). **0.13.0 · 8 Oct 2026** (K12: long documents digested into notes section by section, with a coverage map; pytest 208/208). **0.12.2 · 8 Oct 2026** (Google Drive live: 10 of 13 Google Docs exported and searchable). **0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
 fixed or listed in CHANGELOG; local engine now needs a per-start key). **0.12.0 · 6 Oct:** `pytest` 193/193 (196 at 0.12.1), `npm run build` clean, hub `/api/smoke`
 18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
@@ -73,7 +73,7 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 ## Next
 
 1. Inbox review of the textbook digest (user, with REVIEW); reject the textbook's front-matter cards and the older playbook card.
-2. Build order (D30): ~~Y1~~ (done, 0.16.0) → **G1** game mode (D29) → **K7** review at scale → **K14** meaning-based search → **A3** Sage OS task board → **Y2** keychain.
+2. Build order (D30): ~~Y1~~ (done, 0.16.0) → **G1** game mode (D29) → **K7** review at scale → **K14** meaning-based search → **F1** friend's Mac build (.dmg, empty first run, keys in the app, *Report a problem*; D32) → **A3** Sage OS task board → **Y2** keychain.
 3. Then Y3–Y6 (account, E2EE sync service, job routing + relay, phone app + installers), S2 OCR, K9, K11, Phases 4–6 with any-model lead (D26). K10 dropped (D30).
 
 ## Gate results

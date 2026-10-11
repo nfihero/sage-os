@@ -5,11 +5,12 @@ starts. No dates; the order is the plan. Source: the design doc
 ([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
 on 30 Sep 2026 with the Bookshelf track.
 
-## Build order (11 Oct 2026 — DECISIONS D30)
+## Build order (11 Oct 2026 — DECISIONS D30, D32)
 
-**Y1** (done, 0.16.0) **→ G1 → K7 → K14 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1 → K7 → K14 → F1 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
-the right notes; A3's new board store starts with ULIDs and the change log.
+the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
+starts with ULIDs and the change log.
 
 ## Agent hub track
 
@@ -84,7 +85,7 @@ sync) is done; the rest builds the account-based, end-to-end encrypted sync of D
 | Y3 | Sage account + passkey sign-in, device enrollment and revocation, recovery key | A second device joins with the first device's approval; a revoked device can't sync |
 | Y4 | E2EE sync service (thin server: blobs, metadata, push) and the shared sync engine | Notes, files, chats and inbox decisions made offline on two devices merge correctly; the server holds only ciphertext |
 | Y5 | Jobs routed to capable devices; the relay (phone ↔ desktop engine) | A digest started on the phone runs on the desktop and its proposals are approved on the phone |
-| Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers | Install on phone, Mac and PC, sign in, everything is there |
+| Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers (an unsigned Mac .dmg comes first, in F1) | Install on phone, Mac and PC, sign in, everything is there |
 
 ### Y1 plan (11 Oct 2026; choices in D28, how it was built in D31) — done, v0.16.0
 
@@ -106,6 +107,14 @@ Kept as they are: notes' own `uid` (it lives in each markdown file, D9, and is a
 would edit every file in the Library); Claude Code's own session IDs (they belong to the CLI); the numbered rows
 of search indexes and the dashboard feed (they never leave the computer). The digest is paused during the
 migration and resumes under its new ID with its progress. Links copied before 0.16 stop working (D28).
+
+## Friends and testers track (11 Oct 2026 — DECISIONS D32)
+
+Goal: someone who isn't the developer installs Sage OS on their own Mac, starts from nothing, and reports bugs.
+
+| Step | Scope | Gate |
+|---|---|---|
+| F1 | **Friend's Mac build**: `.app` with the hub (PyInstaller), UI and model catalog; `.dmg` built on GitHub Actions; unsigned with a first-open sheet; empty first run with the guide; API keys entered in the app (Keychain); *Report a problem* (report file + email, no notes or chat text); updates by new .dmg, data kept | On a Mac with nothing installed, a tester opens the .dmg, starts Sage OS, adds a note and a document, chats with an AI they connected in the app, and sends a problem report that arrives by email; a second .dmg updates the app with their data intact |
 
 ## Shared hardware track (10 Oct 2026 — DECISIONS D29)
 

@@ -12,6 +12,15 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.16.1] — 2026-10-11
+
+Docs only.
+
+### Added
+- **D32**: F1, a Mac build for a friend: `.app` + `.dmg` built on GitHub Actions, unsigned with a first-open sheet,
+  empty first run, API keys entered in the app (Keychain), *Report a problem* by email with a report file.
+- ROADMAP **friends and testers track** with step **F1**; build order Y1 → G1 → K7 → K14 → F1 → A3 → Y2.
+
 ## [0.16.0] — 2026-10-11
 
 Y1, the sync-ready data model (D27, D28, D31). **Gate: pass** — two hubs on one PC, swapping only their change
