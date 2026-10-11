@@ -95,6 +95,23 @@ class ChangeLog:
             finally:
                 self._on = True
 
+    def seed(self) -> dict[str, int]:
+        """Log every existing row as created on this device (Y1.6), for tables with nothing logged yet.
+        -> rows logged per table."""
+        out = {}
+        with self.lock:
+            for table in self.streams:
+                if self.con.execute("SELECT 1 FROM changes WHERE stream=? LIMIT 1", (table,)).fetchone():
+                    continue
+                key = ", ".join(map(_q, manifest.KEYS[table]))
+                cur = self.con.execute(
+                    f"INSERT INTO changes(id, device, ts, stream, record, op, data) SELECT sage_change_id(), "
+                    f"sage_device(), sage_now(), '{table}', {self._record(table, 'r')}, 'upsert', "
+                    f"{self._row_json(table, 'r')} FROM main.{_q(table)} AS r ORDER BY {key}")
+                out[table] = cur.rowcount
+            self.con.commit()
+        return out
+
     # -- reading and merging ------------------------------------------------------------------------
     def entries(self, after: str = "", device: str | None = None, limit: int = 10_000) -> list[dict]:
         sql, args = "SELECT id, device, ts, stream, record, op, data FROM changes WHERE id > ?", [after]

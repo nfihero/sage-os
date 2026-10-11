@@ -42,7 +42,7 @@ export type ClaudeSessionInfo = {
   created: number; updated: number; turns: number; status: "idle" | "running" | "waiting" | "error"; pending: number;
 };
 export type ClaudePanel = { sessions: ClaudeSessionInfo[]; cli: string | null; workspaces: string[]; logged_in: boolean | null };
-export type ChatItem = { id: number | string; ts: number; kind: string; data: any };
+export type ChatItem = { id: string; ts: number; kind: string; data: any };
 
 /** K8: what went with one message (by: "pack") and what the agent read itself (by: "agent"). */
 export type ReadingItem = {
@@ -50,7 +50,7 @@ export type ReadingItem = {
   by: "pack" | "agent"; chars: number; excerpt: string; dropped: boolean; flagged: boolean;
 };
 export type Briefing = {
-  id: number; chat: string; ts: number; agent: string; session: string; query: string; terms: string[];
+  id: string; chat: string; ts: number; agent: string; session: string; query: string; terms: string[];
   items: ReadingItem[]; corrections: { key: string; kind: string; title: string }[];
 };
 export type BriefingState = { settings: { chat: string; enabled: boolean; drops: string[] }; briefings: Briefing[] };
@@ -77,7 +77,7 @@ export type BuildResult = { proposed: number; notes: number; already: number; le
 export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number };
 export type SourceDoc = { source: string; path: string; size: number; status: string; note: string | null; chars: number; offset: number; text: string; more: boolean };
 export type Batch = {
-  id: number; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
+  id: string; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
   started: number; finished: number | null; undone: number | null; files: { path: string; op: "create" | "update" | "remove" }[];
 };
 

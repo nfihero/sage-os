@@ -65,9 +65,9 @@ class Writer:
           CREATE TABLE IF NOT EXISTS proposals(id TEXT PRIMARY KEY, agent TEXT NOT NULL, summary TEXT,
             created REAL, status TEXT NOT NULL, decided REAL, note TEXT, changes TEXT NOT NULL,
             bases TEXT NOT NULL, batch_id INTEGER);
-          CREATE TABLE IF NOT EXISTS batches(id INTEGER PRIMARY KEY, proposal_id TEXT, agent TEXT, summary TEXT,
+          CREATE TABLE IF NOT EXISTS batches(id TEXT PRIMARY KEY, proposal_id TEXT, agent TEXT, summary TEXT,
             status TEXT NOT NULL, started REAL, finished REAL, undone REAL);
-          CREATE TABLE IF NOT EXISTS entries(batch_id INTEGER, seq INTEGER, path TEXT NOT NULL,
+          CREATE TABLE IF NOT EXISTS entries(batch_id TEXT, seq INTEGER, path TEXT NOT NULL,
             before BLOB, after BLOB, PRIMARY KEY(batch_id, seq));
         """)
         cols = [r[1] for r in self.db.execute("PRAGMA table_info(proposals)")]
@@ -184,26 +184,27 @@ class Writer:
             self._decide(pid, "applied", note, batch)
         return self.batch(batch)
 
-    def _journal(self, pid, agent, summary, entries) -> int:
+    def _journal(self, pid, agent, summary, entries) -> str:
         """Write-ahead: the batch and every before/after is on disk before any note changes."""
-        cur = self.db.execute("INSERT INTO batches(proposal_id, agent, summary, status, started) VALUES (?,?,?,?,?)",
-                              (pid, agent, summary, "applying", time.time()))
+        bid = new_id("b_")
+        self.db.execute("INSERT INTO batches(id, proposal_id, agent, summary, status, started) VALUES (?,?,?,?,?,?)",
+                        (bid, pid, agent, summary, "applying", time.time()))
         self.db.executemany("INSERT INTO entries VALUES (?,?,?,?,?)",
-                            [(cur.lastrowid, i, e.path, e.before, e.after) for i, e in enumerate(entries)])
+                            [(bid, i, e.path, e.before, e.after) for i, e in enumerate(entries)])
         self.db.commit()
-        return cur.lastrowid
+        return bid
 
-    def _finish(self, batch: int, status: str):
+    def _finish(self, batch: str, status: str):
         col = "undone" if status == "undone" else "finished"
         self.db.execute(f"UPDATE batches SET status=?, {col}=? WHERE id=?", (status, time.time(), batch))
         self.db.commit()
 
     @_locked
-    def _entries(self, batch: int) -> list[Entry]:
+    def _entries(self, batch: str) -> list[Entry]:
         return [Entry(p, b, a) for p, b, a in self.db.execute(
             "SELECT path, before, after FROM entries WHERE batch_id=? ORDER BY seq", (batch,))]
 
-    def undo(self, batch: int) -> dict:
+    def undo(self, batch: str) -> dict:
         """Put every file of the batch back exactly as it was. Refuses if any was edited since."""
         with self.lock:
             b = self.batch(batch)
@@ -220,7 +221,7 @@ class Writer:
             self._finish(batch, "undone")
         return self.batch(batch)
 
-    def recover(self) -> list[int]:
+    def recover(self) -> list[str]:
         """After a crash: batches caught mid-apply or mid-undo are put back to their 'before' state."""
         fixed = []
         with self.lock:
@@ -235,7 +236,7 @@ class Writer:
 
     # -- history ---------------------------------------------------------------------------------
     @_locked
-    def batch(self, batch: int) -> dict | None:
+    def batch(self, batch: str) -> dict | None:
         row = self.db.execute("SELECT id, proposal_id, agent, summary, status, started, finished, undone FROM batches WHERE id=?",
                               (batch,)).fetchone()
         if row is None:

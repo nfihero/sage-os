@@ -28,7 +28,7 @@ export default function ChatView({ items, live, busy, tone, placeholder, onSend,
   const reading = useReading(chat ?? null);
   const strips = useMemo(() => {     // user item id -> its briefing, matched by text in order
     const out = new Map<ChatItem["id"], Briefing>();
-    let after = 0;
+    let after = "";
     for (const it of items) {
       if (it.kind !== "user") continue;
       const b = briefingFor(reading.state?.briefings, String(it.data?.text ?? ""), it.ts, after);

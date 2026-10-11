@@ -138,11 +138,11 @@ def test_recover_rolls_back_a_crashed_batch(w, tmp_path):
     p = w.propose(AGENT, "", [create(), {"op": "update", "uid": HUMAN, "body": "half"}])
     from sage_os_hub.knowledge.proposals import plan
     entries = [e for x in plan(w.vault, p["changes"], AGENT) for e in x.entries]
-    w._journal(p["id"], AGENT, "", entries)                                       # journal written ...
+    bid = w._journal(p["id"], AGENT, "", entries)                                 # journal written ...
     writer_module._put(w.vault.root / entries[0].path, entries[0].after)          # ... one file, then "crash"
     w.close()
     w2 = Writer(w.vault, tmp_path / "journal.db")
-    assert w2.recover() == [1] and snapshot(w.vault.root) == before
+    assert w2.recover() == [bid] and snapshot(w.vault.root) == before
     assert w2.history()[0]["status"] == "rolled_back"
 
 

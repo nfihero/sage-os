@@ -21,6 +21,7 @@ from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import Path as FPath
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,7 +48,7 @@ from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .store import Store
-from .sync import ChangeLog, Device, new_id
+from .sync import ChangeLog, Device, migrate, new_id
 
 log = logging.getLogger("sage_os")
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
@@ -95,6 +96,11 @@ class Hub:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.device = Device.load(cfg.data_dir)            # Y1.1: who this install is; stamped on every change
+        # Y1.6: records made before 0.16 move to ULIDs once, before anything opens the databases
+        self.migration = migrate.run({"hub.db": cfg.store, "bookshelf.db": cfg.vault_journal,
+                                      "digest.db": cfg.store.with_name("digest.db"),
+                                      "briefings.db": cfg.store.with_name("briefings.db")},
+                                     cfg.data_dir / "backups", self.device.id)
         self.store = Store(cfg.store, cfg.keep_events)
         self.panels: dict = {}
         self.subscribers: set[asyncio.Queue] = set()
@@ -900,7 +906,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         return r["proposal"]
 
     @app.post("/api/vault/batches/{batch_id}/undo", dependencies=W)
-    async def vault_undo(batch_id: int):
+    async def vault_undo(batch_id: str = FPath(max_length=40)):
         try:
             b = await asyncio.to_thread(hub.writer.undo, batch_id)
         except ProposalError as exc:

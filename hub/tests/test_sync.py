@@ -171,12 +171,12 @@ def test_a_failed_write_logs_nothing(tmp_path):
 def test_composite_keys_blobs_and_deletes(tmp_path):
     hub = _hub(tmp_path)
     con, log = hub.writer.db, hub.changelogs["bookshelf.db"]
-    con.execute("INSERT INTO entries(batch_id, seq, path, before, after) VALUES (7, 1, 'a/b.md', NULL, ?)", (b"\x00\xffhi",))
-    con.execute("DELETE FROM entries WHERE batch_id=7")
+    con.execute("INSERT INTO entries(batch_id, seq, path, before, after) VALUES ('b_7', 1, 'a/b.md', NULL, ?)", (b"\x00\xffhi",))
+    con.execute("DELETE FROM entries WHERE batch_id='b_7'")
     con.commit()
     put, gone = log.entries()
-    assert put["record"] == "[7,1]" and put["data"]["after"] == {"$hex": "00FF6869"} and put["data"]["before"] is None
-    assert gone["op"] == "delete" and gone["record"] == "[7,1]" and gone["data"] is None
+    assert put["record"] == '["b_7",1]' and put["data"]["after"] == {"$hex": "00FF6869"} and put["data"]["before"] is None
+    assert gone["op"] == "delete" and gone["record"] == '["b_7",1]' and gone["data"] is None
 
 
 def test_quiet_writes_are_not_logged(tmp_path):
@@ -218,11 +218,12 @@ def test_entries_from_another_device_merge_in_any_order(tmp_path):
 # -- Y1.5 tombstones --------------------------------------------------------------------------------------
 def test_deleting_a_chat_leaves_a_tombstone_that_survives_restart_and_late_writes(tmp_path):
     hub = _hub(tmp_path)
-    row = {"id": "ch_1", "title": "Plan", "provider": "engine", "model": "m", "created": 1.0, "updated": 1.0}
+    cid = new_id("ch_")
+    row = {"id": cid, "title": "Plan", "provider": "engine", "model": "m", "created": 1.0, "updated": 1.0}
     hub.store.upsert_chat_session(row)
-    assert hub.store.delete_chat_session("ch_1") and not hub.store.delete_chat_session("ch_1")
+    assert hub.store.delete_chat_session(cid) and not hub.store.delete_chat_session(cid)
     hub.store.upsert_chat_session(row | {"updated": 9.0})          # a reply finishing after the delete
-    assert hub.store.chat_sessions() == [] and hub.store.chat_session("ch_1") is None
+    assert hub.store.chat_sessions() == [] and hub.store.chat_session(cid) is None
     last = hub.changelogs["hub.db"].entries()[-1]
     assert last["op"] == "upsert" and last["data"]["deleted"] is not None     # deletes travel as updates
     hub.store.close()
@@ -242,7 +243,8 @@ def test_a_claude_session_tombstone(tmp_path):
 def test_a_forgotten_briefing_is_hidden_not_deleted(tmp_path):
     hub = _hub(tmp_path)
     db = hub.briefings.db
-    bid = db.execute("INSERT INTO briefings(chat, ts, query, terms, items) VALUES ('c', 1, 'q', '[]', '{\"items\": []}')").lastrowid
+    bid = "br_x"
+    db.execute("INSERT INTO briefings(id, chat, ts, query, terms, items) VALUES ('br_x', 'c', 1, 'q', '[]', '{\"items\": []}')")
     db.commit()
     hub.briefings.forget(bid)
     assert db.execute("SELECT count(*) FROM briefings WHERE deleted IS NOT NULL").fetchone()[0] == 1

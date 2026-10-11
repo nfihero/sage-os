@@ -10,6 +10,8 @@ import threading
 import time
 from pathlib import Path
 
+from .sync import new_id
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +38,7 @@ CREATE TABLE IF NOT EXISTS claude_sessions (
     turns          INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS chat_items (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id         TEXT PRIMARY KEY,            -- ci_ + ULID (Y1): sorts by time, unique across devices
     session_id TEXT NOT NULL,
     ts         REAL NOT NULL,
     kind       TEXT NOT NULL,       -- user | text | thinking | tool_use | tool_result | note | error
@@ -153,11 +155,12 @@ class Store:
 
     def add_chat_item(self, session_id: str, kind: str, data: dict, ts: float | None = None) -> dict:
         ts = ts or time.time()
+        iid = new_id("ci_")
         with self._lock:
-            cur = self._db.execute("INSERT INTO chat_items (session_id, ts, kind, data) VALUES (?,?,?,?)",
-                                   (session_id, ts, kind, json.dumps(data, default=str)))
+            self._db.execute("INSERT INTO chat_items (id, session_id, ts, kind, data) VALUES (?,?,?,?,?)",
+                             (iid, session_id, ts, kind, json.dumps(data, default=str)))
             self._db.commit()
-        return {"id": cur.lastrowid, "ts": ts, "kind": kind, "data": data}
+        return {"id": iid, "ts": ts, "kind": kind, "data": data}
 
     def chat_items(self, session_id: str, limit: int = 500) -> list[dict]:
         with self._lock:

@@ -13,7 +13,7 @@ export function useReading(chat: string | null) {
     const off = onChat((f) => {
       if (f.pane !== chat || f.op !== "reading") return;
       const b = f.briefing as Briefing;
-      setState((s) => s && ({ ...s, briefings: [...s.briefings.filter((x) => x.id !== b.id), b].sort((x, y) => x.id - y.id) }));
+      setState((s) => s && ({ ...s, briefings: [...s.briefings.filter((x) => x.id !== b.id), b].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)) }));
     });
     return () => { alive = false; off(); };
   }, [chat]);
@@ -25,9 +25,9 @@ export function useReading(chat: string | null) {
   return { state, toggle };
 }
 
-/** The briefing that went with a user message: the first one after `after` with that exact text, made
+/** The briefing that went with a user message: the first one after `after` (IDs sort by time) with that exact text, made
  *  within two minutes of it (a resent message gets the newer briefing; Hermes keeps its own timestamps). */
-export function briefingFor(briefings: Briefing[] | undefined, text: string, ts: number, after: number): Briefing | undefined {
+export function briefingFor(briefings: Briefing[] | undefined, text: string, ts: number, after: string): Briefing | undefined {
   const all = briefings ?? [];
   const hits = all.filter((x) => x.id > after && x.query === text && Math.abs(x.ts - ts) < 120);
   return hits[0];

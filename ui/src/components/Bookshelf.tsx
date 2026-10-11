@@ -130,11 +130,11 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
 function History({ changed }: { changed: unknown }) {
   const now = useNow(10000);
   const [batches, setBatches] = useState<Batch[] | null>(null);
-  const [confirm, setConfirm] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const load = () => get<Batch[]>("/api/vault/history").then(setBatches).catch((e) => setErr(String(e.message ?? e)));
   useEffect(() => { load(); }, [changed]);
-  const undo = async (id: number) => {
+  const undo = async (id: string) => {
     setErr(null); setConfirm(null);
     try { await post(`/api/vault/batches/${id}/undo`); } catch (e) { setErr(String((e as Error).message ?? e)); }
     load();

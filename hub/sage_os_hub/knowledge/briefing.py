@@ -20,6 +20,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..sync import new_id
+
 MARK = "⟦Sage OS reading pack⟧"     # starts the block appended to a message; the UI strips it from display
 MAX_NOTES, MAX_SOURCES = 3, 2
 NOTE_CHARS, SOURCE_CHARS, BUDGET = 1500, 1500, 7000
@@ -135,7 +137,7 @@ class Briefings:
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.executescript("""
           PRAGMA journal_mode=WAL;
-          CREATE TABLE IF NOT EXISTS briefings(id INTEGER PRIMARY KEY AUTOINCREMENT, chat TEXT NOT NULL, ts REAL NOT NULL,
+          CREATE TABLE IF NOT EXISTS briefings(id TEXT PRIMARY KEY, chat TEXT NOT NULL, ts REAL NOT NULL,
             agent TEXT, session TEXT, query TEXT NOT NULL, terms TEXT NOT NULL, items TEXT NOT NULL);
           CREATE INDEX IF NOT EXISTS briefings_chat ON briefings(chat, id);
           CREATE TABLE IF NOT EXISTS briefing_chats(chat TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1,
@@ -264,16 +266,17 @@ class Briefings:
         rec = {"chat": chat, "ts": time.time(), "agent": agent, "session": session, "query": text, "terms": terms,
                "items": [it.public() for it in items], "corrections": owed}
         with self.lock:
-            rec["id"] = self.db.execute(
-                "INSERT INTO briefings(chat, ts, agent, session, query, terms, items) VALUES (?,?,?,?,?,?,?)",
-                (chat, rec["ts"], agent, session, text, json.dumps(terms),
-                 json.dumps({"items": rec["items"], "corrections": owed}))).lastrowid
+            rec["id"] = new_id("br_")
+            self.db.execute(
+                "INSERT INTO briefings(id, chat, ts, agent, session, query, terms, items) VALUES (?,?,?,?,?,?,?,?)",
+                (rec["id"], chat, rec["ts"], agent, session, text, json.dumps(terms),
+                 json.dumps({"items": rec["items"], "corrections": owed})))
             self.db.commit()
         if owed:
             self._save_settings(s | {"owed": []})
         return out, rec
 
-    def forget(self, briefing_id: int):
+    def forget(self, briefing_id: str):
         """The send failed: the record describes nothing the agent saw."""
         with self.lock:
             self.db.execute("UPDATE briefings SET deleted=? WHERE id=?", (time.time(), briefing_id))
