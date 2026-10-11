@@ -12,6 +12,18 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.15.3] — 2026-10-11
+
+Docs only.
+
+### Added
+- ROADMAP **Y1 plan**: seven parts (device identity, ID generator, synced vs this-computer-only list, change log,
+  tombstones, migration, convergence check) with a check for each, and what keeps its current IDs.
+
+### Changed
+- ROADMAP: S3 marked passed (8 Oct); Phase 3b marked superseded by the sync track; Bookshelf track summary
+  brought up to date.
+
 ## [0.15.2] — 2026-10-10
 
 Docs only: the user's Y1 choices and a new roadmap step.

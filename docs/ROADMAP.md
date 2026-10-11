@@ -14,7 +14,7 @@ on 30 Sep 2026 with the Bookshelf track.
 | 2.5 | Visual pass: phosphor theme, agent orbs, handoff arcs, boot screen, screen texture, icon | User sign-off | **Done** (30 Sep), iterating on taste |
 | 2.6 | Demo readiness (D18): guide with the why, panel tour, plain labels, teaching empty states, `docs/DEMO.md` | A first-time viewer can say what Sage OS is for and follows the files → notes loop | Built (3 Oct, v0.10.0); gate is the user's demo |
 | 3a | Portable hub (D21): runs on macOS and Windows; per-machine `config.local.toml`; `start.sh` | The same repo starts on both | **Built** (3 Oct, v0.11.0); Mac run is the user's check |
-| 3b | Phone and Mac as screens (D21): Tailscale Serve to the PC, **passkey** login with devices added from the PC, phone layout pass | A phone approves a request over the tailnet after a Face ID login | Planned |
+| 3b | Phone and Mac as screens (D21): Tailscale Serve to the PC, **passkey** login with devices added from the PC, phone layout pass | A phone approves a request over the tailnet after a Face ID login | Superseded by the sync track (D22, D27: every device runs Sage OS; the relay is Y5) |
 | 4 | **Lead model as orchestrator** (D26): whichever model the user picks as lead (Claude, ChatGPT, Gemini, or a local model on the engine) gets the fleet tools (`fleet_status`, `task_create`, `task_comment`/`unblock`, `ask_agent`) | The lead delegates a task that another agent finishes; checked with a cloud lead and with a local lead | Planned |
 | 5 | **Lead model as reviewer** (D26): the user's chosen reviewer (any connected model) reviews on `request_review`; handoff animations | One task goes through changes, then approval, with a cloud and with a local reviewer | Planned |
 | 6 | Rooms and outside agents: **team chat** (lead agent answers by default) + **agent room** (agents only, user watches, Step in) with direct chats closed by default (DECISIONS D8); ACP and A2A adapters | The user asks in team chat; the lead hands work to another agent in the agent room; the user steps in once; the result comes back to team chat | Planned |
@@ -38,7 +38,7 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | S2 | **OCR**: read text from images and scanned PDFs during sync, marked as OCR text; Windows' built-in engine first (D19) | A CamScanner PDF and a photo of a page are found by search and readable by agents |
 | K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
 | K8 | Briefing packs chosen **per prompt** from notes and sources, shown to you in a *Reading* strip with everything the agent read (D20; D7 idea 2) | An agent's reply uses a fact that exists only in your notes, and the strip shows the note it came from — **pass** (6 Oct, v0.12.0: the local Gemma 4 12B answered the three-email sequence from the outreach playbooks, both shown in the strip) |
-| S3 | **Google Drive connector** (D22.5): Google Docs, Sheets and Slides read through the Drive API with the user's read-only consent, exported and indexed with the rest | A Google Doc's text is found by search — built (6 Oct, v0.12.0); live gate waits for the user's OAuth client |
+| S3 | **Google Drive connector** (D22.5): Google Docs, Sheets and Slides read through the Drive API with the user's read-only consent, exported and indexed with the rest | A Google Doc's text is found by search — **pass** (8 Oct, v0.12.2: 10 of 13 Google Docs exported and searchable) |
 | K12 | **Long documents** (D23): split a textbook or long report into sections that tile its text, draft notes per section on the local model, check concept coverage, one inbox card per chapter, coverage map | A long document becomes per-chapter proposals with every section accounted for — **pass** (8 Oct, v0.13.0: outreach playbook 32 pages → 34 notes, 55/55 concepts; options lecture 55 pages → 12 notes, 36/36) |
 | K13 | **Review note by note** (D24): read each proposed note rendered, keep or drop it, edit it with a live preview, file only what was kept | Kept notes filed (edited ones marked), dropped ones not, undo exact — **pass** (9 Oct, v0.14.0, tests + browser at desktop and phone width) |
 | K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
@@ -46,8 +46,8 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
 | later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
-Suggested interleave: K1–K6 are done, so the fleet tools (Phase 4) can share their MCP surface. The order
-after v0.10 is still being chosen (see STATUS *Next*).
+Done: K1–K6, K8, K12, K13, S1, S3. Open: S2, K7, K9–K11, the editor; meaning-based search (D10) is not yet a
+step. Order after Y1 is chosen with the user (see STATUS *Next*).
 
 ## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
 
@@ -80,8 +80,26 @@ sync) is done; the rest builds the account-based, end-to-end encrypted sync of D
 | Y5 | Jobs routed to capable devices; the relay (phone ↔ desktop engine) | A digest started on the phone runs on the desktop and its proposals are approved on the phone |
 | Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers | Install on phone, Mac and PC, sign in, everything is there |
 
-Y1 specifics (10 Oct, D28): every existing ID is rewritten to a fresh ULID; changes go to an append-only log
-written alongside the current tables.
+### Y1 plan (11 Oct 2026; choices in D28)
+
+Released as one minor version (v0.16.0), built in seven parts, each with its own tests. Every existing ID of a
+synced record is rewritten to a fresh ULID; changes go to an append-only log written alongside the current
+tables. Nothing changes for the user except one line in STORAGE.
+
+| Part | Scope | Check |
+|---|---|---|
+| Y1.1 | **Device identity**: `device.json` in app data (never the Library) with a permanent device ULID and a name (computer name, renamable); STORAGE shows "This device: …" | Same ID across restarts; a fresh app-data folder gets a new one |
+| Y1.2 | **One ID generator**: `new_id()` makes ULIDs, sortable by time and still in order within one millisecond; replaces the six random-ID sites (`ch_`, `cs_`, `dg_`, `p_`, `ib_`, `held:`) | 100k IDs in a tight loop: all unique, all in order |
+| Y1.3 | **Synced vs this-computer-only list** in code, labelling every table and data file. Synced: chats and messages, Claude session records, proposals and decisions, the undo journal, digest jobs and progress, briefing exclusions. This computer only: dashboard events and panels, search indexes, source copies, the engine, the Google token, held secret proposals | A test fails if any table is unlabelled |
+| Y1.4 | **Change log (outbox)**: append-only `changes` (ULID, device, time, stream, record, operation, data); every write to a synced table adds its log entry in the same transaction | Each synced write adds exactly one entry; a failed write adds none |
+| Y1.5 | **Tombstones**: deleting a chat, session or briefing marks it deleted (`deleted` time + log entry) instead of removing the row; lists hide deleted rows | Delete, restart: still hidden; row and log entry still there |
+| Y1.6 | **Migration** on the first 0.16 start: back up every database; give every synced record a fresh ULID and update every reference (messages → chats, decisions → proposals, batches → entries, sections → digests, digest folders); record each existing row as a "created" log entry from this device; a marker stops a second run; restore the backup on any error | On a copy of the real data: same counts, no broken references, a second run changes nothing |
+| Y1.7 | **Convergence check (the gate)**: a test harness runs two hubs on this PC as two devices; both create chats, approvals, undos and deletes; their logs are exchanged by file copy and replayed | Both hold the same synced records, nothing lost or duplicated, deletes respected, whatever the replay order |
+
+Kept as they are: notes' own `uid` (it lives in each markdown file, D9, and is already permanent; rewriting it
+would edit every file in the Library); Claude Code's own session IDs (they belong to the CLI); the numbered rows
+of search indexes and the dashboard feed (they never leave the computer). The digest is paused during the
+migration and resumes under its new ID with its progress. Links copied before 0.16 stop working (D28).
 
 ## Shared hardware track (10 Oct 2026 — DECISIONS D29)
 

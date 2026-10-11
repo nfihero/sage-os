@@ -15,7 +15,7 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 10 Oct, v0.15.2)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.15.3)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
 `DECISIONS.md` (D1–D29), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.2** (local tag, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.3** (0.15.2–0.15.3 local tags, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -65,7 +65,8 @@ lead or reviewer (D26).
    front-matter cards (drafted before the "about the book itself" rule) and the older 47-note playbook card.
 2. **Y1 sync-ready data model** (D27 "do now", D28): fresh ULIDs for every record (existing IDs rewritten),
    tombstones, a change log written alongside the tables for chats / inbox decisions / journal / digest progress,
-   synced vs device-local split, a device identity per install. No server. **The user said wait before building.**
+   synced vs device-local split, a device identity per install. No server. Plan in seven parts: ROADMAP *Y1 plan*.
+   **The user said wait before building.**
    **G1 game mode** (D29) is the other candidate; ask which comes first.
 3. **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); meaning-based search (D10);
