@@ -694,6 +694,37 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   change log later.
 - **Revisit if:** users ask for a portable, tool-readable history of their notes outside Sage OS.
 
+
+## D31 — How Y1 was built: an outbox from triggers, rows that settle on the newest change, deletes that win
+
+- **Date / by:** 2026-10-11, Claude, building Y1 as planned with the user (D27 "do now", D28)
+- **Status:** accepted; shipped in 0.16.0. Details of D28, not a change to it.
+- **Decision:**
+  1. **IDs** are ULIDs with a short type prefix (`ch_`, `cs_`, `ci_`, `p_`, `b_`, `dg_`, `br_`, `ib_`, `dv_`), so an
+     ID still says what it names. A device's IDs never go backwards (same millisecond, or a clock stepping back),
+     and after taking in another device's change, the next local ID sorts after it.
+  2. **The change log is filled by TEMP triggers** on the hub's own connection to each synced table: insert, update
+     and delete each append an entry in the same transaction. A new write path can't forget to log, and the
+     database files carry no trigger that another program would trip over. Each database with synced tables
+     has its own `changes` table, so the row and its entry commit together.
+  3. **A record settles on its newest entry** (by ID), whole row, on every device and in any arrival order. Decimals
+     are logged exactly (SQLite's own JSON keeps 15 digits; the gate caught timestamps changing).
+  4. **Deletes are tombstones, and they win.** Chats, Claude sessions and briefings get a `deleted` time. A local
+     update never clears it, and a merged change keeps the earliest delete time, so an edit made later on another
+     device doesn't bring a deleted chat back, and two devices always agree.
+  5. **The move to ULIDs** runs once at hub start, before any store opens: back up each database (with the old to
+     new ID map), rewrite IDs and references in one transaction per database, log every existing row as created
+     here; on any error, put the backups back and stop. It's content-based: a record that has a ULID keeps it, so
+     running it again does nothing.
+  6. **Manifest** (`sync/manifest.py`): every table and app-data file is labelled synced, this computer only,
+     Library or log, with each synced table's key; tests fail on anything unlabelled.
+- **Costs / limits:** every update logs the whole row (a digest section repeats its text each time), and nothing
+  compacts the log yet: Y4 drops entries every device has. Rows merge whole (two edits to different fields of
+  one record: the later wins). Merged rows reach in-memory state (open sessions, panels) only on restart until
+  Y4 adds a refresh. Clock skew between devices can make an older edit win; a hybrid clock is the later fix.
+- **Revisit if:** the log grows faster than expected before Y4 (then log only changed columns), or field-level
+  conflicts matter (then per-field entries or a CRDT for notes, as D27 allows).
+
 ---
 
 ## Proposed, awaiting the user

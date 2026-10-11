@@ -42,7 +42,9 @@ http://127.0.0.1:5173.
 (Mac): databases, indexes, source copies, models, sign-ins, per computer. Your notes and files are in its
 `Library` folder (`Notes/`, `Files/`); point the Library at a OneDrive / iCloud / Dropbox / Syncthing folder in
 Bookshelf → **STORAGE** to have them on every device. An install from before 0.15 keeps `sage-os\data` until you
-stop it and run `hub\.venv\Scripts\python -m sage_os_hub move-data`.
+stop it and run `hub\.venv\Scripts\python -m sage_os_hub move-data`. Each install has its own device ID and name
+(STORAGE → *This device*). The first start of 0.16 moved every record to new IDs once (Y1, D28), after backing up
+the databases to `backups\pre-ulid-<time>` in app data.
 
 **Needs:** Python 3.12+ and Node 20+. Everything else is optional: the Claude desktop app (for
 `claude.exe`), a local model (install the engine and a model from **MODELS**, or point `[engine]` in

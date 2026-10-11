@@ -12,6 +12,33 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-11
+
+Y1, the sync-ready data model (D27, D28, D31). **Gate: pass** — two hubs on one PC, swapping only their change
+logs as files, end up with identical synced records in any replay order, nothing lost or duplicated, deletes kept.
+pytest 264/264, smoke 18/18.
+
+### Added
+- **Device identity**: `device.json` in app data with a permanent ID and a name; STORAGE shows *This device* with
+  RENAME (`POST /api/storage/device`).
+- **ULIDs** for every record (prefixed: `ch_`, `cs_`, `ci_`, `p_`, `b_`, `dg_`, `br_`, ...), sorted by time and never
+  going backwards on one device.
+- **Change log**: a `changes` table in each database with synced tables, filled by triggers in the same
+  transaction as the row; entries merge from another device in any order (newest per record wins).
+- **Manifest** of what syncs and what stays on this computer, with tests that fail on anything unlabelled.
+- **Tombstones** for chats, Claude sessions and briefings; deletes win over edits from another device.
+- **Migration** at the first 0.16 start: every database backed up to `backups/pre-ulid-<time>/` with the old to new
+  ID map; IDs and references rewritten; existing rows logged; any error restores the backups.
+
+### Changed
+- Chat messages, undo batches and briefings use text IDs (were counting numbers); the undo route takes the batch's
+  ULID. Session upserts update in place (a late write can't revive a deleted chat).
+- Interrupted digest sections are re-queued after the change log is attached, so the reset is logged.
+
+### Fixed (found by the gate and the review)
+- Decimals kept only 15 digits in the log (timestamps changed on the way through).
+- A later edit on another device could revive a deleted chat.
+
 ## [0.15.4] — 2026-10-11
 
 Docs only.

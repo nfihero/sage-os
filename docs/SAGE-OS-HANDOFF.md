@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.15.4)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.16.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D30), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D31), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,8 +28,8 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.15.4** (0.15.2–0.15.4 local tags, not pushed; v0.4.0–v0.15.1
-  pushed 9 Oct at the user's request). Checked 9 Oct: `pytest` 227/227, `npm run build` clean, smoke 18/18.
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.16.0** (0.15.2–0.16.0 local tags, not pushed; v0.4.0–v0.15.1
+  pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
   `...\Library\Files` (empty so far). The Library is not in a synced folder yet. The old `sage-os\data` is
@@ -47,14 +47,20 @@ lead or reviewer (D26).
 - 0.14: K13 review proposals note by note: read rendered, keep/drop, edit, file only what's kept (D24).
 - 0.15: D25 storage (app data + Library + STORAGE tab: open folders, export zip, move Library, sync conflicts);
   Drive folders through the API; textbook fixes (year rows vs Aadhaar screening, faulty bookmarks).
+- 0.16: **Y1** sync-ready data (D28, D31): ULIDs, change log via TEMP triggers, tombstones, device identity
+  (`dv_01M4PBTTHBWWK32YSMX4NPWRJ7`, "DESKTOP-4JPBI6U"), manifest; real data migrated 11 Oct (backup and old to
+  new ID map in `%APPDATA%\Sage OS\backups\pre-ulid-20261011-141542-5F7XHK`). Nothing sends logs between
+  devices yet (Y3–Y4).
 
 ### Running right now (check before restarting anything)
 - **Hub** on http://127.0.0.1:8787, started detached via WMI (`hub\.venv\Scripts\python.exe -m sage_os_hub`,
-  cwd `sage-os`). Restarting is safe: everything persists and the digest resumes.
+  cwd `sage-os`). Restarting is safe: everything persists and the digest resumes. Since 11 Oct its output goes
+  to `sage-os\data-y1check\hub-start.log` (git-ignored; that folder also holds the copy used to check the
+  migration and can be deleted with the user's OK).
 - **Engine STOPPED** (10 Oct, at the user's request, to free the GPU for a game). When running it serves Gemma 4
   12B (`file:gemma-4-12b-it-qat-q4_0`) on 127.0.0.1:8790, two 16K slots, ~10.7 GB VRAM. A hub restart stops it (it's reaped and must be started again: MODELS → START, or
   `POST /api/engine/start {"model": "file:gemma-4-12b-it-qat-q4_0"}` with header `X-Sage-OS: 1`).
-- **Digest `dg_7cbf09dbad`**: Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
+- **Digest `dg_01M4FT8XM5VHAMWA7DC4DC6H72`** (`dg_7cbf09dbad` before 0.16): Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
   ~35 s per section on the GPU. On 10 Oct: all 777 sections drafted (2,741 notes, 4,987/4,987 concepts),
   13/45 chapters sent to the inbox; the rest wait for inbox space (and the engine) to continue. It
   stops sending chapters to the inbox at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
@@ -63,10 +69,8 @@ lead or reviewer (D26).
 ### Next (order agreed 11 Oct, D30)
 1. **Inbox review** (the user does this, with REVIEW): textbook chapter cards; reject the textbook's
    front-matter cards (drafted before the "about the book itself" rule) and the older 47-note playbook card.
-2. **Y1 sync-ready data model** (D27 "do now", D28): fresh ULIDs for every record (existing IDs rewritten),
-   tombstones, a change log written alongside the tables for chats / inbox decisions / journal / digest progress,
-   synced vs device-local split, a device identity per install. No server. Plan in seven parts: ROADMAP *Y1 plan*.
-   **The user said wait before building.**
+2. ~~Y1~~ done (0.16.0). The user wants to try sync on their MacBook, and maybe a friend's laptop: nothing
+   sends logs between devices yet, so that needs a way to carry them (ask how, per the 11 Oct options).
 3. **G1 game mode** (D29) → **K7** review at scale → **K14** meaning-based search → **A3** own task board →
    **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); S2 OCR (D19); K9; K11; Phases 4–6

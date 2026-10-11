@@ -1,6 +1,6 @@
 # Sage OS — status
 
-**Version 0.15.4 · 11 Oct 2026** (docs: D30 build order Y1 → G1 → K7 → K14 → A3 → Y2; K10 dropped). **0.15.3 · 11 Oct 2026** (docs: Y1 plan in seven parts in ROADMAP). **0.15.2 · 10 Oct 2026** (docs: D28 Y1 specifics, D29 game mode = roadmap step G1). **0.15.1 · 9 Oct 2026** (docs: D27 sync architecture, ROADMAP sync track Y0–Y6, fresh-session handoff). **0.15.0 · 9 Oct 2026** (D25 storage: data in `%APPDATA%\Sage OS`, a Library of Notes + Files that can sit in a synced folder, STORAGE tab with open/export/move; D26 any model can lead; pytest 227/227). **0.14.0 · 9 Oct 2026** (K13: review proposals note by note, keep / drop / edit; Drive folders read through
+**Version 0.16.0 · 11 Oct 2026** (Y1 sync-ready data model: ULIDs on every record, a change log, tombstones, a device identity; your data moved over with a backup; pytest 264/264). **0.15.4 · 11 Oct 2026** (docs: D30 build order Y1 → G1 → K7 → K14 → A3 → Y2; K10 dropped). **0.15.3 · 11 Oct 2026** (docs: Y1 plan in seven parts in ROADMAP). **0.15.2 · 10 Oct 2026** (docs: D28 Y1 specifics, D29 game mode = roadmap step G1). **0.15.1 · 9 Oct 2026** (docs: D27 sync architecture, ROADMAP sync track Y0–Y6, fresh-session handoff). **0.15.0 · 9 Oct 2026** (D25 storage: data in `%APPDATA%\Sage OS`, a Library of Notes + Files that can sit in a synced folder, STORAGE tab with open/export/move; D26 any model can lead; pytest 227/227). **0.14.0 · 9 Oct 2026** (K13: review proposals note by note, keep / drop / edit; Drive folders read through
 the API; a 1,588-page textbook being digested overnight on the local model; pytest 219/219). **0.13.0 · 8 Oct 2026** (K12: long documents digested into notes section by section, with a coverage map; pytest 208/208). **0.12.2 · 8 Oct 2026** (Google Drive live: 10 of 13 Google Docs exported and searchable). **0.12.1 · 7 Oct 2026** (security and copy pass: vibe-security audit of the 0.12.0 changes, findings
 fixed or listed in CHANGELOG; local engine now needs a per-start key). **0.12.0 · 6 Oct:** `pytest` 193/193 (196 at 0.12.1), `npm run build` clean, hub `/api/smoke`
 18/18; the local engine served Gemma 4 12B from the existing Hermes files and answered a Deal Club question
@@ -28,6 +28,7 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 | Local engine (D22.3) | **MODELS**: hardware check (RAM, NVIDIA VRAM, Apple Silicon, Vulkan/CPU), catalog of 8 models rated fits / tight / too big, install of the official llama.cpp build and model downloads (resumable, SHA-256 checked; not yet run on a fresh machine), models already on disk, start/stop; serves on 127.0.0.1:8790; a leftover server from a killed hub is stopped on the next start |
 | Chat connector (D22.2) | one chat for any OpenAI-compatible AI (the engine, ChatGPT, Gemini, Ollama); Bookshelf tools as function calls run by Sage OS (no shell, no files); transcripts in hub.db; **Chat** tab in the Local pane |
 | Google Drive connector (D22.5) | Google Docs / Sheets / Slides exported through the Drive API (read-only consent, the user's own OAuth client, PKCE) and indexed like other files; **waiting for the user's OAuth client**, so not yet run live |
+| Sync-ready data (Y1, D28, D31) | every record has a ULID; changes to synced tables go to a change log in the same transaction; deletes leave tombstones that win; a manifest labels what syncs; STORAGE shows *This device* (rename); existing data moved once at start-up with a backup in `backups/pre-ulid-…`. Logs merge between two hubs in any order (tested); nothing sends them between devices yet (Y3–Y4) |
 | Storage (D25) | app data in `%APPDATA%\Sage OS` (per computer); the Library (`Notes/` + `Files/`, files indexed in place) can live in a synced folder; Bookshelf → STORAGE opens folders, exports notes (and files) as zip, moves the Library (merge, never overwrite), lists sync conflicts |
 | Review note by note (K13, D24) | **REVIEW** on every Bookshelf card: notes rendered as markdown, keep / drop each, edit with live preview, file only what's kept (`edited_by: user`), undo exact; phone layout |
 | Drive folders via the API (D22.5) | `[[sources]] api = true`: a Drive folder listed and downloaded through the Drive API, no Drive for desktop; source `gdrive` = My Drive/School |
@@ -50,6 +51,7 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 - Cross-device access and app login (Phase 3)
 - Fleet MCP tools / Claude orchestration (Phase 4), Claude review loop (Phase 5)
 - **Bookshelf** next: batch review + trust (K7), task records, git backup, Ask (K9–K11); updating collection notes when sources change; meaning-based search (D10: packs and search are keyword-only, so wrong-but-wordy notes still slip in); OCR is now step S2 (D19)
+- Sending changes between devices: Y1 made the data ready (0.16.0); the account, encryption and sync service are Y3–Y5
 - D22 product work: note sync between devices (B), the optional relay (C), API keys entered in the app (today: environment variables), installers that bundle Python and the UI, Google verification for the Drive scope
 - Agent/model connector interfaces and a Sage OS-owned task board (architecture track A1–A5)
 - Packaging/installer, CI (private remote exists: `nfihero/sage-os`)
@@ -71,13 +73,14 @@ expired** ("OAuth session expired"): run `claude auth login` again (README). Ver
 ## Next
 
 1. Inbox review of the textbook digest (user, with REVIEW); reject the textbook's front-matter cards and the older playbook card.
-2. Build order (D30): **Y1** sync-ready data model (D27, D28; plan in ROADMAP) → **G1** game mode (D29) → **K7** review at scale → **K14** meaning-based search → **A3** Sage OS task board → **Y2** keychain.
+2. Build order (D30): ~~Y1~~ (done, 0.16.0) → **G1** game mode (D29) → **K7** review at scale → **K14** meaning-based search → **A3** Sage OS task board → **Y2** keychain.
 3. Then Y3–Y6 (account, E2EE sync service, job routing + relay, phone app + installers), S2 OCR, K9, K11, Phases 4–6 with any-model lead (D26). K10 dropped (D30).
 
 ## Gate results
 
 | Phase | Gate | Result |
 |---|---|---|
+| Y1 | Two hubs on one PC, sharing only the synced stores by file copy, converge with no lost or duplicated item | pass (11 Oct) — two devices made chats, approvals, undos, rejects and deletes; logs swapped as files and replayed in order, reversed and shuffled: identical synced tables, every record once, deletes kept (also concurrent edits, and edit vs delete both ways). The gate found decimals losing digits in the log (fixed). Real data moved: 4 sessions, 2 chats, 91 messages, 55 proposals, 11 batches, 4 digests, 4 briefings; counts equal, 0 broken references, digest still at 13/45; pytest 264/264, smoke 18/18 |
 | K12 | A long document becomes per-chapter proposals with every section accounted for | pass (8 Oct) — local Gemma 4 12B, unattended: outreach playbook 32 pages → 34 notes, 55/55 concepts, ~4 min; options lecture 55 pages → 12 notes, 36/36, ~3.5 min; no real textbook in the Drive copy yet |
 | K8 | An agent's reply uses a fact that exists only in your notes, and the strip shows where it came from | pass — local Gemma 4 12B (no Hermes, no cloud) described the three-email outreach sequence from the two playbooks in 14 s, citing both; both shown in the strip; ✕ struck an item live; phone width checked; pytest 193/193 |
 | A5 | A machine with no local AI gets a working local model through Sage OS | partly — engine started a model from files already on disk and served chat; the download path is covered by tests (resume, checksum, unsafe archives) but not yet run against GitHub / Hugging Face |
