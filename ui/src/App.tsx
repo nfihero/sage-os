@@ -3,6 +3,7 @@ import { useHub } from "./useHub";
 import { useTheme } from "./theme";
 import TopBar from "./components/TopBar";
 import ClaudePane from "./components/ClaudePane";
+import ConnectAgent from "./components/ConnectAgent";
 import LocalPane from "./components/LocalPane";
 import Inbox from "./components/Inbox";
 import BoardView from "./components/Board";
@@ -47,6 +48,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("claude");
   const [shelf, setShelf] = useState(false);
   const [models, setModels] = useState(false);
+  const [peekClaude, setPeekClaude] = useState(false);
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
   const { panels } = hub;
@@ -88,9 +90,13 @@ export default function App() {
     ripples.current.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, t: performance.now(), color });
   }, [hub.events]);
 
-  const claude = <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={inbox.length} lowPower={lowPower} />;
+  // an agent that isn't connected shows an empty card until it is (D22.1); logged_in null = not checked yet
+  const claudeReady = !!panels.claude?.cli && panels.claude.logged_in !== false;
+  const claude = claudeReady || peekClaude
+    ? <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={inbox.length} lowPower={lowPower} />
+    : <ConnectAgent panel={panels.claude} onModels={() => setModels(true)} onPeek={() => setPeekClaude(true)} />;
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
-    chats={panels.chat?.sessions} game={panels.gamemode} onModels={() => setModels(true)} />;
+    chats={panels.chat?.sessions} game={panels.gamemode} hermes={panels.health?.gateway.state} onModels={() => setModels(true)} />;
   const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;

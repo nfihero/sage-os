@@ -30,21 +30,22 @@ function toItems(rows: any[]): ChatItem[] {
   return out;
 }
 
-export default function LocalPane({ sessions, board, runs, compact, lowPower, chats, game, onModels }: {
+export default function LocalPane({ sessions, board, runs, compact, lowPower, chats, game, hermes, onModels }: {
   sessions: ProfileSessions[]; board?: Board; runs: Record<string, { run_id: string | null }>; compact?: boolean; lowPower?: boolean;
-  chats?: ChatSessionInfo[]; game?: GameModePanel; onModels: () => void;
+  chats?: ChatSessionInfo[]; game?: GameModePanel; hermes?: string; onModels: () => void;
 }) {
   const now = useNow(5000);
   const [profile, setProfile] = useState("default");
   const [open, setOpen] = useState<Session | null>(null);
   const [mode, setMode] = useState<"chat" | "hermes">(() => (localStorage.getItem("sageos.local.mode") as "chat" | "hermes") ?? "chat");
   useEffect(() => { try { localStorage.setItem("sageos.local.mode", mode); } catch { /* private mode */ } }, [mode]);
-  if (mode === "chat" || sessions.length === 0) {
+  const hermesOn = hermes === "up" || hermes === "down" || (hermes === undefined && sessions.length > 0);   // has run (D22.1)
+  if (mode === "chat" || sessions.length === 0 || !hermesOn) {
     return (
       <section className="panel min-h-0" data-testid="local-pane">
         <div className="panel-head">
           <span className="tab">Chat</span>
-          {sessions.length > 0 && <button className="htab" onClick={() => setMode("hermes")} title="Hermes, if you have it">Hermes</button>}
+          {sessions.length > 0 && hermesOn && <button className="htab" onClick={() => setMode("hermes")} title="Hermes, if you have it">Hermes</button>}
           {(game?.state === "aside" || game?.state === "micro") && (
             <button className="chip amber ml-auto normal-case tracking-normal" onClick={onModels}
               title={`Local model unloaded while ${game.program?.name ?? "a program"} uses the graphics card`}>GAME MODE</button>
