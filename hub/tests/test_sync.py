@@ -1,12 +1,13 @@
 """Y1 (D27, D28): IDs that can't clash between devices, and this install's device identity."""
 import json
+import sqlite3
 import threading
 
 from fastapi.testclient import TestClient
 
 from sage_os_hub.app import create_app
 from sage_os_hub.config import Config
-from sage_os_hub.sync import Device, is_id, new_id
+from sage_os_hub.sync import Device, is_id, manifest, new_id
 from sage_os_hub.sync.ids import ALPHABET, Generator, id_time, ulid
 
 H = {"X-Sage-OS": "1"}
@@ -89,3 +90,42 @@ def test_storage_api_shows_and_renames_the_device(tmp_path):
         assert r.status_code == 200 and r.json() == dev | {"name": "Desk"}
         assert c.post("/api/storage/device", json={"name": "   "}, headers=H).status_code == 400
         assert c.get("/api/storage").json()["device"]["name"] == "Desk"
+
+
+# -- Y1.3 what syncs ---------------------------------------------------------------------------------------
+def _fresh_app_data(tmp_path):
+    """Everything a fresh hub creates in app data, after touching the routes that make files."""
+    cfg = Config(data_dir=tmp_path / "data", hermes_home=tmp_path, claude_enabled=False, hermes_profiles=[],
+                 engine_enabled=False)
+    with TestClient(create_app(cfg, start_adapters=False), base_url="http://127.0.0.1") as c:
+        c.get("/api/storage")
+    return cfg.data_dir
+
+
+def test_every_table_and_file_in_app_data_is_labelled(tmp_path):
+    data = _fresh_app_data(tmp_path)
+    unlabelled = [p.name for p in data.iterdir() if manifest.file_kind(p.name) is None]
+    assert not unlabelled, f"label these in sync/manifest.py FILES: {unlabelled}"
+    for db in data.glob("*.db"):
+        with sqlite3.connect(db) as con:
+            tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        missing = [t for t in tables if manifest.table_kind(db.name, t) is None]
+        assert not missing, f"label these tables of {db.name} in sync/manifest.py TABLES: {missing}"
+
+
+def test_the_manifest_names_only_tables_that_exist(tmp_path):
+    data = _fresh_app_data(tmp_path)
+    for db, tables in manifest.synced_tables().items():
+        with sqlite3.connect(data / db) as con:
+            have = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert set(tables) <= have, f"{db}: {set(tables) - have} listed but not created"
+
+
+def test_secrets_indexes_and_identity_never_sync():
+    for name in ("google-token.json", "client_secret_123.apps.googleusercontent.com.json", "device.json",
+                 "engine", "sources", "bookshelf-index.db", "sources-index.db", "hub.db-wal"):
+        assert manifest.file_kind(name) == manifest.LOCAL, name
+    assert manifest.table_kind("hub.db", "events") == manifest.LOCAL
+    assert manifest.table_kind("bookshelf-index.db", "fts_data") == manifest.LOCAL
+    assert manifest.table_kind("hub.db", "chat_items") == manifest.SYNCED
+    assert manifest.table_kind("hub.db", "no_such_table") is None
