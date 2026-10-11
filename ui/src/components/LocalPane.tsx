@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { get, onChat, post } from "../api";
-import type { Board, ChatItem, ChatSessionInfo, ProfileSessions, Session } from "../types";
+import type { Board, ChatItem, ChatSessionInfo, GameModePanel, ProfileSessions, Session } from "../types";
 import { ago, shortModel, useNow } from "../util";
 import ChatView from "./ChatView";
 import ModelChat from "./ModelChat";
@@ -30,9 +30,9 @@ function toItems(rows: any[]): ChatItem[] {
   return out;
 }
 
-export default function LocalPane({ sessions, board, runs, compact, lowPower, chats, onModels }: {
+export default function LocalPane({ sessions, board, runs, compact, lowPower, chats, game, onModels }: {
   sessions: ProfileSessions[]; board?: Board; runs: Record<string, { run_id: string | null }>; compact?: boolean; lowPower?: boolean;
-  chats?: ChatSessionInfo[]; onModels: () => void;
+  chats?: ChatSessionInfo[]; game?: GameModePanel; onModels: () => void;
 }) {
   const now = useNow(5000);
   const [profile, setProfile] = useState("default");
@@ -45,7 +45,11 @@ export default function LocalPane({ sessions, board, runs, compact, lowPower, ch
         <div className="panel-head">
           <span className="tab">Chat</span>
           {sessions.length > 0 && <button className="htab" onClick={() => setMode("hermes")} title="Hermes, if you have it">Hermes</button>}
-          <button className="chip ml-auto normal-case tracking-normal" onClick={onModels}>MODELS</button>
+          {(game?.state === "aside" || game?.state === "micro") && (
+            <button className="chip amber ml-auto normal-case tracking-normal" onClick={onModels}
+              title={`Local model unloaded while ${game.program?.name ?? "a program"} uses the graphics card`}>GAME MODE</button>
+          )}
+          <button className={`chip ${game?.state === "aside" || game?.state === "micro" ? "" : "ml-auto"} normal-case tracking-normal`} onClick={onModels}>MODELS</button>
         </div>
         <ModelChat sessions={chats ?? []} onModels={onModels} />
       </section>

@@ -37,6 +37,7 @@ from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
 from .engine import EngineError, LocalEngine
+from .gamemode import GameMode
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -143,6 +144,7 @@ class Hub:
         self.engine = LocalEngine(cfg.engine_root, cfg.engine_port, cfg.engine_binary,
                                   [Path(d) for d in cfg.engine_model_dirs], on_change=self.publish_engine_soon) \
             if cfg.engine_enabled else None
+        self.gamemode = GameMode(self, cfg.data_dir / "gamemode.json")      # G1: step aside for games (D29)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         # Bookshelf over MCP (K5): Claude gets an in-process server per session, the model chat calls the
         # tools itself; every other agent gets a Streamable HTTP endpoint whose path fixes the agent id.
@@ -603,6 +605,21 @@ class EngineModel(BaseModel):
     model: str = Field(min_length=1, max_length=300)
 
 
+class GameModeSettings(BaseModel):
+    mode: str = Field(pattern="^(always|ask|never)$")
+
+
+class GameModeProgram(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    counts: str | None = Field(default=None, pattern="^(always|never)$")
+    micro: str | None = Field(default=None, pattern="^(keep|pause)$")
+    clear: bool = False
+
+
+class GameModePause(BaseModel):
+    on: bool
+
+
 class EngineJob(BaseModel):
     key: str = Field(min_length=1, max_length=300)
 
@@ -671,6 +688,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
             tasks.append(asyncio.create_task(hub.watch_engine(), name="engine"))
             tasks.append(asyncio.create_task(hub.digests.run(), name="digest"))
+            if hub.engine:
+                tasks.append(asyncio.create_task(hub.gamemode.run(), name="gamemode"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
             bad = [r for r in results if not r["ok"]]
             url = f"http://{cfg.host}:{cfg.port}"
@@ -1021,6 +1040,31 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.panel("engine", e.status())
         hub.event("system", "engine", "engine.started", {"model": body.model})
         return serving
+
+    # -- game mode (G1, D29) -----------------------------------------------------------------------------
+    @app.get("/api/gamemode")
+    def gamemode_get():
+        return hub.gamemode.public()
+
+    @app.post("/api/gamemode/settings", dependencies=W)
+    def gamemode_settings(body: GameModeSettings):
+        hub.gamemode.set_mode(body.mode)
+        return hub.gamemode.public()
+
+    @app.post("/api/gamemode/program", dependencies=W)
+    def gamemode_program(body: GameModeProgram):
+        try:
+            hub.gamemode.set_program(body.name, body.counts, body.micro, body.clear)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return hub.gamemode.public()
+
+    @app.post("/api/gamemode/pause", dependencies=W)
+    async def gamemode_pause(body: GameModePause):
+        if not hub.engine:
+            raise HTTPException(409, "the local engine is turned off in config.toml")
+        await hub.gamemode.pause(body.on)
+        return hub.gamemode.public()
 
     @app.post("/api/engine/stop", dependencies=W)
     async def engine_stop():

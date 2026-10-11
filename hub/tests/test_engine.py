@@ -224,3 +224,21 @@ def test_chat_runs_the_tool_loop_and_keeps_the_transcript(chat):
     items = hub.store.chat_items(s["id"])
     assert items[0]["data"]["text"] == "What is enterprise value in my DCF notes?"      # the transcript shows what was typed
     assert hub.store.chat_session(s["id"])["title"].startswith("What is enterprise value")
+
+
+def test_local_chat_in_game_mode(chat):
+    """G1: with the main model unloaded the chat says why; with the micro model up, it answers and says so."""
+    hub, client, rounds = chat
+    s = client.post("/api/agents/chat/sessions", json={"provider": "engine", "model": "qwen"}, headers=H).json()
+    hub.gamemode.state, hub.gamemode.program = "aside", {"name": "Game.exe"}
+    hub.engine.serving = None
+    r = client.post(f"/api/agents/chat/sessions/{s['id']}/send", json={"text": "hi"}, headers=H)
+    assert r.status_code == 400 and "paused while Game.exe" in r.text
+    hub.gamemode.state = "micro"
+    hub.engine.serving = {"id": "gemma-4-e2b", "ready": True, "pid": 1}
+    assert client.post(f"/api/agents/chat/sessions/{s['id']}/send", json={"text": "What is WACC?"}, headers=H).status_code == 200
+    wait_idle(hub, s["id"])
+    items = hub.store.chat_items(s["id"])
+    assert items[1]["kind"] == "note" and "Answered by gemma-4-e2b" in items[1]["data"]["text"]
+    hub.engine.serving = None
+    hub.gamemode.state = "watching"

@@ -2,7 +2,8 @@
 `llama-server`; it never rewrites it. Users pick a model from a curated catalog that says, for this machine,
 whether it fits; the engine then serves it on an OpenAI-compatible endpoint that any connector can use.
 
-  * Hardware: RAM from psutil; NVIDIA VRAM from nvidia-smi; Apple Silicon shares RAM with the GPU (Metal).
+  * Hardware: RAM from psutil; graphics cards of any vendor from the OS (sage_os_hub.hardware); Apple Silicon
+    shares RAM with the GPU (Metal).
   * Binaries: the official ggml-org/llama.cpp GitHub release for this OS and GPU (CUDA, Vulkan, Metal, CPU),
     checked against the SHA-256 GitHub publishes. Or an existing build named in config ([engine] binary).
   * Models: GGUF files from Hugging Face, resumable, checked against the SHA-256 in catalog.json. Files
@@ -17,7 +18,6 @@ import os
 import platform
 import re
 import secrets
-import shutil
 import subprocess
 import sys
 import tarfile
@@ -30,12 +30,15 @@ from pathlib import Path
 import httpx
 import psutil
 
+from ..hardware import gpus
+
 CATALOG = Path(__file__).with_name("catalog.json")
 RELEASES = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=15"
 HF_FILE = "https://huggingface.co/{repo}/resolve/main/{file}"
 EXE = "llama-server.exe" if sys.platform == "win32" else "llama-server"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 CTX = 16384               # per request slot: a book section + its notes fit (K12)
+SMALL_CTX = 8192          # a micro model beside a game: chats and light jobs (G1)
 
 
 class EngineError(Exception):
@@ -51,18 +54,14 @@ def hardware() -> dict:
         hw["gpu"] = {"vendor": "apple", "name": "Apple Silicon (shares memory)", "vram_gb": hw["ram_gb"]}
         hw["backend"] = "metal"
         return hw
-    smi = shutil.which("nvidia-smi")
-    if smi:
-        try:
-            out = subprocess.run([smi, "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader,nounits"],
-                                 capture_output=True, text=True, timeout=10, creationflags=NO_WINDOW).stdout.strip().splitlines()
-            if out:
-                name, mem, driver = [x.strip() for x in out[0].split(",")]
-                hw["gpu"] = {"vendor": "nvidia", "name": name, "vram_gb": round(int(mem) / 1024, 1), "driver": driver}
-                hw["backend"] = "cuda"
-                return hw
-        except (OSError, ValueError, subprocess.SubprocessError):
-            pass
+    cards = gpus()                          # any vendor, from the OS (G1, D29.1); no nvidia-smi
+    if cards:
+        g = cards[0]                         # the card with the most memory: the one models run on
+        hw["gpu"] = {"vendor": g["vendor"], "name": g["name"], "vram_gb": round(g["vram_bytes"] / 2**30, 1),
+                     "driver": g.get("driver")}
+        if g["vendor"] == "nvidia":
+            hw["backend"] = "cuda"
+            return hw
     if sys.platform == "win32":
         hw["backend"] = "vulkan"             # AMD / Intel GPUs; Vulkan builds fall back to CPU if there's none
     return hw
@@ -81,7 +80,7 @@ def fit(size_bytes: int, hw: dict) -> tuple[str, float]:
     ram, gpu = hw["ram_gb"], hw.get("gpu")
     if hw["backend"] == "metal":
         state = "fits" if need <= ram * 0.65 else "tight" if need <= ram * 0.8 else "too big"
-    elif gpu and hw["backend"] == "cuda":
+    elif gpu and hw["backend"] in ("cuda", "vulkan") and gpu.get("vram_gb", 0) >= 2:    # a card with its own memory
         vram = gpu["vram_gb"]
         state = "fits" if need <= vram - 0.6 else "tight" if need <= vram + ram * 0.5 else "too big"
     else:
@@ -312,7 +311,8 @@ class LocalEngine:
                 return Path(m["path"])
         raise EngineError(f"model {model_id!r} isn't on this computer yet")
 
-    def start(self, model_id: str) -> dict:
+    def start(self, model_id: str, small: bool = False) -> dict:
+        """Serve a model. `small`: one 8K slot, for a micro model running beside a game (G1)."""
         b = self.binary()
         if not b:
             raise EngineError("llama-server isn't installed yet")
@@ -322,8 +322,9 @@ class LocalEngine:
         # Locked down: llama-server answers any web page by default (CORS *, no key) and its /slots and web
         # UI can show recent prompts, which carry the user's notes. A fresh key per start, passed in the
         # environment (not the command line, which other processes can read); no web UI; no CORS origin.
-        slots = 2 if has_gpu(hw) else 1     # two on a GPU: a chat needn't wait behind a digest section
-        args = [str(b), "-m", str(path), "--host", "127.0.0.1", "--port", str(self.port), "-c", str(CTX * slots),
+        slots = 2 if has_gpu(hw) and not small else 1     # two on a GPU: a chat needn't wait behind a digest section
+        ctx = SMALL_CTX if small else CTX
+        args = [str(b), "-m", str(path), "--host", "127.0.0.1", "--port", str(self.port), "-c", str(ctx * slots),
                 "--jinja", "--alias", model_id, "-np", str(slots), "-ngl", "999" if hw["backend"] != "cpu" else "0",
                 "--no-webui", "--cors-origins", "http://127.0.0.1:1"]
         self.api_key = secrets.token_urlsafe(32)
@@ -337,7 +338,8 @@ class LocalEngine:
             log.close()
         with self.lock:
             self.proc = proc
-            self.serving = {"id": model_id, "path": str(path), "started": time.time(), "ready": False, "pid": proc.pid}
+            self.serving = {"id": model_id, "path": str(path), "started": time.time(), "ready": False, "pid": proc.pid,
+                            "small": small}
         (self.root / "server.pid").write_text(str(proc.pid))
         return self.serving
 

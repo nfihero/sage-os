@@ -298,9 +298,17 @@ class Digests:
         if provider is None:
             await asyncio.to_thread(self._fail_job, job["id"], f"model provider {job['provider']!r} isn't configured")
             return True
-        if job["provider"] == "engine" and not (self.hub.engine and self.hub.engine.serving and self.hub.engine.serving.get("ready")):
-            await asyncio.to_thread(self._job_note, job["id"], "waiting for the local engine: start a model in MODELS")
-            return False
+        if job["provider"] == "engine":
+            gm, serving = getattr(self.hub, "gamemode", None), self.hub.engine.serving if self.hub.engine else None
+            if gm and gm.paused:                      # game mode (G1): digests wait for the main model
+                await asyncio.to_thread(self._job_note, job["id"], gm.reason())
+                return False
+            if not (serving and serving.get("ready")):
+                await asyncio.to_thread(self._job_note, job["id"], "waiting for the local engine: start a model in MODELS")
+                return False
+            if serving["id"] != job["model"]:         # never draft on another model (e.g. a micro model)
+                await asyncio.to_thread(self._job_note, job["id"], f"waiting for {job['model']} (the engine is serving {serving['id']})")
+                return False
         await asyncio.to_thread(self._job_note, job["id"], None)
         self._set_sec(job["id"], sec["idx"], status="drafting")
         self.publish(job["id"])

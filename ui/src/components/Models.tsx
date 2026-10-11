@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
-import type { EngineJob, EngineModel, EnginePanel, EngineState, ProviderInfo } from "../types";
+import type { EngineJob, EngineModel, EnginePanel, EngineState, GameModePanel, ProviderInfo } from "../types";
+import GameMode from "./GameMode";
 
 const gb = (b: number) => `${(b / 2 ** 30).toFixed(1)} GB`;
 const FIT: Record<string, [string, string]> = {
@@ -10,7 +11,7 @@ const FIT: Record<string, [string, string]> = {
 };
 
 /** Models (D22.3): the local engine, a catalog rated for this machine, and the cloud AIs that are connected. */
-export default function Models({ panel, onClose }: { panel?: EnginePanel; onClose: () => void }) {
+export default function Models({ panel, game, onClose }: { panel?: EnginePanel; game?: GameModePanel; onClose: () => void }) {
   const [state, setState] = useState<EngineState | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function Models({ panel, onClose }: { panel?: EnginePanel; onClos
                 <h3 className="display mb-1 text-[12px] text-cyan">This computer</h3>
                 <div className="text-ink/85">
                   {hw ? <>{hw.os === "macos" ? "Mac" : hw.os === "windows" ? "Windows" : hw.os} · {hw.ram_gb} GB memory
-                    {hw.gpu ? <> · {hw.gpu.name}{hw.gpu.vendor === "nvidia" ? ` (${hw.gpu.vram_gb} GB)` : ""}</> : " · no dedicated GPU"}
+                    {hw.gpu ? <> · {hw.gpu.name}{hw.gpu.vram_gb >= 1 ? ` (${hw.gpu.vram_gb} GB)` : ""}</> : " · no dedicated GPU"}
                     {" · "}runs models with <b>{hw.backend.toUpperCase()}</b></> : "…"}
                 </div>
                 <p className="mt-1 text-mute">Small models run on most laptops; big ones need a big GPU. A cloud AI plus a small local model works on modest hardware.</p>
@@ -74,6 +75,8 @@ export default function Models({ panel, onClose }: { panel?: EnginePanel; onClos
                   </div>
                 )}
               </section>
+
+              {s.binary && <GameMode g={game} />}
 
               {s.local.length > 0 && (
                 <section>

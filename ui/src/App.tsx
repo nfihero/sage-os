@@ -90,7 +90,7 @@ export default function App() {
 
   const claude = <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={inbox.length} lowPower={lowPower} />;
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
-    chats={panels.chat?.sessions} onModels={() => setModels(true)} />;
+    chats={panels.chat?.sessions} game={panels.gamemode} onModels={() => setModels(true)} />;
   const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} />;
@@ -151,7 +151,7 @@ export default function App() {
       <SafetyDrawer open={safety.open} safety={panels.safety ?? []} events={hub.events} onClose={safety.close} onOpenTask={setOpenTask} />
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
       {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} digests={panels.digests} proposals={inbox.filter((i) => i.source === "bookshelf").length} onClose={() => setShelf(false)} />}
-      {models && <Models panel={panels.engine} onClose={() => setModels(false)} />}
+      {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
     </>

@@ -104,12 +104,22 @@ class ChatConnector(AgentConnector):
         s = self._get(session_id)
         if self.busy(session_id):
             raise AgentBusy("still answering the previous message")
+        stand_in = None
+        if s["provider"] == "engine":                 # game mode (G1): the main model may be unloaded
+            gm, e = getattr(self.hub, "gamemode", None), self.hub.engine
+            if gm and gm.paused:
+                if not (e and e.serving):
+                    raise InvalidRequest(f"The local model is {gm.reason()}. Pick a cloud model for now, or let a "
+                                         "small model keep working (the inbox asks).")
+                stand_in = e.serving["id"]
         past = [i for i in self.hub.store.chat_items(session_id) if i["kind"] in ("user", "text")][-HISTORY:]
         if s["title"] == "New chat":
             s["title"] = (shown or text).strip().splitlines()[0][:60] or "New chat"
         s["updated"] = time.time()
         self.hub.store.upsert_chat_session(s)
         self._item(session_id, "user", {"text": shown if shown is not None else text})
+        if stand_in:
+            self._item(session_id, "note", {"text": f"Answered by {stand_in}: game mode unloaded the main model."})
         msgs = [{"role": "system", "content": SYSTEM}]
         msgs += [{"role": "user" if i["kind"] == "user" else "assistant", "content": i["data"].get("text", "")} for i in past]
         msgs.append({"role": "user", "content": text})

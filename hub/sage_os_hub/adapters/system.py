@@ -1,16 +1,14 @@
-"""GPU lane and service health: llama.cpp router, guardian sidecar, Hermes gateway, nvidia-smi."""
+"""GPU lane and service health: llama.cpp router, guardian sidecar, Hermes gateway, graphics cards (any vendor)."""
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import time
 import urllib.error
 import urllib.request
 
+from ..hardware import Probe, gpus
 from .base import Adapter
 
-NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def http_json(url: str, key: str | None = None, timeout: float = 2.0):
@@ -68,25 +66,16 @@ def ram() -> dict | None:
             "llama_gb": llama / gb, "pct": vm.percent}
 
 
-def nvidia_smi() -> dict | None:
-    exe = shutil.which("nvidia-smi")
-    if not exe:
+def gpu_lane(reading: dict) -> dict | None:
+    """The main graphics card's memory and activity from a hardware reading (any vendor; G1). Temperature and
+    power aren't available the same way for every vendor, so they're left out."""
+    cards = reading.get("adapters") or []
+    if not cards:
         return None
-    out = subprocess.run(
-        [exe, "--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu,power.draw",
-         "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=5,
-        creationflags=NO_WINDOW).stdout.strip().splitlines()
-    if not out:
-        return None
-    name, used, total, util, temp, power = [p.strip() for p in out[0].split(",")]
-
-    def num(x):
-        try:
-            return float(x)
-        except ValueError:
-            return None
-    return {"name": name, "vram_used_mb": num(used), "vram_total_mb": num(total),
-            "util_pct": num(util), "temp_c": num(temp), "power_w": num(power)}
+    g = cards[0]
+    busy = [p["busy"] for p in reading.get("programs", []) if p.get("adapter") == g.get("luid") and p.get("busy") is not None]
+    return {"name": g["name"], "vram_used_mb": g.get("used_bytes", 0) / 2**20, "vram_total_mb": g["vram_bytes"] / 2**20,
+            "util_pct": round(max(busy)) if busy else 0, "temp_c": None, "power_w": None}
 
 
 class GpuAdapter(Adapter):
@@ -96,11 +85,17 @@ class GpuAdapter(Adapter):
         super().__init__(emit)
         self.cfg, self.interval = cfg, cfg.poll["gpu"]
         self._loaded: tuple | None = None
+        self._probe = None
+
+    def _gpu(self) -> dict | None:
+        if self._probe is None:
+            self._probe = Probe()
+        return gpu_lane(self._probe.read())
 
     def smoke(self):
         info = router_info(self.cfg.hermes_home)
         return [("router server.json readable", bool(info.get("api_key")), "ok" if info else "missing"),
-                ("nvidia-smi on PATH", shutil.which("nvidia-smi") is not None, "")]
+                ("graphics cards readable", True, ", ".join(g["name"] for g in gpus()) or "none found (models run on the CPU)")]
 
     def poll(self):
         info = router_info(self.cfg.hermes_home)
@@ -117,7 +112,7 @@ class GpuAdapter(Adapter):
         except (urllib.error.URLError, OSError, AttributeError):
             pass
         active = [m for m in models if m["state"] in ("loaded", "loading")]
-        gpu = nvidia_smi()
+        gpu = self._gpu()
         self.emit.panel("gpu", {"gpu": gpu, "ram": ram(), "models": models, "active": active,
                                 "guardian": guardian, "router_error": err,
                                 "router_pid": info.get("pid"), "ts": time.time()})

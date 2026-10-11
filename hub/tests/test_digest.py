@@ -256,3 +256,21 @@ def test_digest_routes_need_the_header(env):
     hub, client, calls = env
     assert client.post("/api/digest", json={"source": "drive", "path": "finance-book.md"}).status_code == 403
     assert client.post("/api/digest", json={"source": "drive", "path": "nope.md"}, headers=H).status_code == 404
+
+
+def test_digest_waits_in_game_mode_and_never_drafts_on_another_model(env):
+    """G1: while game mode has stepped aside, and while a micro model stands in, sections stay pending."""
+    hub, client, calls = env
+    hub.engine.serving = {"id": "m", "ready": True}
+    job = client.post("/api/digest", json={"source": "drive", "path": "finance-book.md", "model": "m"}, headers=H).json()
+    hub.gamemode.state, hub.gamemode.program = "aside", {"name": "Game.exe"}
+    run_all(hub)
+    j = client.get(f"/api/digest/{job['id']}").json()
+    assert j["counts"] == {"pending": j["sections_total"]} and "paused while Game.exe" in j["error"]
+    hub.gamemode.state, hub.engine.serving = "watching", {"id": "gemma-4-e2b", "ready": True}
+    run_all(hub)
+    j = client.get(f"/api/digest/{job['id']}").json()
+    assert j["counts"] == {"pending": j["sections_total"]} and "waiting for m" in j["error"]
+    hub.engine.serving = {"id": "m", "ready": True}
+    run_all(hub)
+    assert client.get(f"/api/digest/{job['id']}").json()["status"] == "done"

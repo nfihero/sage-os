@@ -105,7 +105,17 @@ export type DigestJob = { id: string; source: string; path: string; title: strin
 export type DigestPreview = { source: string; path: string; chars: number; sections: number; chapters: number;
   outline: { chapter: string; sections: string[] }[] };
 
+export type GameModePanel = {
+  mode: "always" | "ask" | "never"; state: "watching" | "asking" | "aside" | "micro"; manual: boolean;
+  program: { name: string; why?: string; vram_bytes?: number } | null; since: number | null; previous: string | null;
+  note: string | null; resume_in: number | null; os?: string;
+  card: { name: string; vendor?: string; total_gb: number; used_gb: number } | null;
+  seen: { name: string; vram_gb: number; busy: number | null }[];
+  programs: Record<string, { counts?: "always" | "never"; micro?: "keep" | "pause" }>;
+};
+
 export type Panels = {
+  gamemode?: GameModePanel;
   digests?: { jobs: DigestJob[] };
   engine?: EnginePanel;
   chat?: { sessions: ChatSessionInfo[] };
