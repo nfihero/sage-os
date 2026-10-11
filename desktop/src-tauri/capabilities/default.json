@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The loading page gets nothing: the window only shows the hub, which talks to its own API over HTTP. No Tauri commands are exposed to any page (local or the hub's).",
+  "windows": ["main"],
+  "permissions": []
+}

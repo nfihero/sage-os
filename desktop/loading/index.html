@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sage OS</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin: 0; height: 100%; background: #010703; color: #c8ffd9;
+      font: 14px/1.5 ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; }
+    main { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+    h1 { margin: 0; font-size: 18px; letter-spacing: .3em; color: #3dff8b; text-shadow: 0 0 12px #3dff8b80; }
+    p { margin: 0; color: #7fa88c; text-align: center; max-width: 34em; padding: 0 16px; }
+    .bar { width: 160px; height: 2px; background: #0b2a16; overflow: hidden; }
+    .bar::after { content: ""; display: block; width: 40%; height: 100%; background: #3dff8b;
+      animation: run 1.2s ease-in-out infinite; }
+    @keyframes run { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    @media (prefers-reduced-motion: reduce) { .bar::after { animation: none; width: 100%; } }
+    .err { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SAGE//OS</h1>
+    <div class="bar"></div>
+    <p id="msg">Starting Sage OS…</p>
+  </main>
+</body>
+</html>
