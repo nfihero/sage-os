@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sage OS: library-first home (mockup C)</title>
+<!-- Mockup only (batch C of the 11 Oct UI audit). Static HTML in Sage OS's phosphor theme; real data from this PC
+     as of 11 Oct. Not wired to the hub. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Doto:wght@800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #010703; --panel: rgba(2, 13, 6, .86); --a: #3dff8b; --c: #ff9e40; --n: #ffe14d; --red: #ff5a5a;
+    --ink: #c9ffdb; --mute: #4c8660; --copy: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --display: "Rajdhani", sans-serif; --mono: "JetBrains Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--void); color: var(--ink); font: 13px/1.45 var(--mono); }
+  body { min-height: 100dvh; display: flex; flex-direction: column;
+    background: radial-gradient(1px 1px at 12px 12px, rgba(61,255,139,.10) 1px, transparent 1.5px) 0 0 / 24px 24px, var(--void); }
+  .fx { position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px); }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .chip { display: inline-flex; align-items: center; gap: .3rem; padding: 1px .5rem; font-size: 11px; white-space: nowrap;
+    border: 1px solid color-mix(in oklab, var(--a) 38%, transparent); color: var(--a); }
+  .chip.mute { border-color: color-mix(in oklab, var(--mute) 45%, transparent); color: var(--mute); }
+  .chip.amber { border-color: color-mix(in oklab, var(--n) 60%, transparent); color: var(--n); }
+  .chip.orange { border-color: color-mix(in oklab, var(--c) 55%, transparent); color: var(--c); }
+  button.chip:hover { background: color-mix(in oklab, currentColor 12%, transparent); }
+  .mute { color: var(--mute); }
+  .display { font-family: var(--display); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  .glow { color: var(--a); text-shadow: 0 0 8px color-mix(in oklab, var(--a) 70%, transparent); }
+  .light { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: color-mix(in oklab, var(--mute) 50%, transparent); }
+  .light.up { background: #9dffc4; box-shadow: 0 0 8px #9dffc4; }
+
+  /* top bar */
+  header { display: flex; align-items: center; gap: 22px; padding: 8px 16px; border-bottom: 1px solid color-mix(in oklab, var(--a) 25%, transparent);
+    background: rgba(1,7,3,.6); flex-wrap: wrap; }
+  .logo { font: 700 17px var(--display); letter-spacing: .2em; }
+  .logo b { color: var(--c); text-shadow: 0 0 8px rgba(255,158,64,.7); font-weight: 700; }
+  .clock { font: 800 26px "Doto", var(--mono); color: var(--a); text-shadow: 0 0 8px rgba(61,255,139,.6); }
+  nav { display: flex; gap: 0; margin-left: 8px; }
+  nav button { height: 30px; padding: 0 1.3rem 0 .9rem; margin-left: -8px; font: 600 13px var(--display); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--mute); background: color-mix(in oklab, var(--a) 6%, transparent); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  nav button:first-child { margin-left: 0; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  nav button.on { background: var(--a); color: var(--void); }
+  nav button:hover:not(.on) { color: var(--ink); background: color-mix(in oklab, var(--a) 14%, transparent); }
+  .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+  /* layout */
+  main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; padding: 14px 16px; max-width: 1600px; width: 100%; margin: 0 auto; }
+  .panel { position: relative; background: var(--panel); border: 1px solid color-mix(in oklab, var(--a) 22%, transparent);
+    box-shadow: inset 0 0 30px color-mix(in oklab, var(--a) 5%, transparent); }
+  .panel::before, .panel::after { content: ""; position: absolute; width: 12px; height: 12px; }
+  .panel::before { left: -1px; top: -1px; border-left: 2px solid var(--a); border-top: 2px solid var(--a); }
+  .panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--a); border-bottom: 2px solid var(--a); }
+  .head { display: flex; align-items: center; gap: .6rem; min-height: 30px; border-bottom: 1px solid color-mix(in oklab, var(--a) 28%, transparent);
+    font: 600 13px var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--a); padding-right: .7rem; }
+  .tab { height: 30px; display: inline-flex; align-items: center; padding: 0 1.4rem 0 .9rem; background: var(--a); color: var(--void);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  .head .sub { font: 12px var(--copy); letter-spacing: 0; text-transform: none; color: var(--mute); }
+  .body { padding: 12px 14px; }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  /* library */
+  .search { display: flex; align-items: center; gap: 10px; border: 1px solid color-mix(in oklab, var(--a) 45%, transparent);
+    background: rgba(1,7,3,.85); padding: 12px 14px; box-shadow: 0 0 22px color-mix(in oklab, var(--a) 12%, transparent); }
+  .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font: 16px var(--copy); }
+  .search input::placeholder { color: var(--mute); }
+  .scope { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .stats { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; }
+  .stats b { font: 800 22px "Doto", var(--mono); color: var(--a); text-shadow: 0 0 8px rgba(61,255,139,.5); margin-right: 6px; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 2px; border-bottom: 1px solid color-mix(in oklab, var(--a) 10%, transparent); cursor: pointer; }
+  .list li:hover { background: color-mix(in oklab, var(--a) 6%, transparent); }
+  .list .t { grid-column: 1; grid-row: 1; font: 14px var(--copy); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .m { grid-column: 1; grid-row: 2; font-size: 11px; color: var(--mute); }
+  .list .w { grid-column: 2; grid-row: 1 / span 2; font-size: 11px; color: var(--mute); align-self: center; }
+  .waiting { border-color: color-mix(in oklab, var(--n) 55%, transparent); }
+  .waiting .head { color: var(--n); border-color: color-mix(in oklab, var(--n) 35%, transparent); }
+  .waiting .tab { background: var(--n); }
+  .waiting::before, .waiting::after { border-color: var(--n) !important; }
+  .card { border: 1px solid color-mix(in oklab, var(--a) 20%, transparent); background: color-mix(in oklab, var(--a) 4%, transparent); padding: 10px 12px; }
+  .card + .card { margin-top: 8px; }
+  .card p { margin: 4px 0 8px; font: 13px/1.5 var(--copy); color: color-mix(in oklab, var(--ink) 85%, transparent); }
+  .bar { height: 8px; position: relative; background-image: radial-gradient(circle, color-mix(in oklab, var(--a) 22%, transparent) 1px, transparent 1.5px); background-size: 5px 5px; margin: 6px 0; }
+  .bar i { position: absolute; inset: 0 auto 0 0; background-image: radial-gradient(circle, var(--a) 1.3px, transparent 1.8px); background-size: 5px 5px; filter: drop-shadow(0 0 4px rgba(61,255,139,.7)); }
+
+  /* agents column */
+  .agent { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid color-mix(in oklab, var(--a) 30%, transparent); background: color-mix(in oklab, var(--a) 5%, transparent); }
+  .agent + .agent { margin-top: 10px; }
+  .orb { width: 44px; height: 44px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 40% 38%, #d9ffe8 0 6%, #3dff8b 22%, rgba(61,255,139,.25) 55%, transparent 70%); box-shadow: 0 0 22px rgba(61,255,139,.45); }
+  .agent .name { font: 600 15px var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--a); }
+  .agent .what { font: 12.5px/1.45 var(--copy); color: var(--mute); margin-top: 2px; }
+  .agent.empty { border-style: dashed; border-color: color-mix(in oklab, var(--mute) 45%, transparent); background: transparent; }
+  .agent.empty .orb { background: none; box-shadow: none; border: 1px dashed color-mix(in oklab, var(--mute) 60%, transparent); display: grid; place-items: center; color: var(--mute); font-size: 20px; }
+  .agent.empty .name { color: var(--mute); }
+  .tools { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .chats li .t { font-size: 13.5px; }
+  .compose { display: flex; gap: 8px; margin-top: 10px; }
+  .compose input { flex: 1; min-width: 0; background: rgba(1,7,3,.85); border: 1px solid color-mix(in oklab, var(--a) 30%, transparent); color: var(--ink); padding: 8px 10px; font: 13px var(--copy); outline: none; }
+
+  /* systems strip */
+  .systems { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding: 8px 14px; font-size: 12px; }
+  .systems .k { font: 600 11px var(--display); letter-spacing: .18em; color: var(--mute); text-transform: uppercase; margin-right: 6px; }
+  .systems .v { color: var(--ink); }
+  .note { max-width: 1600px; width: 100%; margin: 0 auto; padding: 0 16px 16px; font: 12.5px/1.5 var(--copy); color: var(--mute); }
+  .note b { color: var(--n); font-weight: 600; }
+
+  @media (max-width: 1000px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    .grid2 { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) {
+    header { gap: 10px; } .clock { display: none; } nav { order: 3; width: 100%; overflow-x: auto; }
+    main { padding: 10px; } .search input { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<div class="fx"></div>
+<header>
+  <span class="logo glow">SAGE<b>//</b>OS</span>
+  <span class="clock">15:42:07</span>
+  <nav>
+    <button class="on">Home</button>
+    <button>Library</button>
+    <button>Chats</button>
+    <button>Inbox 25</button>
+    <button>Systems</button>
+  </nav>
+  <div class="right">
+    <span class="chip mute" title="Game mode: watching">◐ game mode</span>
+    <button class="chip">MODELS</button>
+    <button class="chip mute">? GUIDE</button>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <!-- 1. Library: the thing Sage OS is for -->
+    <section class="panel">
+      <div class="head"><span class="tab">Your library</span><span class="sub">56 notes · 545 source files · every AI you connect reads from here</span></div>
+      <div class="body">
+        <label class="search">
+          <span class="glow">⌕</span>
+          <input placeholder="Search your notes and files…  (try “cost of capital” or “batch 4 targets”)" aria-label="Search your library" />
+          <span class="chip mute">Ctrl K</span>
+        </label>
+        <div class="scope">
+          <button class="chip">all</button><button class="chip mute">notes</button><button class="chip mute">sources</button>
+          <button class="chip mute">ACC 201</button><button class="chip mute">FIN 101</button><button class="chip mute">Deal Club</button>
+        </div>
+        <div class="stats">
+          <span><b>56</b>notes</span><span><b>545</b>source files</span><span><b>13</b><span class="mute">of 45 textbook chapters drafted into notes</span></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid2">
+      <section class="panel">
+        <div class="head"><span class="tab">Recent notes</span><button class="chip mute" style="margin-left:auto">open library →</button></div>
+        <div class="body">
+          <ul class="list">
+            <li><span class="t">Deal Club Training</span><span class="w">today</span><span class="m">Drive · drafted by an agent, approved by you</span></li>
+            <li><span class="t">Fall 26 Schedule Syllabus</span><span class="w">2 d</span><span class="m">Drive · drafted by an agent</span></li>
+            <li><span class="t">Product Spec — User Experience</span><span class="w">3 d</span><span class="m">Drive · imported</span></li>
+            <li><span class="t">a contact MDI: Needs Data Fix Log</span><span class="w">3 d</span><span class="m">Drive · imported</span></li>
+            <li><span class="t">DCF formula sheet</span><span class="w">5 d</span><span class="m">Finance · yours</span></li>
+            <li><span class="t">Bond pricing and interest rate risk</span><span class="w">5 d</span><span class="m">FIN 101 · drafted by an agent</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="col">
+        <section class="panel waiting">
+          <div class="head"><span class="tab">Waiting for you</span><span class="sub">25 cards</span></div>
+          <div class="body">
+            <div class="card">
+              <div class="display" style="font-size:12px;color:var(--n)">Textbook · chapter 1</div>
+              <p>Kieso <i>Intermediate Accounting</i>: 47 notes from 8 sections, every listed concept covered.</p>
+              <button class="chip amber">REVIEW 47 NOTES</button> <button class="chip mute">later</button>
+            </div>
+            <div class="card">
+              <p style="margin-top:0">24 more cards from the textbook digest.</p>
+              <button class="chip">OPEN INBOX →</button>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="head"><span class="tab">Digesting</span></div>
+          <div class="body">
+            <div class="list"><div class="t" style="font:14px var(--copy)">Intermediate Accounting 18e</div></div>
+            <div class="bar"><i style="width:29%"></i></div>
+            <div class="mute" style="font-size:12px">13 of 45 chapters sent for review · all 777 sections drafted · waiting for you to review before sending more</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Agents: only what's connected; the rest are empty slots -->
+  <aside class="col">
+    <section class="panel">
+      <div class="head"><span class="tab">Agents</span><span class="sub">what answers you</span></div>
+      <div class="body">
+        <div class="agent">
+          <div class="orb"></div>
+          <div style="min-width:0">
+            <div class="name">Local model</div>
+            <div class="what">Gemma 4 12B on this PC's GPU · private, free, works offline</div>
+            <div class="tools">
+              <span class="chip mute" title="Its tools">search notes</span><span class="chip mute">read sources</span><span class="chip mute">propose notes</span>
+            </div>
+          </div>
+        </div>
+        <div class="agent empty">
+          <div class="orb">+</div>
+          <div><div class="name">Connect an AI</div>
+            <div class="what">Claude, ChatGPT, Gemini or another local model. Each one gets the same tools and reads the same library.</div>
+            <div class="tools"><button class="chip">CONNECT CLAUDE</button><button class="chip mute">CHATGPT</button><button class="chip mute">GEMINI</button></div>
+          </div>
+        </div>
+        <div class="agent empty">
+          <div class="orb">+</div>
+          <div><div class="name">Connect an agent</div>
+            <div class="what">An agent that runs tasks on its own (Claude Code, Hermes). Optional.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><span class="tab">Chats</span><button class="chip" style="margin-left:auto">+ NEW</button></div>
+      <div class="body">
+        <ul class="list chats">
+          <li><span class="t">Who are the batch 4 targets? One line.</span><span class="w">4 d</span><span class="m">local model · read 2 notes</span></li>
+          <li><span class="t">Using my outreach playbook, what are the three emails?</span><span class="w">4 d</span><span class="m">local model · read the playbooks</span></li>
+        </ul>
+        <div class="compose"><input placeholder="Ask about your notes…" aria-label="New chat" /><button class="chip">SEND</button></div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- 3. Systems: one line here, the full dashboard one click away -->
+  <section class="panel systems">
+    <span><span class="k">GPU</span><span class="v">RTX 5070 Ti · 9.6 / 15.9 GB</span></span>
+    <span><span class="k">Engine</span><span class="light up"></span> <span class="v">Gemma 4 12B</span></span>
+    <span><span class="k">Game mode</span><span class="v">watching</span></span>
+    <span><span class="k">Library</span><span class="v">this PC only</span> <span class="mute">· not synced</span></span>
+    <span><span class="k">Hermes</span><span class="mute">not running</span></span>
+    <button class="chip mute" style="margin-left:auto">SYSTEMS: board · GPU lane · safety feed →</button>
+  </section>
+</main>
+
+<p class="note"><b>Mockup C, for review.</b> Home leads with your library (search, recent notes, what waits for you, digests);
+agents show only what's connected, with empty slots to connect more; the task board, GPU lane and safety feed move to
+SYSTEMS, summed up in the strip at the bottom. Same theme, fonts and panels as today. Nothing here is wired up yet.</p>
+</body>
+</html>
