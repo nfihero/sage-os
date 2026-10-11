@@ -129,3 +129,85 @@ def test_secrets_indexes_and_identity_never_sync():
     assert manifest.table_kind("bookshelf-index.db", "fts_data") == manifest.LOCAL
     assert manifest.table_kind("hub.db", "chat_items") == manifest.SYNCED
     assert manifest.table_kind("hub.db", "no_such_table") is None
+
+
+# -- Y1.4 change log --------------------------------------------------------------------------------------
+def _hub(tmp_path, name="data"):
+    cfg = Config(data_dir=tmp_path / name, hermes_home=tmp_path, claude_enabled=False, hermes_profiles=[],
+                 engine_enabled=False)
+    app = create_app(cfg, start_adapters=False)
+    return app.state.hub
+
+
+def test_each_synced_write_logs_exactly_one_entry(tmp_path):
+    hub = _hub(tmp_path)
+    log = hub.changelogs["hub.db"]
+    hub.store.upsert_chat_session({"id": "ch_1", "title": "Plan", "provider": "engine", "model": "m",
+                                   "created": 1.0, "updated": 1.0})
+    item = hub.store.add_chat_item("ch_1", "user", {"text": "hi"})
+    hub.store.upsert_chat_session({"id": "ch_1", "title": "Plan 2", "provider": "engine", "model": "m",
+                                   "created": 1.0, "updated": 2.0})
+    hub.store.add_event("system", "test", "x", {})          # this computer only: not logged
+    hub.store.save_panel("gpu", {})
+    es = log.entries()
+    assert [(e["stream"], e["op"]) for e in es] == [("chat_sessions", "upsert"), ("chat_items", "upsert"),
+                                                     ("chat_sessions", "upsert")]
+    assert all(e["device"] == hub.device.id and is_id(e["id"]) for e in es)
+    assert es[0]["record"] == "ch_1" and es[2]["data"]["title"] == "Plan 2"
+    assert es[1]["record"] == str(item["id"]) and json.loads(es[1]["data"]["data"]) == {"text": "hi"}
+    assert [e["id"] for e in es] == sorted(e["id"] for e in es)
+
+
+def test_a_failed_write_logs_nothing(tmp_path):
+    hub = _hub(tmp_path)
+    con = hub.store._db
+    con.execute("INSERT INTO chat_sessions (id, title, provider, model, created, updated) VALUES ('a','t','p','m',1,1)")
+    con.rollback()
+    assert hub.changelogs["hub.db"].entries() == []
+
+
+def test_composite_keys_blobs_and_deletes(tmp_path):
+    hub = _hub(tmp_path)
+    con, log = hub.writer.db, hub.changelogs["bookshelf.db"]
+    con.execute("INSERT INTO entries(batch_id, seq, path, before, after) VALUES (7, 1, 'a/b.md', NULL, ?)", (b"\x00\xffhi",))
+    con.execute("DELETE FROM entries WHERE batch_id=7")
+    con.commit()
+    put, gone = log.entries()
+    assert put["record"] == "[7,1]" and put["data"]["after"] == {"$hex": "00FF6869"} and put["data"]["before"] is None
+    assert gone["op"] == "delete" and gone["record"] == "[7,1]" and gone["data"] is None
+
+
+def test_quiet_writes_are_not_logged(tmp_path):
+    hub = _hub(tmp_path)
+    log = hub.changelogs["digest.db"]
+    with log.quiet():
+        hub.digests.db.execute("INSERT INTO jobs(id, status) VALUES ('dg_x', 'done')")
+        hub.digests.db.commit()
+    assert log.entries() == []
+
+
+def test_every_database_with_synced_tables_gets_a_log(tmp_path):
+    hub = _hub(tmp_path)
+    assert set(hub.changelogs) == set(manifest.synced_tables())
+    for name, log in hub.changelogs.items():
+        assert set(log.streams) == set(manifest.synced_tables()[name])
+        assert manifest.table_kind(name, "changes") == manifest.LOG
+
+
+def test_entries_from_another_device_merge_in_any_order(tmp_path):
+    a, b = _hub(tmp_path, "a"), _hub(tmp_path, "b")
+    assert a.device.id != b.device.id
+    la, lb = a.changelogs["bookshelf.db"], b.changelogs["bookshelf.db"]
+    a.writer.db.execute("INSERT INTO entries(batch_id, seq, path, before, after) VALUES (1, 1, 'n.md', NULL, ?)", (b"v1",))
+    a.writer.db.commit()
+    a.writer.db.execute("UPDATE entries SET after=? WHERE batch_id=1", (b"v2",))
+    a.writer.db.commit()
+    first, second = la.entries()
+    assert lb.apply([second, first]) == 2                     # out of order
+    assert lb.apply([first, second]) == 0                     # again: nothing new
+    assert b.writer.db.execute("SELECT after FROM entries").fetchall() == [(b"v2",)]
+    assert lb.entries() == la.entries()                       # same log, original ids and device kept
+    # b's next change to the record sorts after what it received, even if a's clock ran ahead
+    b.writer.db.execute("UPDATE entries SET after=? WHERE batch_id=1", (b"v3",))
+    b.writer.db.commit()
+    assert lb.entries()[-1]["id"] > second["id"] and lb.entries()[-1]["device"] == b.device.id

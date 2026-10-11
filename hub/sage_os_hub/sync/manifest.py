@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from fnmatch import fnmatch
 
-SYNCED, LOCAL, LIBRARY = "synced", "local", "library"
+SYNCED, LOCAL, LIBRARY, LOG = "synced", "local", "library", "log"
+LOG_TABLE = "changes"           # the change log itself, in each database with synced tables (Y1.4)
 
 # database file -> table -> kind. A whole database can be one kind ("*").
 TABLES: dict[str, dict[str, str]] = {
@@ -42,6 +43,14 @@ TABLES: dict[str, dict[str, str]] = {
     "sources-index.db": {"*": LOCAL},       # index of source copies; each device keeps its own sources
 }
 
+# each synced table's key: the columns that name one record across devices
+KEYS: dict[str, tuple[str, ...]] = {
+    "chat_sessions": ("id",), "chat_items": ("id",), "claude_sessions": ("id",),
+    "proposals": ("id",), "batches": ("id",), "entries": ("batch_id", "seq"),
+    "jobs": ("id",), "chapters": ("job", "chapter"), "secs": ("job", "idx"),
+    "briefings": ("id",), "briefing_chats": ("chat",),
+}
+
 # SQLite's own bookkeeping, never ours to sync
 INTERNAL_TABLES = ("sqlite_*",)
 
@@ -66,6 +75,8 @@ def table_kind(db: str, table: str) -> str | None:
     """SYNCED / LOCAL for a table, or None when it isn't listed (a test treats that as a bug)."""
     if any(fnmatch(table, p) for p in INTERNAL_TABLES):
         return LOCAL
+    if table == LOG_TABLE and any(k == SYNCED for k in TABLES.get(db, {}).values()):
+        return LOG
     tables = TABLES.get(db)
     if tables is None:
         return None

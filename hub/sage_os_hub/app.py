@@ -47,7 +47,7 @@ from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .store import Store
-from .sync import Device, new_id
+from .sync import ChangeLog, Device, new_id
 
 log = logging.getLogger("sage_os")
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
@@ -118,6 +118,13 @@ class Hub:
         self.builder = NoteBuilder(self.vault, self.sources)
         self.briefings = Briefings(cfg.store.with_name("briefings.db"), self)
         self.digests = Digests(cfg.store.with_name("digest.db"), self)
+        # Y1.4: changes to synced tables are logged alongside the row (sync/changelog.py)
+        self.changelogs = {
+            "hub.db": ChangeLog(self.store._db, "hub.db", self.device.id, self.store._lock),
+            "bookshelf.db": ChangeLog(self.writer.db, "bookshelf.db", self.device.id, self.writer.lock),
+            "digest.db": ChangeLog(self.digests.db, "digest.db", self.device.id, self.digests.lock),
+            "briefings.db": ChangeLog(self.briefings.db, "briefings.db", self.device.id, self.briefings.lock),
+        }
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])

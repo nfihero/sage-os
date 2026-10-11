@@ -24,6 +24,13 @@ def _encode(n: int, length: int) -> str:
     return "".join(reversed(out))
 
 
+def _decode(s: str) -> int:
+    n = 0
+    for ch in s:
+        n = n * 32 + ALPHABET.index(ch)
+    return n
+
+
 class Generator:
     """Makes ULIDs that never go backwards on this device, even within one millisecond or when the clock
     steps back. One shared instance serves the hub; tests make their own."""
@@ -49,6 +56,15 @@ class Generator:
             self._last_ms, self._last_rand = ms, rand
         return _encode(ms, 10) + _encode(rand, 16)
 
+    def observe(self, seen: str) -> None:
+        """Move past an ID made elsewhere (another device whose clock may run ahead), so the next ID made
+        here sorts after it: a change made after receiving another's is never taken as older."""
+        value = seen[-26:]
+        ms, rand = _decode(value[:10]), _decode(value[10:])
+        with self._lock:
+            if (ms, rand) > (self._last_ms, self._last_rand):
+                self._last_ms, self._last_rand = ms, rand
+
 
 ulid = Generator()
 
@@ -64,7 +80,4 @@ def is_id(value: str, prefix: str = "") -> bool:
 
 def id_time(value: str) -> float:
     """When an ID was made (seconds since the epoch), read back from its first 10 characters."""
-    ms = 0
-    for ch in value[-26:][:10]:
-        ms = ms * 32 + ALPHABET.index(ch)
-    return ms / 1000
+    return _decode(value[-26:][:10]) / 1000
