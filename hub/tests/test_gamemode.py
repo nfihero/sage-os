@@ -310,3 +310,17 @@ def test_gamemode_api(tmp_path):
         assert c.post("/api/gamemode/pause", json={"on": True}, headers=H).json()["state"] == "aside"
         assert c.post("/api/gamemode/pause", json={"on": False}, headers=H).json()["state"] == "watching"
         assert (cfg.data_dir / "gamemode.json").exists()
+
+
+def test_the_note_says_when_the_model_is_back(tmp_path):
+    gm, hub, clock = make(tmp_path)
+
+    async def go():
+        await gm.tick(playing(used_gb=20))
+        await gm.tick(reading())                               # the game closed
+        clock.t += 200
+        await gm.tick(reading())                               # resumes: the model starts loading
+        assert gm.state == "watching" and "is loading again" in gm.note
+        await gm.tick(reading())                               # ready on the next reading
+        assert gm.note == "file:gemma-12b is back"
+    run(go())

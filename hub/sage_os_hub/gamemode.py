@@ -170,6 +170,7 @@ class GameMode:
         self.downloading = False
         self.note: str | None = None
         self.reading: dict | None = None
+        self.loading_back: str | None = None   # the main model reloading after a program closed
 
     # -- what others ask ---------------------------------------------------------------------------------
     @property
@@ -186,7 +187,8 @@ class GameMode:
         cards = r.get("adapters") or []
         own = self._own_pids()
         cands = self.detector.candidates(r, own, set()) if r else {}
-        seen = sorted(cands.values(), key=lambda c: -c["vram_bytes"])[:6]
+        seen = sorted((c for c in cands.values() if c["vram_bytes"] >= 0.2 * GB or (c["busy"] or 0) >= 5),
+                      key=lambda c: -c["vram_bytes"])[:6]
         return {"mode": self.settings.mode, "state": self.state, "manual": self.manual, "program": self.program,
                 "since": self.since, "previous": self.previous, "note": self.note,
                 "resume_in": max(0, round(self.rules.resume_after_s - (self.clock() - self.clear_since)))
@@ -254,6 +256,9 @@ class GameMode:
             need = self.program or {"name": "a game", "pid": None, "vram_bytes": 0, "why": "paused by you"}
         if need is None and self.dismissed:
             self.dismissed = None                      # the program closed: ask again next time
+        e = self.hub.engine
+        if self.loading_back and e and e.serving and e.serving["id"] == self.loading_back and e.serving.get("ready"):
+            self.note, self.loading_back = f"{self.loading_back} is back", None
         if self.state == "watching":
             if need and s.mode != "never" and need["name"].lower() != (self.dismissed or "").lower():
                 if s.mode == "ask" and need.get("why") != "paused by you":
@@ -345,7 +350,7 @@ class GameMode:
         if e and prev:
             try:
                 await asyncio.to_thread(e.start, prev)
-                self.note = f"{name} closed; {prev} is loading again"
+                self.note, self.loading_back = f"{name} closed; {prev} is loading again", prev
             except Exception as exc:                   # noqa: BLE001 -- the model may have been removed
                 self.note = f"couldn't load {prev} again: {exc}"
             self.hub.panel("engine", e.status())
