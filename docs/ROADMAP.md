@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (11 Oct 2026 — DECISIONS D30, D32)
 
-**Y1** (done, 0.16.0) **→ G1 → K7 → K14 → F1 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7 → K14 → F1 → A3 → Y2**, then Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -123,7 +123,7 @@ model steps aside and comes back when the card is free. Built right after Y1 (D3
 
 | Step | Scope | Gate |
 |---|---|---|
-| G1 | **Game mode**: detect another program using the GPU on any vendor (Windows per-program GPU counters + full-screen state; macOS memory pressure); pause local jobs and unload the model; offer a micro model (Gemma 4 E2B class) for light background work if it fits, with the user's OK; resume when the program closes; *always / ask / never* setting and a *Pause for a game* button; the hardware check no longer needs `nvidia-smi` | With a game running on this PC, Sage OS frees the GPU within 10 s, asks about the micro model only when it fits, does one light job on it, and the digest resumes on the main model within 5 min of the game closing; detection also checked on a non-Nvidia GPU or a Mac |
+| G1 | **Game mode**: detect another program using the GPU on any vendor (Windows per-program GPU counters + full-screen state; macOS memory pressure); pause local jobs and unload the model; offer a micro model (Gemma 4 E2B class) for light background work if it fits, with the user's OK; resume when the program closes; *always / ask / never* setting and a *Pause for a game* button; the hardware check no longer needs `nvidia-smi` | With a game running on this PC, Sage OS frees the GPU within 10 s, asks about the micro model only when it fits, does one light job on it, and the digest resumes on the main model within 5 min of the game closing; detection also checked on a non-Nvidia GPU or a Mac — **built and partly checked (11 Oct): a GPU-heavy stand-in program made game mode step aside 35 s after it got busy (13.3 → 5.0 GB in use), offer the micro model with the right sizes, and reload the main model 3 min after it closed; the probe reads the AMD integrated GPU here as well as the RTX. Still to do: a real game, the micro model's light job, and a Mac (with F1)** |
 
 ## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
 

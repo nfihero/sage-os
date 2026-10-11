@@ -12,6 +12,27 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-10-11
+
+G1, game mode (D29). **Gate: partly** — built and partly checked (11 Oct): a GPU-heavy stand-in program made game mode step aside 35 s after it got busy (13.3 → 5.0 GB in use), offer the micro model with the right sizes, and reload the main model 3 min after it closed; the probe reads the AMD integrated GPU here as well as the RTX. Still to do: a real game, the micro model's light job, and a Mac (with F1).
+
+### Added
+- **Hardware readings for any GPU brand** (`sage_os_hub/hardware`): DirectX lists the cards (name, vendor, memory),
+  Windows' GPU counters give memory and activity per card and per program, plus the full-screen-game state, the window
+  in front and whether it fills the screen; macOS reads memory pressure and the front app. A reading takes ~2 ms.
+- **Game mode** (`gamemode.py`): detects a game or heavy program; pauses local jobs and unloads the local model; asks in
+  the inbox whether Gemma 4 E2B may keep working beside it (light jobs; digests wait for their own model); stops it if
+  the program needs the room; reloads the main model 3 min after it closes. Settings per computer in `gamemode.json`.
+- MODELS → **Game mode**: live status, always / ask / never, *Pause for a game*, always / never per program; a GAME MODE
+  chip next to MODELS while it has stepped aside.
+- **Gemma 4 E2B** (Q4_0, 2.8 GB, Apache-2.0) in the catalog as the micro model; the engine can start a model small
+  (one 8K slot).
+
+### Changed
+- The engine's hardware check and the GPU lane no longer use `nvidia-smi`; MODELS rates any card with its own memory.
+- Digests draft only on the model their job chose (same file under its other id counts); local chats say why they're
+  paused, or note that the micro model answered.
+
 ## [0.16.1] — 2026-10-11
 
 Docs only.
