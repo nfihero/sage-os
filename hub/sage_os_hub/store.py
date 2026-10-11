@@ -66,6 +66,7 @@ class Store:
                 self._db.execute(f"ALTER TABLE {table} ADD COLUMN deleted REAL")
         self._db.commit()
         self._lock = threading.Lock()
+        self.db, self.lock = self._db, self._lock      # for the change log (Y1.4)
         self._keep = keep_events
 
     def add_event(self, kind: str, source: str, type_: str, data: dict, ts: float | None = None) -> dict:

@@ -143,10 +143,14 @@ class Digests:
           CREATE TABLE IF NOT EXISTS chapters(job TEXT, chapter TEXT, ord INTEGER, status TEXT, proposals TEXT, error TEXT,
             PRIMARY KEY(job, chapter));
         """)
-        with self.lock:          # a section being drafted when the hub stopped is drafted again
+        self.wake = asyncio.Event()
+
+    def requeue_interrupted(self) -> None:
+        """A section being drafted when the hub stopped is drafted again. Called once the change log is
+        attached, so other devices hear of it (Y1.4)."""
+        with self.lock:
             self.db.execute("UPDATE secs SET status='pending' WHERE status='drafting'")
             self.db.commit()
-        self.wake = asyncio.Event()
 
     # -- creating -------------------------------------------------------------------------------------
     def plan(self, source: str, rel: str) -> tuple[str, list]:

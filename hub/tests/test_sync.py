@@ -276,3 +276,14 @@ def test_decimals_travel_through_the_log_exactly(tmp_path):
     b.changelogs["hub.db"].apply(a.changelogs["hub.db"].entries())
     got = sorted(r[0] for r in b.store._db.execute("SELECT created FROM chat_sessions"))
     assert got == sorted(vals)
+
+
+def test_entries_are_all_returned_unless_paged(tmp_path):
+    hub = _hub(tmp_path)
+    for i in range(30):
+        hub.store.add_chat_item("ch_x", "user", {"i": i})
+    log = hub.changelogs["hub.db"]
+    everything = log.entries()
+    assert len(everything) == 30
+    page = log.entries(limit=10)
+    assert page == everything[:10] and log.entries(after=page[-1]["id"], limit=10) == everything[10:20]

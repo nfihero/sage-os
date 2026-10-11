@@ -137,3 +137,32 @@ def test_a_delete_wins_over_an_earlier_edit_from_the_other_device(tmp_path):
     replay(a, fb), replay(b, fa)
     assert synced_state(a) == synced_state(b)
     assert cid not in {s["id"] for s in a.store.chat_sessions()}
+
+
+@pytest.mark.parametrize("first", ["a", "b"])
+def test_a_later_edit_on_the_other_device_doesnt_bring_a_deleted_chat_back(tmp_path, first):
+    a, b = device(tmp_path, "a"), device(tmp_path, "b")
+    cid = work(a, "pc")["chat"]
+    replay(b, export(a, tmp_path / "a1.json"))
+    row = {s["id"]: s for s in b.store.chat_sessions()}[cid]
+    a.store.delete_chat_session(cid)
+    b.store.upsert_chat_session(row | {"title": "renamed on the Mac, later"})
+    fa, fb = export(a, tmp_path / "a2.json"), export(b, tmp_path / "b2.json")
+    if first == "a":
+        replay(a, fb), replay(b, fa)
+    else:
+        replay(b, fa), replay(a, fb)
+    assert synced_state(a) == synced_state(b)
+    for hub in (a, b):
+        assert cid not in {s["id"] for s in hub.store.chat_sessions()}
+
+
+def test_both_devices_deleting_keep_the_earliest_delete_time(tmp_path):
+    a, b = device(tmp_path, "a"), device(tmp_path, "b")
+    cid = work(a, "pc")["chat"]
+    replay(b, export(a, tmp_path / "a1.json"))
+    a.store.delete_chat_session(cid)
+    b.store.delete_chat_session(cid)
+    fa, fb = export(a, tmp_path / "a2.json"), export(b, tmp_path / "b2.json")
+    replay(a, fb), replay(b, fa)
+    assert synced_state(a) == synced_state(b)

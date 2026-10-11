@@ -48,6 +48,7 @@ class ChangeLog:
         self.con, self.db_name, self.device_id = con, db_name, device_id
         self.lock = lock or threading.RLock()
         self._on = True
+        self._columns: dict[str, list[str]] = {}
         self.streams = manifest.synced_tables().get(db_name, [])
         con.create_function("sage_change_id", 0, lambda: ulid())
         con.create_function("sage_device", 0, lambda: self.device_id)
@@ -62,7 +63,10 @@ class ChangeLog:
 
     # -- writing ------------------------------------------------------------------------------------
     def columns(self, table: str) -> list[str]:
-        return [r[1] for r in self.con.execute(f"PRAGMA main.table_info({_q(table)})")]
+        """Read once per table: columns are added only at start-up, before the triggers are made."""
+        if table not in self._columns:
+            self._columns[table] = [r[1] for r in self.con.execute(f"PRAGMA main.table_info({_q(table)})")]
+        return self._columns[table]
 
     def _row_json(self, table: str, ref: str) -> str:
         parts = []
@@ -122,13 +126,14 @@ class ChangeLog:
         return out
 
     # -- reading and merging ------------------------------------------------------------------------
-    def entries(self, after: str = "", device: str | None = None, limit: int = 10_000) -> list[dict]:
+    def entries(self, after: str = "", device: str | None = None, limit: int | None = None) -> list[dict]:
+        """Entries after `after`, oldest first; all of them unless `limit` is given (then page with `after`)."""
         sql, args = "SELECT id, device, ts, stream, record, op, data FROM changes WHERE id > ?", [after]
         if device:
             sql += " AND device = ?"
             args.append(device)
         with self.lock:
-            rows = self.con.execute(sql + " ORDER BY id LIMIT ?", (*args, limit)).fetchall()
+            rows = self.con.execute(sql + " ORDER BY id LIMIT ?", (*args, -1 if limit is None else limit)).fetchall()
         return [{"id": r[0], "device": r[1], "ts": r[2], "stream": r[3], "record": r[4], "op": r[5],
                  "data": json.loads(r[6]) if r[6] is not None else None} for r in rows]
 
@@ -150,20 +155,46 @@ class ChangeLog:
                 latest = self.con.execute("SELECT max(id) FROM changes WHERE stream=? AND record=?",
                                           (e["stream"], e["record"])).fetchone()[0]
                 if latest != e["id"]:
-                    continue                    # a newer change to this record is already here
+                    self._keep_tombstone(e)     # a newer change is already here; a delete still counts
+                    continue
                 self._put(e)
             self.con.commit()
         return new
 
+    def _where(self, e: dict) -> tuple[str, list]:
+        key = manifest.KEYS[e["stream"]]
+        vals = [e["record"]] if len(key) == 1 else json.loads(e["record"])
+        return " AND ".join(f"{_q(k)} = ?" for k in key), vals
+
+    def _deleted(self, e: dict):
+        if "deleted" not in self.columns(e["stream"]):
+            return None
+        where, vals = self._where(e)
+        row = self.con.execute(f"SELECT deleted FROM {_q(e['stream'])} WHERE {where}", vals).fetchone()
+        return row[0] if row else None
+
+    def _keep_tombstone(self, e: dict) -> None:
+        """Deletes win (Y1.5): an older change that deleted the record still deletes it, with the earliest
+        delete time on every device, so a record never lives on one device and not on another."""
+        gone = (e.get("data") or {}).get("deleted")
+        if e["op"] != "upsert" or gone is None or "deleted" not in self.columns(e["stream"]):
+            return
+        where, vals = self._where(e)
+        self.con.execute(f"UPDATE {_q(e['stream'])} SET deleted = min(coalesce(deleted, ?), ?) WHERE {where}",
+                         [gone, gone, *vals])
+
     def _put(self, e: dict) -> None:
-        table, key = e["stream"], manifest.KEYS[e["stream"]]
+        table = e["stream"]
         if e["op"] == "delete":
-            vals = [e["record"]] if len(key) == 1 else json.loads(e["record"])
-            self.con.execute(f"DELETE FROM {_q(table)} WHERE " + " AND ".join(f"{_q(k)} = ?" for k in key), vals)
+            where, vals = self._where(e)
+            self.con.execute(f"DELETE FROM {_q(table)} WHERE {where}", vals)
             return
         have = set(self.columns(table))
         row = {k: (bytes.fromhex(v["$hex"]) if isinstance(v, dict) and "$hex" in v else v)
                for k, v in e["data"].items() if k in have}
+        here = self._deleted(e)
+        if here is not None:                            # deletes win (Y1.5): the earliest delete time
+            row["deleted"] = here if row.get("deleted") is None else min(here, row["deleted"])
         cols = list(row)
         self.con.execute(f"INSERT OR REPLACE INTO {_q(table)} ({', '.join(map(_q, cols))}) "
                          f"VALUES ({', '.join('?' * len(cols))})", [row[c] for c in cols])

@@ -126,11 +126,12 @@ class Hub:
         self.digests = Digests(cfg.store.with_name("digest.db"), self)
         # Y1.4: changes to synced tables are logged alongside the row (sync/changelog.py)
         self.changelogs = {
-            "hub.db": ChangeLog(self.store._db, "hub.db", self.device.id, self.store._lock),
+            "hub.db": ChangeLog(self.store.db, "hub.db", self.device.id, self.store.lock),
             "bookshelf.db": ChangeLog(self.writer.db, "bookshelf.db", self.device.id, self.writer.lock),
             "digest.db": ChangeLog(self.digests.db, "digest.db", self.device.id, self.digests.lock),
             "briefings.db": ChangeLog(self.briefings.db, "briefings.db", self.device.id, self.briefings.lock),
         }
+        self.digests.requeue_interrupted()
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])

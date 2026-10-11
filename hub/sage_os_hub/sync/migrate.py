@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 
 from .changelog import ChangeLog
-from .ids import Generator, is_id
+from .ids import Generator, is_id, ulid
 
 log = logging.getLogger("sage_os.sync")
 
@@ -89,7 +89,7 @@ def run(paths: dict[str, Path], backups: Path, device_id: str) -> dict | None:
         for c in cons.values():
             c.close()
 
-    folder = backups / time.strftime("pre-ulid-%Y%m%d-%H%M%S")
+    folder = backups / f"pre-ulid-{time.strftime('%Y%m%d-%H%M%S')}-{ulid()[-6:]}"
     folder.mkdir(parents=True, exist_ok=False)
     for name, path in paths.items():                  # the backup API copies WAL contents too
         src, dst = sqlite3.connect(path), sqlite3.connect(folder / name)
@@ -142,7 +142,7 @@ def _maps(cons: dict[str, sqlite3.Connection]) -> dict[str, dict]:
             continue
         rows = con.execute(f"SELECT id, {when} FROM {table}").fetchall()
         gen, m = Generator(), {}
-        for old, t in sorted(rows, key=lambda r: (r[1] or 0, str(r[0]))):
+        for old, t in sorted(rows, key=lambda r: (r[1] or 0, r[0])):    # one table's IDs are all text or all numbers
             if isinstance(old, str) and is_id(old, prefix):
                 continue
             m[str(old)] = prefix + gen(now_ms=int((t or 0) * 1000))
