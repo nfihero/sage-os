@@ -7,7 +7,7 @@ write path, and being TEMP they live only on the hub's own connection: the datab
 that another program would trip over.
 
 An entry: id (a ULID: orders entries), device, ts, stream (the table), record (its key), op (upsert / delete),
-data (the whole row as JSON; BLOBs as {"$hex": ...}).
+data (the whole row as JSON; BLOBs as {"$hex": ...}; REALs exact).
 
 Merging (apply): entries are idempotent (the id is the primary key) and a record takes the newest entry for it,
 whatever order entries arrive in, so two devices that have seen the same entries hold the same rows. Rows are
@@ -16,6 +16,7 @@ last-writer-wins as a whole; per-field merging is a later option.
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 import threading
 import time
@@ -32,6 +33,12 @@ CREATE INDEX IF NOT EXISTS changes_record ON changes(stream, record, id);
 """
 
 
+def _real(v: float) -> str:
+    """A REAL as exact JSON: SQLite's own JSON keeps only 15 digits, which changes timestamps on the way
+    through the log (found by the Y1.7 gate)."""
+    return repr(v) if math.isfinite(v) else "null"
+
+
 def _q(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
@@ -46,6 +53,7 @@ class ChangeLog:
         con.create_function("sage_device", 0, lambda: self.device_id)
         con.create_function("sage_now", 0, time.time)
         con.create_function("sage_logging", 0, lambda: 1 if self._on else 0)
+        con.create_function("sage_real", 1, _real, deterministic=True)
         with self.lock:
             con.executescript(SCHEMA)
             for table in self.streams:
@@ -60,7 +68,8 @@ class ChangeLog:
         parts = []
         for c in self.columns(table):
             v = f"{ref}.{_q(c)}"
-            parts.append(f"'{c}', CASE WHEN typeof({v}) = 'blob' THEN json_object('$hex', hex({v})) ELSE {v} END")
+            parts.append(f"'{c}', CASE typeof({v}) WHEN 'blob' THEN json_object('$hex', hex({v})) "
+                         f"WHEN 'real' THEN json(sage_real({v})) ELSE {v} END")
         return f"json_object({', '.join(parts)})"
 
     def _record(self, table: str, ref: str) -> str:

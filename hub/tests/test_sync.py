@@ -265,3 +265,14 @@ def test_no_code_hard_deletes_a_synced_record():
             if m.group(1) in synced:
                 found.append(f"{py.relative_to(root)}: {m.group(0)}")
     assert not found, found
+
+
+def test_decimals_travel_through_the_log_exactly(tmp_path):
+    a, b = _hub(tmp_path, "a"), _hub(tmp_path, "b")
+    vals = [1791753068.5010865, 0.1, 1e-300, 2.5e300, -0.0, 123456789.12345678]
+    for i, v in enumerate(vals):
+        a.store.upsert_chat_session({"id": new_id("ch_"), "title": str(i), "provider": "p", "model": "m",
+                                     "created": v, "updated": v})
+    b.changelogs["hub.db"].apply(a.changelogs["hub.db"].entries())
+    got = sorted(r[0] for r in b.store._db.execute("SELECT created FROM chat_sessions"))
+    assert got == sorted(vals)
