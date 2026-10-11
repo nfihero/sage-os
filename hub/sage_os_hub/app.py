@@ -31,7 +31,7 @@ from . import __version__, hermes_cli, storage
 from .adapters.kanban import KanbanAdapter
 from .adapters.safety import SafetyAdapter
 from .adapters.sessions import SessionsAdapter
-from .adapters.system import GpuAdapter, HealthAdapter
+from .adapters.system import GpuAdapter, HealthAdapter, hermes_installed
 from .adapters.vault import VaultAdapter
 from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
@@ -89,6 +89,9 @@ def security_headers(host: str) -> dict[str, str]:
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Cross-Origin-Opener-Policy": "same-origin",
     }
+
+
+HERMES_ADAPTERS = {"kanban", "safety", "sessions", "gpu"}      # adapters that read Hermes' files
 
 
 class Hub:
@@ -548,6 +551,11 @@ class Hub:
         for agent_id in self.mcp:
             results.append({"adapter": "bookshelf", "check": f"MCP endpoint for {agent_id}", "ok": True,
                             "detail": f"http://{self.cfg.host}:{self.cfg.port}{mcp_path(agent_id)}/"})
+        if not hermes_installed(self.cfg):
+            # Hermes is optional (D22.1): its checks say "not set up" instead of failing
+            for r in results:
+                if not r["ok"] and (r["adapter"] in HERMES_ADAPTERS or r["adapter"].startswith("hermes:")):
+                    r.update(ok=True, optional=True, detail=f"Hermes isn't set up on this computer (optional) · {r['detail']}")
         lead = self.cfg.lead_agent
         results.append({"adapter": "agents", "check": "lead agent connected", "ok": lead in self.agents,
                         "detail": lead if lead in self.agents else f"{lead!r} is not among {sorted(self.agents)}"})
@@ -773,7 +781,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.get("/api/ping")
     def ping():
-        return {"ok": True, "version": __version__}
+        """Also lets the desktop app (W1) tell a running Sage OS hub from anything else on the port."""
+        return {"ok": True, "app": "sage-os", "version": __version__}
 
     @app.get("/api/vault")
     async def vault():
@@ -1040,6 +1049,16 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         hub.panel("engine", e.status())
         hub.event("system", "engine", "engine.started", {"model": body.model})
         return serving
+
+    # -- the desktop app (W1) ---------------------------------------------------------------------------
+    @app.post("/api/quit", dependencies=W)
+    async def quit_hub():
+        """Stop the hub cleanly (the local model is unloaded on the way out). Used by the desktop app's Quit."""
+        stop = getattr(app.state, "quit", None)
+        if stop is None:
+            raise HTTPException(409, "this hub wasn't started in a way that can be stopped from here")
+        asyncio.get_running_loop().call_later(0.2, stop)
+        return {"ok": True}
 
     # -- game mode (G1, D29) -----------------------------------------------------------------------------
     @app.get("/api/gamemode")

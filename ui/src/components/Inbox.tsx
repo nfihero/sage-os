@@ -85,7 +85,9 @@ function Card({ it, now, onOpenTask, onReview }: { it: InboxItem; now: number; o
         <span className="ml-auto text-mute">{ago(it.created, now)}</span>
       </div>
       <div className="mt-1 text-[13px] text-ink">{it.title}</div>
-      {it.detail && <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-cyan/15 bg-void/70 p-1.5 text-[12px] text-ink/85">{it.detail}</pre>}
+      {it.detail && (it.source === "gamemode" || it.source === "bookshelf"
+        ? <p className="copy mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-ink/85">{it.detail}</p>     /* sentences */
+        : <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-cyan/15 bg-void/70 p-1.5 text-[12px] text-ink/85">{it.detail}</pre>)}
       {it.source === "bookshelf" && !held && it.context.proposal_id && (it.context.changes ?? []).length > 0 && (
         <button className="chip mt-1.5 h-7 px-2.5" onClick={() => onReview(it)}
           title="Read each note, keep or drop it, edit it, then approve only what you kept">
@@ -100,7 +102,7 @@ function Card({ it, now, onOpenTask, onReview }: { it: InboxItem; now: number; o
       )}
       {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your vault and the undo journal (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
       {it.context.problem && <div className="mt-1 text-[11.5px] text-amber">{String(it.context.problem)}</div>}
-      {it.context.cwd && <div className="mt-0.5 text-[10.5px] text-mute">in {it.context.cwd}</div>}
+      {it.context.cwd && <div className="mt-0.5 text-[11px] text-mute">in {it.context.cwd}</div>}
       {it.context.reason && <div className="mt-0.5 text-[11px] text-amber/90">{String(it.context.reason)}</div>}
       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={needsNote ? 3 : 1}
         placeholder={needsNote ? "Your answer to the worker (required)" : it.source === "bookshelf" ? "Note (optional; kept with your decision; don't paste secrets)" : "Note (optional; sent with a deny)"}

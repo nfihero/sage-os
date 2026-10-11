@@ -13,7 +13,9 @@ export type Gpu = {
   models: ModelInfo[]; active: ModelInfo[]; guardian: ModelInfo[]; router_error: string | null; ts: number;
 };
 
-export type Service = { up: boolean; ms: number | null; version?: string | null; error?: string; pid?: number };
+/** state (D22.1): up; down = was running earlier and stopped (red); off = installed, not running; absent = not set up */
+export type Service = { up: boolean; ms: number | null; version?: string | null; error?: string; pid?: number;
+  state?: "up" | "down" | "off" | "absent" };
 export type Health = Record<"gateway" | "router" | "sidecar", Service>;
 
 export type Guard = {

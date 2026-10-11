@@ -129,7 +129,7 @@ function ModelRow({ m, serving, canRun, job, onStart, onDownload, onCancel }: {
       <span className="min-w-0 flex-1">
         <span className="text-ink">{m.label}</span>
         {m.note && <span className="text-mute"> · {m.note}</span>}
-        <span className="block truncate font-mono text-[10.5px] text-mute" title={m.path ?? `${m.repo}/${m.file}`}>{m.path ?? `${m.repo} · ${m.licence ?? ""}`}</span>
+        <span className="block truncate font-mono text-[11px] text-mute" title={m.path ?? `${m.repo}/${m.file}`}>{m.path ?? `${m.repo} · ${m.licence ?? ""}`}</span>
       </span>
       <span className="text-mute">{gb(m.size)} · needs ~{m.need_gb} GB</span>
       <span className={`chip ${tone}`} title={why}>{m.fit.toUpperCase()}</span>

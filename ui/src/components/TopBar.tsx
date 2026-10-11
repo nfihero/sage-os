@@ -41,13 +41,16 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
       <div className="flex items-center gap-4">
         {SERVICES.map(([k, label, what]) => {
           const s = h?.[k];
-          const cls = !s ? "idle" : s.up ? "up" : "down";
+          const state = s?.state ?? (s ? (s.up ? "up" : "down") : undefined);
+          if (state === "absent") return null;            // not set up on this computer: optional (D22.1)
+          const cls = state === "up" ? "up" : state === "down" ? "down" : "idle";
           const tip = `${what}
-` + (s ? (s.up ? `up · ${s.ms} ms${s.version ? ` · v${s.version}` : ""}` : `DOWN · ${s.error ?? ""}`) : "waiting");
+` + (!s ? "waiting" : state === "up" ? `up · ${s.ms} ms${s.version ? ` · v${s.version}` : ""}`
+            : state === "down" ? `STOPPED · it was running earlier · ${s.error ?? ""}` : "not running (start it in Hermes if you use it)");
           return (
-            <span key={k} title={tip} data-service={k} data-up={s?.up ?? ""} className="readout flex items-center gap-1.5 text-[12px] tracking-[.12em]">
+            <span key={k} title={tip} data-service={k} data-state={state ?? ""} className="readout flex items-center gap-1.5 text-[12px] tracking-[.12em]">
               <span className={`light ${cls}`} />
-              {!compact && <span className={s && !s.up ? "text-red" : "text-ink/85"}>{label.toUpperCase()}</span>}
+              {!compact && <span className={state === "down" ? "text-red" : state === "up" ? "text-ink/85" : "text-mute"}>{label.toUpperCase()}</span>}
             </span>
           );
         })}
@@ -66,7 +69,7 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
           BOOKSHELF <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>
         </button>
         <select value={theme.theme} onChange={(e) => theme.setTheme(e.target.value as Theme)} title="Theme"
-          className="border border-cyan/35 bg-void px-1 py-0.5 text-[10.5px] uppercase text-cyan">
+          className="border border-cyan/35 bg-void px-1 py-0.5 text-[11px] uppercase text-cyan">
           {THEMES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <button className={`chip ${theme.motion === "reduced" || (theme.motion === "auto" && osReducedMotion()) ? "mute" : ""}`}

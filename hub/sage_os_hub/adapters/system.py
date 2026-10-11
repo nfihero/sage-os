@@ -125,6 +125,14 @@ class GpuAdapter(Adapter):
             self._loaded = key
 
 
+def hermes_installed(cfg) -> bool:
+    """Hermes is optional (D22): is it on this computer at all?"""
+    try:
+        return cfg.hermes_home.is_dir()
+    except OSError:
+        return False
+
+
 class HealthAdapter(Adapter):
     name = "health"
 
@@ -132,6 +140,7 @@ class HealthAdapter(Adapter):
         super().__init__(emit)
         self.cfg, self.interval = cfg, cfg.poll["health"]
         self._state: dict[str, bool] = {}
+        self._seen: set[str] = set()          # services seen up since the hub started
         self._router_pid = None
 
     def _check(self, url):
@@ -152,6 +161,14 @@ class HealthAdapter(Adapter):
         if pid:
             self._router_pid = pid
         services["router"]["pid"] = pid
+        installed = hermes_installed(self.cfg)
+        for name, svc in services.items():
+            if svc["up"]:
+                self._seen.add(name)
+            # D22.1: something never set up reads "not set up", something not started "off"; red ("down")
+            # only when it was running earlier and stopped
+            svc["state"] = ("up" if svc["up"] else "down" if name in self._seen
+                            else "off" if installed else "absent")
         self.emit.panel("health", services)
         for name, s in services.items():
             prev = self._state.get(name)

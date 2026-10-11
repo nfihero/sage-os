@@ -119,7 +119,7 @@ export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
             <UsageBars usage={usage} />
           </div>
           {DEMO && (
-            <div className="flex w-[120px] flex-wrap gap-1 text-[10px] @[640px]:w-full @[640px]:border-t @[640px]:border-orange/20 @[640px]:pt-2">
+            <div className="flex w-[120px] flex-wrap gap-1 text-[11px] @[640px]:w-full @[640px]:border-t @[640px]:border-orange/20 @[640px]:pt-2">
               {(["idle", "thinking", "streaming", "waiting", "error"] as OrbState[]).map((st) => (
                 <button key={st} className={`chip ${demo === st ? "amber" : "orange"}`} onClick={() => setDemo(demo === st ? null : st)}>{st}</button>
               ))}
@@ -157,7 +157,7 @@ export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
 function Row({ k, v, hot, dot }: { k: string; v: string; hot?: boolean; dot?: boolean }) {
   return (
     <div className="flex justify-between gap-2 border-b border-orange/10 py-0.5">
-      <span className="text-mute uppercase tracking-[.16em] text-[10.5px]">{k}</span>
+      <span className="text-mute uppercase tracking-[.16em] text-[11px]">{k}</span>
       <span className={`truncate ${dot ? "font-dot text-[17px] leading-none" : ""} ${hot ? "glow-orange" : "text-ink"}`} title={v}>{v}</span>
     </div>
   );

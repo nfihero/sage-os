@@ -71,3 +71,19 @@ def test_page_revalidates_so_a_rebuilt_ui_shows_up(tmp_path, monkeypatch):
         r = c.get("/")
         assert r.status_code == 200 and "<div id=\"root\">" in r.text
         assert r.headers["cache-control"] == "no-cache"
+
+
+def test_quit_needs_the_header_and_a_stoppable_hub(tmp_path):
+    cfg = Config(data_dir=tmp_path / "data", hermes_home=tmp_path, claude_enabled=False, hermes_profiles=[],
+                 engine_enabled=False)
+    app = create_app(cfg, start_adapters=False)
+    with TestClient(app, base_url="http://127.0.0.1") as c:
+        assert c.post("/api/quit").status_code == 403
+        assert c.post("/api/quit", headers={"X-Sage-OS": "1"}).status_code == 409
+        stopped = []
+        app.state.quit = lambda: stopped.append(True)
+        assert c.post("/api/quit", headers={"X-Sage-OS": "1"}).json() == {"ok": True}
+        import time
+        time.sleep(0.4)
+        assert stopped == [True]
+        assert c.get("/api/ping").json()["app"] == "sage-os"

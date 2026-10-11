@@ -52,7 +52,7 @@ export default function BoardView({ board, events, onOpen, compact }: {
     <section className="panel min-h-0" data-testid="board">
       <div className="panel-head">
         <span className="tab"><Scramble text="Board" /></span>
-        <span className="text-[10px] normal-case tracking-normal text-mute">{tasks.length} open · {board?.archived ?? 0} archived</span>
+        <span className="text-[11px] normal-case tracking-normal text-mute">{tasks.length} open · {board?.archived ?? 0} archived</span>
       </div>
       {compact ? (
         <div className="panel-body flex flex-col gap-1">

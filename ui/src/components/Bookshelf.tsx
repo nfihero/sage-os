@@ -100,14 +100,14 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
               {!searching && vault && vault.count > 0 && shown.length === 0 && <div className="text-mute">No notes match.</div>}
               {!searching && groups.map(([folder, list]) => (
                 <div key={folder} className="mb-2">
-                  <div className="display mb-1 text-[10px] text-cyan/80">{folder || "vault root"} <span className="text-mute">{list.length}</span></div>
+                  <div className="display mb-1 text-[11px] text-cyan/80">{folder || "vault root"} <span className="text-mute">{list.length}</span></div>
                   {list.map((n) => (
                     <button key={n.ref} onClick={() => setRef(n.ref)}
                       className={`flex w-full items-baseline gap-1.5 border-l-2 py-0.5 pl-2 text-left ${n.ref === ref ? "border-cyan bg-cyan/10 text-ink" : "border-transparent text-ink/80 hover:border-cyan/40"}`}>
                       <span className="min-w-0 flex-1 truncate">{n.title}</span>
-                      {n.origin === "agent" && <span className="text-[10px] text-orange" title={`written by ${n.agent ?? "an agent"}`}>AI</span>}
-                      {n.sensitive && <span className="text-[10px]" title={`Looks like it contains ${n.sensitive}; its text is left out of search`}>🔒</span>}
-                      {n.problems.length > 0 && <span className="text-[10px] text-amber" title={n.problems.join("\n")}>⚠</span>}
+                      {n.origin === "agent" && <span className="text-[11px] text-orange" title={`written by ${n.agent ?? "an agent"}`}>AI</span>}
+                      {n.sensitive && <span className="text-[11px]" title={`Looks like it contains ${n.sensitive}; its text is left out of search`}>🔒</span>}
+                      {n.problems.length > 0 && <span className="text-[11px] text-amber" title={n.problems.join("\n")}>⚠</span>}
                     </button>
                   ))}
                 </div>
@@ -179,7 +179,7 @@ function SearchResults({ hits, err, current, onPick }: {
           className={`border-l-2 py-1 pl-2 text-left ${h.ref === current ? "border-cyan bg-cyan/10" : "border-transparent hover:border-cyan/40"}`}>
           <div className="flex items-baseline gap-1.5">
             <span className="min-w-0 flex-1 truncate text-ink">{h.title}</span>
-            <span className="shrink-0 text-[10px] text-mute">{h.archived ? "archive" : h.folder || "root"}</span>
+            <span className="shrink-0 text-[11px] text-mute">{h.archived ? "archive" : h.folder || "root"}</span>
           </div>
           <div className="line-clamp-2 text-[11.5px] text-ink/65"><Snippet text={h.snippet} /></div>
         </button>
@@ -297,7 +297,7 @@ function NoteView({ meta, onBack, onOpen, onSource, known }: {
         )}
         {meta.problems.length > 0 && (
           <div className="mb-3 border border-amber/50 bg-amber/5 p-2 text-[12px]">
-            <div className="display mb-1 text-[10px] text-amber">Doesn't match the note format</div>
+            <div className="display mb-1 text-[11px] text-amber">Doesn't match the note format</div>
             <ul className="list-disc pl-4 text-amber">{meta.problems.map((p) => <li key={p}>{p}</li>)}</ul>
           </div>
         )}

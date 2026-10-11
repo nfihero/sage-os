@@ -45,7 +45,7 @@ export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { 
                 <button key={h.source + h.path} onClick={() => setOpen(h)}
                   className={`border-l-2 py-1 pl-2 text-left ${open?.path === h.path ? "border-cyan bg-cyan/10" : "border-transparent hover:border-cyan/40"}`}>
                   <div className="truncate text-ink">{h.title}</div>
-                  <div className="truncate font-mono text-[10px] text-mute">{h.path}</div>
+                  <div className="truncate font-mono text-[11px] text-mute">{h.path}</div>
                   <div className="line-clamp-2 text-[11.5px] text-ink/65"><Snippet text={h.snippet} /></div>
                 </button>
               ))}
@@ -117,7 +117,7 @@ function SourceCard({ s }: { s: SourceInfo }) {
     <div className="mb-3 border border-cyan/20 p-2">
       <div className="flex items-baseline gap-2">
         <span className="display text-[12px] text-cyan">{s.name}</span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-mute" title={`${s.path} → ${s.copy}`}>{s.path} → copy</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-mute" title={`${s.path} → ${s.copy}`}>{s.path} → copy</span>
       </div>
       <div className="mt-1 text-[11.5px] text-ink/80">
         {s.files} files copied, {s.indexed} searchable · {s.last_sync ? `synced ${ago(s.last_sync, now)} ago` : "never synced"}
@@ -135,12 +135,12 @@ function SourceCard({ s }: { s: SourceInfo }) {
           {byReason.map(([reason, paths]) => (
             <details key={reason} className="mb-1" open={/private|contains/.test(reason)}>
               <summary className={`cursor-pointer ${/private|contains/.test(reason) ? "text-amber" : "text-mute"}`}>{reason} ({paths.length})</summary>
-              <ul className="ml-3 font-mono text-[10.5px] text-ink/70">{paths.map((p) => <li key={p} className="truncate" title={p}>{p}</li>)}</ul>
+              <ul className="ml-3 font-mono text-[11px] text-ink/70">{paths.map((p) => <li key={p} className="truncate" title={p}>{p}</li>)}</ul>
             </details>
           ))}
         </div>
       )}
-      {s.include.length > 0 && <div className="mt-1.5 text-[10.5px] text-mute" title={s.include.join("\n")}>{s.include.length} folders selected in config.toml</div>}
+      {s.include.length > 0 && <div className="mt-1.5 text-[11px] text-mute" title={s.include.join("\n")}>{s.include.length} folders selected in config.toml</div>}
       {s.files > 0 && <BuildNotes name={s.name} synced={s.last_sync} />}
     </div>
   );
@@ -175,7 +175,7 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
   const fresh = cols?.filter((c) => c.status === "new").length ?? 0;
   return (
     <div className="mt-2 border-t border-cyan/15 pt-2">
-      <div className="display mb-1 text-[10px] text-cyan/80">Build notes from this source</div>
+      <div className="display mb-1 text-[11px] text-cyan/80">Build notes from this source</div>
       <p className="text-[11.5px] text-ink/75">Starter notes: your markdown files as notes, plus one index note per folder of documents. Everything arrives in the inbox for you to approve.</p>
       <button className="chip mt-1.5" disabled={busy || fresh === 0} onClick={build}
         title={fresh === 0 ? "Every collection is already built or waiting in the inbox" : "Propose starter notes for every collection not built yet"}>
@@ -187,7 +187,7 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
           {cols.map((c) => (
             <div key={c.dir} className="flex items-baseline gap-1.5 text-[11.5px]">
               <span className="min-w-0 flex-1 truncate text-ink/85" title={`${c.dir || "(source root)"} → ${c.folder}`}>{c.title}</span>
-              <span className="shrink-0 text-[10px] text-mute">{c.docs} docs{c.markdown ? ` · ${c.markdown} md` : ""}</span>
+              <span className="shrink-0 text-[11px] text-mute">{c.docs} docs{c.markdown ? ` · ${c.markdown} md` : ""}</span>
               <span className={`chip shrink-0 ${c.status === "built" ? "" : c.status === "pending" ? "amber" : "mute"}`}>{c.status === "built" ? "in vault" : c.status === "pending" ? "in inbox" : "new"}</span>
               <button className="chip shrink-0" disabled={c.docs === 0} onClick={() => draft(c)}
                 title="Ask an agent (Hermes by default, free and local) to read these documents and propose concept notes that cite them">DRAFT</button>

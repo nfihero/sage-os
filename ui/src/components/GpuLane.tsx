@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { Gpu, Health, HubEvent } from "../types";
+import type { EnginePanel, Gpu, Health, HubEvent } from "../types";
 import { ago, clock, shortModel, useNow } from "../util";
 import Scramble from "./Scramble";
 
-export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: Health; events: HubEvent[] }) {
+export default function GpuLane({ gpu, health, events, engine }: { gpu?: Gpu; health?: Health; events: HubEvent[]; engine?: EnginePanel }) {
   const now = useNow(2000);
   const g = gpu?.gpu;
   const used = g ? g.vram_used_mb / 1024 : 0;
@@ -21,33 +21,35 @@ export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: H
   }, [activeKey]);
 
   const swaps = events.filter((e) => e.type === "gpu.model").slice(0, 4);
-  const routerDown = health && !health.router.up;
+  const routerDown = health?.router.state === "down" || (!health?.router.state && health && !health.router.up);
+  const sidecar = health?.sidecar.state;
+  const own = engine?.serving;                            // Sage OS's own engine (D22.3)
 
   return (
     <section className="panel min-h-0" data-testid="gpu-lane">
       <div className="panel-head">
         <span className="tab"><Scramble text="GPU lane" /></span>
-        <span className="text-[10px] normal-case tracking-normal text-mute">{g?.name ?? "no GPU data"}</span>
+        <span className="text-[11px] normal-case tracking-normal text-mute">{g?.name ?? "no GPU data"}</span>
       </div>
       <div className="panel-body relative flex flex-col gap-3">
         {sweep > 0 && <div key={sweep} className="cycle" style={{ left: 0, width: "100%", top: 0 }} />}
         <div>
           <div className="mb-1 flex items-baseline justify-between">
-            <span className="display text-[10px] text-mute">VRAM</span>
+            <span className="display text-[11px] text-mute">VRAM</span>
             <span><span className={`font-dot text-[22px] leading-none ${pct > 92 ? "text-amber" : "glow-cyan"}`}>{used.toFixed(1)}</span><span className="text-mute"> / {total.toFixed(0)} GB</span></span>
           </div>
           <div className="vram-bar"><div className={`vram-fill ${pct > 92 ? "hot" : ""}`} style={{ width: `${pct}%` }} /></div>
           <div className="mt-1.5 flex gap-4 text-[11px] text-mute">
             <span>util <span className="text-ink">{g?.util_pct ?? "—"}%</span></span>
-            <span>temp <span className="text-ink">{g?.temp_c ?? "—"}°C</span></span>
-            <span>power <span className="text-ink">{g?.power_w?.toFixed(0) ?? "—"} W</span></span>
+            {g?.temp_c != null && <span>temp <span className="text-ink">{g.temp_c}°C</span></span>}
+            {g?.power_w != null && <span>power <span className="text-ink">{g.power_w.toFixed(0)} W</span></span>}
           </div>
         </div>
 
         {gpu?.ram && (
           <div data-testid="ram">
             <div className="mb-1 flex items-baseline justify-between">
-              <span className="display text-[10px] text-mute">RAM</span>
+              <span className="display text-[11px] text-mute">RAM</span>
               <span><span className={`font-dot text-[22px] leading-none ${gpu.ram.pct > 90 ? "text-amber" : "glow-cyan"}`}>{gpu.ram.used_gb.toFixed(1)}</span><span className="text-mute"> / {gpu.ram.total_gb.toFixed(0)} GB</span></span>
             </div>
             <div className="vram-bar" title={`llama.cpp holds ${gpu.ram.llama_gb.toFixed(1)} GB (CPU-offloaded experts + KV); everything else ${(gpu.ram.used_gb - gpu.ram.llama_gb).toFixed(1)} GB`}>
@@ -62,10 +64,19 @@ export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: H
         )}
 
         <div>
-          <div className="display mb-1 text-[10px] text-mute">ON THE CARD</div>
-          {routerDown ? <div className="text-red">router down</div> : active.length === 0 ? (
-            <div className="text-mute" data-testid="gpu-model">idle · no model loaded</div>
-          ) : active.map((m) => (
+          <div className="display mb-1 text-[11px] text-mute">ON THE CARD</div>
+          {own && (
+            <div data-testid="gpu-model" className={`card mb-1 cursor-default ${own.ready ? "streaming" : "pulse-cyan"}`}>
+              <div className="flex items-center gap-2">
+                <span className="glow-cyan">{shortModel(own.id)}</span>
+                <span className={`chip ${own.ready ? "" : "amber"}`}>{own.ready ? "loaded" : "loading"}</span>
+                <span className="chip mute">Sage OS engine</span>
+              </div>
+            </div>
+          )}
+          {routerDown && <div className="text-red">Hermes' model router stopped</div>}
+          {!routerDown && !own && active.length === 0 && <div className="text-mute" data-testid="gpu-model">idle · no model loaded</div>}
+          {!routerDown && active.map((m) => (
             <div key={m.id} data-testid="gpu-model" className={`card cursor-default ${m.state === "loading" ? "pulse-cyan" : "streaming"}`}>
               <div className="flex items-center gap-2">
                 <span className="glow-cyan">{shortModel(m.id)}</span>
@@ -82,22 +93,26 @@ export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: H
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-[11px]">
-          <span className="display text-[10px] text-mute">CPU SIDECAR</span>
-          {(gpu?.guardian ?? []).map((m) => (
-            <span key={m.id} className={`chip ${m.state === "loaded" ? "" : "mute"}`}>{shortModel(m.id)} · {m.state}</span>
-          ))}
-          {!gpu?.guardian?.length && <span className="chip red">guardian not reporting</span>}
-        </div>
+        {sidecar !== "absent" && (
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="display text-[11px] text-mute">CPU SIDECAR</span>
+            {(gpu?.guardian ?? []).map((m) => (
+              <span key={m.id} className={`chip ${m.state === "loaded" ? "" : "mute"}`}>{shortModel(m.id)} · {m.state}</span>
+            ))}
+            {!gpu?.guardian?.length && (sidecar === "down"
+              ? <span className="chip red">guardian stopped</span>
+              : <span className="chip mute" title="Hermes' guardian sidecar isn't running">guardian off</span>)}
+          </div>
+        )}
 
-        <div>
-          <div className="display mb-1 text-[10px] text-mute">AVAILABLE</div>
+        {(gpu?.models?.length ?? 0) > 0 && <div>
+          <div className="display mb-1 text-[11px] text-mute">AVAILABLE</div>
           <div className="flex flex-wrap gap-1">
             {(gpu?.models ?? []).map((m) => (
               <span key={m.id} title={m.id} className={`chip ${active.some((a) => a.id === m.id) ? "" : "mute"}`}>{shortModel(m.id)}</span>
             ))}
           </div>
-        </div>
+        </div>}
 
         {swaps.length > 0 && (
           <div className="text-[11px] text-mute">
@@ -106,7 +121,7 @@ export default function GpuLane({ gpu, health, events }: { gpu?: Gpu; health?: H
             ))}
           </div>
         )}
-        <div className="mt-auto text-[10px] text-mute">sampled {gpu ? ago(gpu.ts, now) : "—"} ago</div>
+        <div className="mt-auto text-[11px] text-mute">sampled {gpu ? ago(gpu.ts, now) : "—"} ago</div>
       </div>
     </section>
   );

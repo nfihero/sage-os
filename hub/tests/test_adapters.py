@@ -129,3 +129,46 @@ def test_store_roundtrip(tmp_path):
     assert s.events_after(0)[0]["data"] == {"task_id": "t1"} and s.events_after(e["id"]) == []
     s.save_panel("board", {"tasks": []})
     assert s.load_panels() == {"board": {"tasks": []}}
+
+
+def test_health_says_off_or_not_set_up_until_a_service_was_seen_running(tmp_path, monkeypatch):
+    """D22.1: red ("down") only for something that was running and stopped."""
+    from sage_os_hub.adapters import system
+    from sage_os_hub.config import Config
+
+    class Emit:
+        def __init__(self):
+            self.panels, self.events = {}, []
+
+        def panel(self, name, data):
+            self.panels[name] = data
+
+        def event(self, *a):
+            self.events.append(a)
+    up = {"gateway": False, "router": False, "sidecar": False}
+    by_port = {"8642": "gateway", "18434": "router", "18435": "sidecar"}       # config.py defaults
+    monkeypatch.setattr(system.HealthAdapter, "_check",
+                        lambda self, url: {"up": up[by_port[url.split(":")[2].split("/")[0]]], "ms": 1})
+    e = Emit()
+    a = system.HealthAdapter(e, Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "none"))
+    a.poll()
+    assert {k: v["state"] for k, v in e.panels["health"].items()} == {"gateway": "absent", "router": "absent", "sidecar": "absent"}
+    (tmp_path / "hermes").mkdir()
+    a = system.HealthAdapter(e, Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "hermes"))
+    a.poll()
+    assert e.panels["health"]["router"]["state"] == "off"
+    up["router"] = True
+    a.poll()
+    assert e.panels["health"]["router"]["state"] == "up"
+    up["router"] = False
+    a.poll()
+    assert e.panels["health"]["router"]["state"] == "down" and e.panels["health"]["gateway"]["state"] == "off"
+
+
+def test_hermes_checks_are_optional_when_hermes_isnt_installed(tmp_path):
+    from sage_os_hub.app import create_app
+    from sage_os_hub.config import Config
+    hub = create_app(Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "none", engine_enabled=False),
+                     start_adapters=False).state.hub
+    results = hub.run_smoke()
+    assert all(r["ok"] for r in results) and any(r.get("optional") for r in results)

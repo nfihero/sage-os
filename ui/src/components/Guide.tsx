@@ -192,7 +192,7 @@ function Tour({ onDone }: { onDone: () => void }) {
       <div key={i} className="panel tour-card absolute h-auto flex-none" style={style} onClick={(e) => e.stopPropagation()}
         role="dialog" aria-live="polite" aria-label={step.title}>
         <div className="flex flex-col gap-2 p-4">
-          <div className="readout text-[10.5px] text-mute">STEP {i + 1} OF {STEPS.length}</div>
+          <div className="readout text-[11px] text-mute">STEP {i + 1} OF {STEPS.length}</div>
           <div className="display glow-cyan text-[15px]">{step.title}</div>
           <p className="text-[12.5px] leading-relaxed text-ink/90">{step.body}</p>
           <div className="mt-1 flex items-center gap-2">

@@ -20,7 +20,7 @@ export default function Rail({ safety, events, onOpen }: { safety: Guard[]; even
           </button>
         ))}
         {tab === "safety" && (
-          <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[10px] normal-case tracking-normal text-mute">
+          <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] normal-case tracking-normal text-mute">
             <input type="checkbox" checked={blocksOnly} onChange={(e) => setBlocksOnly(e.target.checked)} className="accent-cyan-400" />
             non-allow only
           </label>

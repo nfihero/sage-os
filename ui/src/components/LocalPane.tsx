@@ -93,13 +93,13 @@ function HermesPane({ sessions, board, runs, compact, lowPower, now, profile, se
         <div className="flex items-center gap-3 border-b border-cyan/15 px-3 py-1.5">
           <Orb id={p.profile} state={orb.state} pulse={orb.pulse} tool={orb.tool} size={compact ? 84 : 104} lowPower={lowPower} dots={1600} />
           <div className="readout min-w-0 flex-1 text-[12px]">
-            <div className="flex justify-between"><span className="text-mute text-[10.5px] tracking-[.16em]">STATE</span>
+            <div className="flex justify-between"><span className="text-mute text-[11px] tracking-[.16em]">STATE</span>
               <span className={`font-dot text-[16px] leading-none ${orb.state === "idle" ? "text-ink" : "glow-cyan"}`}>{orb.state.toUpperCase()}{worker ? " · WORKER" : ""}</span></div>
-            <div className="flex justify-between"><span className="text-mute text-[10.5px] tracking-[.16em]">MODEL</span>
+            <div className="flex justify-between"><span className="text-mute text-[11px] tracking-[.16em]">MODEL</span>
               <span className="truncate text-ink">{shortModel(p.sessions[0]?.model)}</span></div>
-            <div className="flex justify-between"><span className="text-mute text-[10.5px] tracking-[.16em]">SESSIONS</span>
+            <div className="flex justify-between"><span className="text-mute text-[11px] tracking-[.16em]">SESSIONS</span>
               <span className="text-ink">{p.total}</span></div>
-            <div className="flex justify-between"><span className="text-mute text-[10.5px] tracking-[.16em]">RUNTIME</span>
+            <div className="flex justify-between"><span className="text-mute text-[11px] tracking-[.16em]">RUNTIME</span>
               <span className="text-ink">profile · {p.profile}</span></div>
           </div>
         </div>

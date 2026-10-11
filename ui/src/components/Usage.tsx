@@ -26,7 +26,7 @@ export function UsageBars({ usage, compact }: { usage?: Record<string, UsageWind
         const pct = u.utilization == null ? null : Math.round(u.utilization * 100);
         const hot = u.status !== "allowed" || (pct ?? 0) >= 80;
         return (
-          <div key={k} className="flex items-center gap-1.5 text-[10.5px]"
+          <div key={k} className="flex items-center gap-1.5 text-[11px]"
             title={pct == null
               ? `${LABELS[k] ?? k}: under Claude's warning threshold (exact % is only reported near the limit) · ${resets(u.resets_at)}`
               : `${LABELS[k] ?? k}: ${pct}% used · ${u.status} · ${resets(u.resets_at)}`}>

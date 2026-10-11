@@ -70,7 +70,7 @@ export default function BootScreen({ hub, replay, onShowing }: { hub: HubState; 
           ))}
           {step > lines.length && <div className="boot-line mt-3 text-cyan">READY<span className="caret" /></div>}
         </div>
-        <div className="mt-6 text-[10.5px] tracking-[.2em] text-mute">PRESS ANY KEY</div>
+        <div className="mt-6 text-[11px] tracking-[.2em] text-mute">PRESS ANY KEY</div>
       </div>
     </div>
   );

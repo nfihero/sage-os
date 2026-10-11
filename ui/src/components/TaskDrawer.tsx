@@ -102,7 +102,7 @@ function lastBlockReason(d: TaskDetail): string | null {
 function Section({ title, tone, children }: { title: string; tone?: "amber"; children: React.ReactNode }) {
   return (
     <div className={tone === "amber" ? "border border-amber/50 bg-amber/5 p-2" : ""}>
-      <div className={`display mb-1.5 text-[10px] ${tone === "amber" ? "text-amber" : "text-cyan/80"}`}>{title}</div>
+      <div className={`display mb-1.5 text-[11px] ${tone === "amber" ? "text-amber" : "text-cyan/80"}`}>{title}</div>
       {children}
     </div>
   );

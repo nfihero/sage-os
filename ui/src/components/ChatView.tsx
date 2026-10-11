@@ -100,7 +100,7 @@ function Item({ it, tone }: { it: ChatItem; tone: Tone }) {
       return (
         <div className="ml-auto max-w-[85%] border border-ink/15 bg-ink/5 px-3 py-2">
           <div className="whitespace-pre-wrap">{d.text}</div>
-          <div className="mt-0.5 text-right text-[10px] text-mute">{clock(it.ts)}</div>
+          <div className="mt-0.5 text-right text-[11px] text-mute">{clock(it.ts)}</div>
         </div>
       );
     case "text":
@@ -127,7 +127,7 @@ function Item({ it, tone }: { it: ChatItem; tone: Tone }) {
         </div>
       );
     case "note":
-      if (d.turn_end) return <div className="text-center text-[10px] text-mute">— {d.ms ? `${(d.ms / 1000).toFixed(1)} s` : ""} —</div>;
+      if (d.turn_end) return <div className="text-center text-[11px] text-mute">— {d.ms ? `${(d.ms / 1000).toFixed(1)} s` : ""} —</div>;
       return <div className="text-[12px] text-amber">{d.text}</div>;
     case "error":
       return <div className="border border-red/50 bg-red/5 px-2 py-1.5 text-[12.5px] text-red whitespace-pre-wrap">{d.text}</div>;

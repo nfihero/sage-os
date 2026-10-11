@@ -93,7 +93,7 @@ export default function App() {
     chats={panels.chat?.sessions} game={panels.gamemode} onModels={() => setModels(true)} />;
   const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
-  const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} />;
+  const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;
   const cell = (a: Area, node: React.ReactNode) => (
     <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }} data-tour={a}>
       <div className={`kicker ${a === "claude" ? "text-orange/70" : ""}`}><span>{KICKERS[a][0]}</span><span>{KICKERS[a][1]}</span></div>

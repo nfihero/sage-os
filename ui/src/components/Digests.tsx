@@ -140,7 +140,7 @@ function JobView({ id, summary, onBack }: { id: string; summary?: DigestJob; onB
             </div>
           </div>
         ))}
-        <div className="mt-1 flex flex-wrap gap-3 text-[10.5px] text-mute">
+        <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-mute">
           {Object.entries(CELL).map(([k, [cls, why]]) => <span key={k} className="flex items-center gap-1"><span className={`inline-block h-2.5 w-2.5 ${cls}`} />{why}</span>)}
           <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 outline outline-1 outline-amber" />a concept wasn't covered</span>
         </div>

@@ -10,3 +10,6 @@ data/
 config.local.toml
 data.moved-*/
 data-*/
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
