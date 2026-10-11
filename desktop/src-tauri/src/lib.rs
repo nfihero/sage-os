@@ -87,6 +87,12 @@ fn hub_command(log: &PathBuf) -> Option<Command> {
         c
     };
     cmd.arg("--log").arg(log);
+    // anything the hub prints before its own log is set up (a bad config, a port in use) lands next to it
+    if let Ok(out) = std::fs::OpenOptions::new().create(true).append(true).open(log.with_file_name("hub-console.log")) {
+        if let Ok(err) = out.try_clone() {
+            cmd.stdout(std::process::Stdio::from(out)).stderr(std::process::Stdio::from(err));
+        }
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -150,7 +156,7 @@ fn connect(app: AppHandle) {
             while !hub_up(port) {
                 let exited = hub.child.lock().unwrap().as_mut().and_then(|c| c.try_wait().ok().flatten());
                 if let Some(status) = exited {
-                    return say(&app, &format!("Sage OS's hub stopped while starting ({status}). Its log: {}", log.display()));
+                    return say(&app, &format!("Sage OS's hub stopped while starting ({status}). See {} and hub-console.log next to it.", log.display()));
                 }
                 if started.elapsed() > Duration::from_secs(90) {
                     return say(&app, &format!("Sage OS's hub didn't answer within 90 s. Its log: {}", log.display()));

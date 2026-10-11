@@ -274,3 +274,19 @@ def test_digest_waits_in_game_mode_and_never_drafts_on_another_model(env):
     hub.engine.serving = {"id": "m", "ready": True}
     run_all(hub)
     assert client.get(f"/api/digest/{job['id']}").json()["status"] == "done"
+
+
+def test_the_same_model_file_under_its_other_id_counts(env):
+    from pathlib import Path
+    hub, client, calls = env
+    file = Path("C:/models/gemma.gguf")
+
+    def resolve(model_id):
+        if model_id == "gemma-4-12b":
+            return file
+        raise KeyError(model_id)
+    hub.engine.resolve_model = resolve
+    d = hub.digests
+    assert d._same_model("gemma-4-12b", {"id": "file:gemma", "path": str(file)})
+    assert not d._same_model("gemma-4-12b", {"id": "gemma-4-e2b", "path": "C:/models/e2b.gguf"})
+    assert not d._same_model("unknown", {"id": "x", "path": "y"})

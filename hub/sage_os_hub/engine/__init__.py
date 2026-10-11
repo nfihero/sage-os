@@ -94,7 +94,8 @@ def pick_asset(assets: list[dict], tag: str, hw: dict) -> list[dict]:
     arch = "arm64" if hw["arch"] in ("arm64", "aarch64") else "x64"
     if hw["os"] == "windows":
         if hw["backend"] == "cuda":
-            driver = int(str(hw["gpu"].get("driver", "0")).split(".")[0] or 0)
+            m = re.match(r"\d+", str(hw["gpu"].get("driver") or ""))
+            driver = int(m.group()) if m else 0           # unknown driver: the older, more compatible CUDA build
             cuda = "13.4" if driver >= 580 else "12.4"
             want = [f"llama-{tag}-bin-win-cuda-{cuda}-{arch}.zip", f"cudart-llama-bin-win-cuda-{cuda}-{arch}.zip"]
         else:

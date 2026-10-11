@@ -79,13 +79,20 @@ def test_nvidia_driver_number_and_gpu_lane():
 
 # -- the controller -----------------------------------------------------------------------------------------
 class FakeEngine:
-    def __init__(self, installed=True):
+    def __init__(self, models_dir, installed=True):
         self.serving = {"id": "file:gemma-12b", "ready": True, "pid": 99}
-        self.started, self.stopped, self.downloads = [], 0, []
-        self.installed = installed
+        self.started, self.stopped, self.downloads, self.jobs = [], 0, [], {}
+        self.models_dir = models_dir
+        models_dir.mkdir(parents=True, exist_ok=True)
+        if installed:
+            (models_dir / "e2b.gguf").write_bytes(b"x")
+
+    @property
+    def installed(self):
+        return (self.models_dir / "e2b.gguf").is_file()
 
     def catalog(self):
-        return [{"id": "gemma-4-e2b", "label": "Gemma 4 E2B", "size": int(2.84 * GB), "micro": True,
+        return [{"id": "gemma-4-e2b", "label": "Gemma 4 E2B", "file": "e2b.gguf", "size": int(2.84 * GB), "micro": True,
                  "installed": self.installed}]
 
     def binary(self):
@@ -107,7 +114,12 @@ class FakeEngine:
 
     def download_model(self, model_id):
         self.downloads.append(model_id)
-        self.installed = True
+        if self.fail_download:
+            self.jobs[f"model:{model_id}"] = type("Job", (), {"state": "failed", "error": "no network"})()
+            return
+        (self.models_dir / "e2b.gguf").write_bytes(b"x")
+
+    fail_download = False
 
 
 class FakeDigests:
@@ -142,7 +154,7 @@ GAME = ("Cyberpunk2077.exe", 50, 9, 95)
 
 
 def make(tmp_path, installed=True, mode="always"):
-    hub, clock = FakeHub(FakeEngine(installed)), Clock()
+    hub, clock = FakeHub(FakeEngine(tmp_path / "models", installed)), Clock()
     gm = GameMode(hub, tmp_path / "gamemode.json", probe=object(), rules=Rules(), clock=clock)
     gm.settings.mode = mode
     return gm, hub, clock
@@ -286,7 +298,7 @@ def test_settings_survive_a_restart(tmp_path):
     gm, _, _ = make(tmp_path)
     gm.set_mode("ask")
     gm.set_program("Valorant.exe", counts="never")
-    again = GameMode(FakeHub(FakeEngine()), tmp_path / "gamemode.json", probe=object())
+    again = GameMode(FakeHub(FakeEngine(tmp_path / "m2")), tmp_path / "gamemode.json", probe=object())
     assert again.settings.mode == "ask" and again.settings.programs == {"valorant.exe": {"counts": "never"}}
     with pytest.raises(ValueError):
         gm.set_mode("sometimes")
@@ -334,3 +346,32 @@ def test_a_busy_borderless_full_screen_window_counts_at_once():
     video = reading(("chrome.exe", 5, 0.4, 6), fg="chrome.exe")              # a full-screen video
     video["covers_screen"] = True
     assert d.update(video, now=0) is None
+
+
+def test_a_failed_micro_download_is_reported(tmp_path):
+    gm, hub, _ = make(tmp_path, installed=False)
+    hub.engine.fail_download = True
+
+    async def go():
+        await gm.tick(playing(used_gb=20))
+        await gm.tick(playing(used_gb=9))
+        await _choose(hub, "gamemode:micro", "Keep working")
+        for _ in range(50):
+            if hub.engine.jobs:
+                break
+            await asyncio.sleep(0.01)
+        await gm.tick(playing(used_gb=9))
+        assert not gm.downloading and "download failed: no network" in gm.note and gm.state == "aside"
+    run(go())
+
+
+def test_the_panel_is_published_only_when_it_changes(tmp_path):
+    gm, hub, _ = make(tmp_path)
+    sent = []
+    hub.panel = lambda name, data, **kw: sent.append(data)
+
+    async def go():
+        for _ in range(3):
+            await gm.tick(reading())
+    run(go())
+    assert len(sent) == 1

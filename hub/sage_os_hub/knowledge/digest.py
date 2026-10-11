@@ -306,7 +306,7 @@ class Digests:
             if not (serving and serving.get("ready")):
                 await asyncio.to_thread(self._job_note, job["id"], "waiting for the local engine: start a model in MODELS")
                 return False
-            if serving["id"] != job["model"]:         # never draft on another model (e.g. a micro model)
+            if not self._same_model(job["model"], serving):   # never draft on another model (e.g. a micro model)
                 await asyncio.to_thread(self._job_note, job["id"], f"waiting for {job['model']} (the engine is serving {serving['id']})")
                 return False
         await asyncio.to_thread(self._job_note, job["id"], None)
@@ -334,6 +334,15 @@ class Digests:
                       notes=json.dumps(result["notes"]), error=None, ms=int((time.time() - t0) * 1000))
         self.publish(job["id"])
         return True
+
+    def _same_model(self, model_id: str, serving: dict) -> bool:
+        """The job's model is loaded: same id, or the same file under its other id (catalog vs file:)."""
+        if serving["id"] == model_id:
+            return True
+        try:
+            return str(self.hub.engine.resolve_model(model_id)) == serving.get("path")
+        except Exception:                             # noqa: BLE001 -- not on this computer: not the same
+            return False
 
     def earlier_titles(self, jid: str, idx: int) -> list[str]:
         with self.lock:

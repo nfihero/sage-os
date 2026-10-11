@@ -242,3 +242,10 @@ def test_local_chat_in_game_mode(chat):
     assert items[1]["kind"] == "note" and "Answered by gemma-4-e2b" in items[1]["data"]["text"]
     hub.engine.serving = None
     hub.gamemode.state = "watching"
+
+
+def test_cuda_build_choice_survives_an_unknown_driver():
+    from sage_os_hub.engine import pick_asset
+    assets = [{"name": n} for n in ("llama-b1-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip")]
+    hw = {"os": "windows", "arch": "amd64", "backend": "cuda", "gpu": {"vendor": "nvidia", "driver": None}}
+    assert [a["name"] for a in pick_asset(assets, "b1", hw)] == [a["name"] for a in assets]

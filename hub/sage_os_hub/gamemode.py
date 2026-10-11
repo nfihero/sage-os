@@ -174,6 +174,8 @@ class GameMode:
         self.note: str | None = None
         self.reading: dict | None = None
         self.loading_back: str | None = None   # the main model reloading after a program closed
+        self._published: dict | None = None
+        self._micro_entry: dict | None = None
 
     # -- what others ask ---------------------------------------------------------------------------------
     @property
@@ -292,9 +294,14 @@ class GameMode:
                 await self._stop_micro(f"{self.program['name']} needed the memory")
             elif self.state == "aside" and not self.offered:
                 await self._offer_micro(reading)
-            elif self.state == "aside" and self.downloading and self._micro_installed():
-                self.downloading = False
-                await self._start_micro(reading)
+            elif self.state == "aside" and self.downloading:
+                job = (self.hub.engine.jobs.get(f"model:{self._micro_id()}") if self.hub.engine else None)
+                if self._micro_installed():
+                    self.downloading = False
+                    await self._start_micro(reading)
+                elif job and job.state in ("failed", "cancelled"):
+                    self.downloading = False
+                    self.note = f"the small model's download {job.state}" + (f": {job.error}" if job.error else "")
             return
         if self.clear_since is None:
             self.clear_since = now
@@ -365,7 +372,10 @@ class GameMode:
         e = self.hub.engine
         if not e:
             return None
-        return next((m for m in e.catalog() if m.get("micro")), None)
+        if self._micro_entry is None:                  # the catalog doesn't change while the hub runs
+            self._micro_entry = next((m for m in e.catalog() if m.get("micro")), None) or {}
+        m = self._micro_entry
+        return {**m, "installed": (e.models_dir / m["file"]).is_file()} if m else None
 
     def _micro_id(self) -> str | None:
         m = self._micro()
@@ -459,4 +469,7 @@ class GameMode:
         self.hub.inbox.drop(key)
 
     def _publish(self):
-        self.hub.panel("gamemode", self.public())
+        data = self.public()
+        if data != self._published:                    # ticks every 3 s; most change nothing
+            self._published = data
+            self.hub.panel("gamemode", data)
