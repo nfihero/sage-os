@@ -11,6 +11,7 @@ import asyncio
 import html
 import json
 import os
+import re
 import subprocess
 import sys
 import webbrowser
@@ -42,7 +43,7 @@ from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
 from .knowledge.briefing import Briefings
-from .knowledge.digest import Digests
+from .knowledge.digest import Digests, readable_title
 from .knowledge.builder import NoteBuilder, source_path
 from .knowledge.gdrive import DriveError, GoogleDrive
 from .knowledge.proposals import IMPORTER
@@ -92,6 +93,19 @@ def security_headers(host: str) -> dict[str, str]:
 
 
 HERMES_ADAPTERS = {"kanban", "safety", "sessions", "gpu"}      # adapters that read Hermes' files
+DIGEST_SUMMARY = re.compile(r"^(?P<doc>[^:]+): (?P<chapter>.+): (?P<stats>\d+ notes? from .*)$", re.S)
+
+
+def proposal_card(p: dict) -> tuple[str, str]:
+    """An inbox card's title and text. A digest's card names the book and chapter ("Intermediate Accounting ·
+    Chapter 2: … (part 1 of 3)"), so cards of one chapter don't look like duplicates."""
+    n, summary, agent = len(p["changes"]), p.get("summary") or "", p["agent"]
+    m = DIGEST_SUMMARY.match(summary) if agent.startswith("digest:") else None
+    if m:
+        model = agent.removeprefix("digest:").removeprefix("file:")
+        return (f"{readable_title(m['doc'])} · {m['chapter']}"[:300],
+                f"{m['stats']}. Drafted by {model}; nothing is filed until you approve.")
+    return f"{agent} proposes {n} change{'' if n == 1 else 's'} to the Bookshelf", summary
 
 
 class Hub:
@@ -223,10 +237,9 @@ class Hub:
                 self.event("knowledge", "bookshelf", "proposal.rejected", {"proposal": pid, "agent": p["agent"], "note": note})
             self.refresh_vault()
 
-        n = len(p["changes"])
-        self.inbox.add(source="bookshelf", key=f"bookshelf:{pid}",
-                       title=f"{p['agent']} proposes {n} change{'' if n == 1 else 's'} to the Bookshelf",
-                       detail=p["summary"] or "", choices=["approve", "reject"], resolver=resolver,
+        title, detail = proposal_card(p)
+        self.inbox.add(source="bookshelf", key=f"bookshelf:{pid}", title=title, detail=detail,
+                       choices=["approve", "reject"], resolver=resolver, created=p.get("created"),
                        context={"proposal_id": pid, "agent": p["agent"], "changes": preview or [], "problem": problem})
 
     def offer_pending_proposals(self):

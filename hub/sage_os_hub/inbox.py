@@ -23,19 +23,22 @@ class Inbox:
         self._event = event
 
     def items(self) -> list[dict]:
-        return sorted(self._items.values(), key=lambda i: i["created"], reverse=True)
+        """Requests that hold an agent up (approvals, questions) newest first; note proposals after them, oldest
+        first, so a digested book reads from its first chapter."""
+        return sorted(self._items.values(),
+                      key=lambda i: (1, i["created"]) if i["source"] == "bookshelf" else (0, -i["created"]))
 
     def _changed(self):
         self._publish({"t": "panel", "name": "inbox", "data": self.items()})
 
     def add(self, *, source: str, title: str, detail: str, choices: list[str], resolver: Resolver,
-            context: dict | None = None, key: str | None = None) -> str:
+            context: dict | None = None, key: str | None = None, created: float | None = None) -> str:
         """`key` makes an item idempotent (kanban tasks re-announced on every poll)."""
         item_id = key or new_id("ib_")
         if item_id in self._items:
             return item_id
         self._items[item_id] = {"id": item_id, "source": source, "title": title, "detail": detail,
-                                "choices": choices, "context": context or {}, "created": time.time()}
+                                "choices": choices, "context": context or {}, "created": created or time.time()}
         self._resolvers[item_id] = resolver
         self._event("approval", source, "approval.requested", {"id": item_id, "title": title, "source": source})
         self._changed()

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { post } from "../api";
-import type { InboxItem } from "../types";
+import type { HubEvent, InboxItem } from "../types";
 import { ago, useNow } from "../util";
 import Scramble from "./Scramble";
 import Review from "./Review";
@@ -11,9 +11,14 @@ const LABEL: Record<string, string> = {
 };
 const SOURCE_TONE: Record<string, string> = { claude: "orange", hermes: "", kanban: "amber", bookshelf: "" };
 
-export default function Inbox({ items, onOpenTask }: { items: InboxItem[]; onOpenTask: (id: string) => void }) {
+export default function Inbox({ items, onOpenTask, events = [] }: { items: InboxItem[]; onOpenTask: (id: string) => void; events?: HubEvent[] }) {
   const now = useNow(5000);
   const [reviewing, setReviewing] = useState<InboxItem | null>(null);
+  // Approving files the notes, but a digest may send its next chapter at once, so the count can stay the same:
+  // say what was filed, for a little while after (newest first in events).
+  const filed = events.find((e) => e.type === "proposal.applied" && now - e.ts < 20);
+  const files: { path: string }[] = filed?.data?.files ?? [];
+  const folder = files.length ? files[0].path.split("/").slice(0, -1).join("/") : "";
   return (
     <aside className="panel min-h-0" data-testid="inbox">
       <div className="panel-head">
@@ -21,6 +26,11 @@ export default function Inbox({ items, onOpenTask }: { items: InboxItem[]; onOpe
         {items.length > 0 && <span className="font-dot pulse-amber bg-amber px-2 text-[16px] leading-[22px] text-void">{items.length}</span>}
       </div>
       <div className="panel-body flex flex-col gap-2">
+        {filed && files.length > 0 && (
+          <div className="chat-in border border-cyan/40 px-2 py-1 text-[12px] text-ink/90" role="status">
+            ✓ Filed {files.length} note{files.length === 1 ? "" : "s"}{folder && <> in <span className="font-mono text-cyan">{folder}</span></>}. Undo in Bookshelf → History.
+          </div>
+        )}
         {items.length === 0 && <div className="m-auto text-center text-[12.5px] text-mute">Nothing needs you.<br />Claude permission requests, Hermes approvals, worker questions and Bookshelf proposals land here.</div>}
         {items.map((it) => <Card key={it.id} it={it} now={now} onOpenTask={onOpenTask} onReview={setReviewing} />)}
       </div>

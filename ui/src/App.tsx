@@ -97,7 +97,7 @@ export default function App() {
     : <ConnectAgent panel={panels.claude} onModels={() => setModels(true)} onPeek={() => setPeekClaude(true)} />;
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
     chats={panels.chat?.sessions} game={panels.gamemode} hermes={panels.health?.gateway.state} onModels={() => setModels(true)} />;
-  const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} />;
+  const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} events={hub.events} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;
   const cell = (a: Area, node: React.ReactNode) => (
