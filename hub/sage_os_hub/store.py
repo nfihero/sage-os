@@ -59,6 +59,10 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.executescript("PRAGMA journal_mode=WAL;" + SCHEMA)
+        for table in ("claude_sessions", "chat_sessions"):     # Y1.5: deleting leaves a tombstone, not a gap
+            if "deleted" not in [r[1] for r in self._db.execute(f"PRAGMA table_info({table})")]:
+                self._db.execute(f"ALTER TABLE {table} ADD COLUMN deleted REAL")
+        self._db.commit()
         self._lock = threading.Lock()
         self._keep = keep_events
 
@@ -99,37 +103,51 @@ class Store:
         return {n: json.loads(d) for n, d in rows}
 
     # -- Claude sessions ---------------------------------------------------------------------
-    def upsert_claude_session(self, s: dict) -> None:
-        cols = ["id", "title", "cwd", "model", "sdk_session_id", "created", "updated", "cost_usd", "turns"]
+    def _upsert(self, table: str, cols: list[str], s: dict) -> None:
+        """Insert or update in place: an update never clears a tombstone (a late write can't revive a deleted
+        chat), and it's logged as one change (Y1.4)."""
+        sets = ", ".join(f"{c}=excluded.{c}" for c in cols if c != "id")
         with self._lock:
-            self._db.execute(
-                f"INSERT OR REPLACE INTO claude_sessions ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
-                [s.get(c) for c in cols])
+            self._db.execute(f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))}) "
+                             f"ON CONFLICT(id) DO UPDATE SET {sets}", [s.get(c) for c in cols])
             self._db.commit()
+
+    def _tombstone(self, table: str, sid: str) -> bool:
+        with self._lock:
+            n = self._db.execute(f"UPDATE {table} SET deleted=? WHERE id=? AND deleted IS NULL",
+                                 (time.time(), sid)).rowcount
+            self._db.commit()
+        return bool(n)
+
+    def upsert_claude_session(self, s: dict) -> None:
+        self._upsert("claude_sessions", ["id", "title", "cwd", "model", "sdk_session_id", "created", "updated",
+                                         "cost_usd", "turns"], s)
+
+    def delete_claude_session(self, sid: str) -> bool:
+        return self._tombstone("claude_sessions", sid)
 
     def claude_sessions(self) -> list[dict]:
         with self._lock:
-            cur = self._db.execute("SELECT * FROM claude_sessions ORDER BY updated DESC")
+            cur = self._db.execute("SELECT * FROM claude_sessions WHERE deleted IS NULL ORDER BY updated DESC")
             names = [d[0] for d in cur.description]
             return [dict(zip(names, r)) for r in cur.fetchall()]
 
     # -- model chats ----------------------------------------------------------------------------
     def upsert_chat_session(self, s: dict) -> None:
-        cols = ["id", "title", "provider", "model", "created", "updated"]
-        with self._lock:
-            self._db.execute(f"INSERT OR REPLACE INTO chat_sessions ({', '.join(cols)}) VALUES (?,?,?,?,?,?)",
-                             [s.get(c) for c in cols])
-            self._db.commit()
+        self._upsert("chat_sessions", ["id", "title", "provider", "model", "created", "updated"], s)
+
+    def delete_chat_session(self, sid: str) -> bool:
+        return self._tombstone("chat_sessions", sid)
 
     def chat_sessions(self) -> list[dict]:
         with self._lock:
-            cur = self._db.execute("SELECT * FROM chat_sessions ORDER BY updated DESC LIMIT 200")
+            cur = self._db.execute("SELECT * FROM chat_sessions WHERE deleted IS NULL ORDER BY updated DESC LIMIT 200")
             names = [d[0] for d in cur.description]
             return [dict(zip(names, r)) for r in cur.fetchall()]
 
     def chat_session(self, sid: str) -> dict | None:
         with self._lock:
-            cur = self._db.execute("SELECT * FROM chat_sessions WHERE id = ?", (sid,))
+            cur = self._db.execute("SELECT * FROM chat_sessions WHERE id = ? AND deleted IS NULL", (sid,))
             r = cur.fetchone()
             return dict(zip([d[0] for d in cur.description], r)) if r else None
 

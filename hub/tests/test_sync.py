@@ -1,7 +1,9 @@
 """Y1 (D27, D28): IDs that can't clash between devices, and this install's device identity."""
 import json
+import re
 import sqlite3
 import threading
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -211,3 +213,53 @@ def test_entries_from_another_device_merge_in_any_order(tmp_path):
     b.writer.db.execute("UPDATE entries SET after=? WHERE batch_id=1", (b"v3",))
     b.writer.db.commit()
     assert lb.entries()[-1]["id"] > second["id"] and lb.entries()[-1]["device"] == b.device.id
+
+
+# -- Y1.5 tombstones --------------------------------------------------------------------------------------
+def test_deleting_a_chat_leaves_a_tombstone_that_survives_restart_and_late_writes(tmp_path):
+    hub = _hub(tmp_path)
+    row = {"id": "ch_1", "title": "Plan", "provider": "engine", "model": "m", "created": 1.0, "updated": 1.0}
+    hub.store.upsert_chat_session(row)
+    assert hub.store.delete_chat_session("ch_1") and not hub.store.delete_chat_session("ch_1")
+    hub.store.upsert_chat_session(row | {"updated": 9.0})          # a reply finishing after the delete
+    assert hub.store.chat_sessions() == [] and hub.store.chat_session("ch_1") is None
+    last = hub.changelogs["hub.db"].entries()[-1]
+    assert last["op"] == "upsert" and last["data"]["deleted"] is not None     # deletes travel as updates
+    hub.store.close()
+    again = _hub(tmp_path)
+    assert again.store.chat_sessions() == []
+    assert again.store._db.execute("SELECT count(*) FROM chat_sessions").fetchone()[0] == 1     # the row is kept
+
+
+def test_a_claude_session_tombstone(tmp_path):
+    hub = _hub(tmp_path)
+    hub.store.upsert_claude_session({"id": "cs_1", "title": "t", "cwd": ".", "created": 1, "updated": 1,
+                                     "cost_usd": 0, "turns": 0})
+    hub.store.delete_claude_session("cs_1")
+    assert hub.store.claude_sessions() == []
+
+
+def test_a_forgotten_briefing_is_hidden_not_deleted(tmp_path):
+    hub = _hub(tmp_path)
+    db = hub.briefings.db
+    bid = db.execute("INSERT INTO briefings(chat, ts, query, terms, items) VALUES ('c', 1, 'q', '[]', '{\"items\": []}')").lastrowid
+    db.commit()
+    hub.briefings.forget(bid)
+    assert db.execute("SELECT count(*) FROM briefings WHERE deleted IS NOT NULL").fetchone()[0] == 1
+    assert hub.briefings.latest("c") is None and hub.briefings.list("c") == []
+
+
+def test_no_code_hard_deletes_a_synced_record():
+    """Deleting means a tombstone (Y1.5). Only the change log's merge may remove a row, when another device
+    says so."""
+    root = Path(__file__).resolve().parents[1] / "sage_os_hub"
+    synced = {t for ts in manifest.synced_tables().values() for t in ts}
+    found = []
+    for py in root.rglob("*.py"):
+        if py.name == "changelog.py":
+            continue
+        text = py.read_text(encoding="utf-8")
+        for m in re.finditer(r"DELETE\s+FROM\s+(\w+)", text, re.I):
+            if m.group(1) in synced:
+                found.append(f"{py.relative_to(root)}: {m.group(0)}")
+    assert not found, found

@@ -141,6 +141,9 @@ class Briefings:
           CREATE TABLE IF NOT EXISTS briefing_chats(chat TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1,
             drops TEXT NOT NULL DEFAULT '[]', owed TEXT NOT NULL DEFAULT '[]');
         """)
+        if "deleted" not in [r[1] for r in self.db.execute("PRAGMA table_info(briefings)")]:
+            self.db.execute("ALTER TABLE briefings ADD COLUMN deleted REAL")     # Y1.5: tombstones
+            self.db.commit()
 
     # -- settings ----------------------------------------------------------------------------------
     def settings(self, chat: str) -> dict:
@@ -273,7 +276,7 @@ class Briefings:
     def forget(self, briefing_id: int):
         """The send failed: the record describes nothing the agent saw."""
         with self.lock:
-            self.db.execute("DELETE FROM briefings WHERE id=?", (briefing_id,))
+            self.db.execute("UPDATE briefings SET deleted=? WHERE id=?", (time.time(), briefing_id))
             self.db.commit()
 
     # -- reading ------------------------------------------------------------------------------------
@@ -284,13 +287,13 @@ class Briefings:
 
     def list(self, chat: str, limit: int = 100) -> list[dict]:
         with self.lock:
-            rows = self.db.execute("SELECT * FROM (SELECT * FROM briefings WHERE chat=? ORDER BY id DESC LIMIT ?) ORDER BY id",
+            rows = self.db.execute("SELECT * FROM (SELECT * FROM briefings WHERE chat=? AND deleted IS NULL ORDER BY id DESC LIMIT ?) ORDER BY id",
                                    (chat, limit)).fetchall()
         return [self._row(r) for r in rows]
 
     def latest(self, chat: str) -> dict | None:
         with self.lock:
-            r = self.db.execute("SELECT * FROM briefings WHERE chat=? ORDER BY id DESC LIMIT 1", (chat,)).fetchone()
+            r = self.db.execute("SELECT * FROM briefings WHERE chat=? AND deleted IS NULL ORDER BY id DESC LIMIT 1", (chat,)).fetchone()
         return self._row(r) if r else None
 
     def _update_items(self, rec: dict):
