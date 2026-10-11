@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .proposals import Entry, ProposalError, apply_review, normalize, plan, screen_proposal, sha
 from .vault import Vault
+from ..sync import new_id
 
 
 def _locked(fn):
@@ -91,7 +92,7 @@ class Writer:
         with self.lock:
             planned = plan(self.vault, norm, agent)
             bases = {e.path: sha(e.before) for p in planned for e in p.entries if e.before is not None}
-            pid = f"p_{uuid.uuid4().hex[:10]}"
+            pid = new_id("p_")
             self.db.execute("INSERT INTO proposals(id, agent, summary, created, status, changes, bases, screened) VALUES (?,?,?,?,?,?,?,?)",
                             (pid, agent, summary, time.time(), "pending", json.dumps(norm), json.dumps(bases), override))
             self.db.commit()

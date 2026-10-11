@@ -11,13 +11,13 @@ import asyncio
 import json
 import logging
 import time
-import uuid
 
 import httpx
 
 from ..knowledge.tools import (INSTRUCTIONS, LIST_DESC, PROPOSE_DESC, READ_DESC, READ_SOURCE_DESC, SEARCH_DESC,
                                SEARCH_SOURCES_DESC, as_text)
 from .base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
+from ..sync import new_id
 
 log = logging.getLogger("sage_os")
 MAX_ROUNDS = 8            # tool calls per message before Sage OS stops the loop
@@ -81,7 +81,7 @@ class ChatConnector(AgentConnector):
         if not model:
             raise InvalidRequest("pick a model")
         now = time.time()
-        row = {"id": f"ch_{uuid.uuid4().hex[:10]}", "title": title or "New chat", "provider": provider,
+        row = {"id": new_id("ch_"), "title": title or "New chat", "provider": provider,
                "model": str(model)[:200], "created": now, "updated": now}
         self.hub.store.upsert_chat_session(row)
         self.publish()

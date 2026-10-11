@@ -7,6 +7,7 @@ type Info = {
   data: { path: string; bytes: number; files: number; legacy: boolean };
   library: { path: string; notes: number; notes_bytes: number; files: number; files_bytes: number; sync: string | null; conflicts: string[] } | null;
   vault: string;
+  device: { id: string; name: string; created: number };
 };
 const mb = (b: number) => (b > 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${(b / 2 ** 20).toFixed(1)} MB`);
 
@@ -16,6 +17,7 @@ export default function Storage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [path, setPath] = useState("");
   const [moving, setMoving] = useState(false);
+  const [naming, setNaming] = useState<string | null>(null);
   const load = () => get<Info>("/api/storage").then(setInfo).catch((e) => setErr(String(e.message)));
   useEffect(() => { load(); }, []);
 
@@ -32,6 +34,11 @@ export default function Storage() {
       setPath(""); load();
     } catch (e) { setErr(String((e as Error).message)); }
     setMoving(false);
+  };
+
+  const rename = async () => {
+    setErr(null);
+    try { await post("/api/storage/device", { name: naming ?? "" }); setNaming(null); load(); } catch (e) { setErr(String((e as Error).message)); }
   };
 
   if (!info) return <div className="p-4 text-mute">{err ?? "loading…"}</div>;
@@ -92,6 +99,24 @@ export default function Storage() {
           <div className="mt-1 text-ink/80">{mb(info.data.bytes)} in {info.data.files.toLocaleString()} files: search indexes, copies of your sources, chats, approvals and undo history, local models, sign-ins.</div>
           <p className="mt-1 text-mute">Kept apart from the app, so updating or reinstalling Sage OS never touches it. It isn't synced: each device builds its own indexes from the Library.</p>
           <div className="mt-2"><button className="chip" onClick={() => open("data")}>OPEN APP DATA</button></div>
+          <div className="mt-3 border-t border-cyan/15 pt-2">
+            {naming === null ? (
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-ink/85">This device: <span className="text-cyan">{info.device.name}</span></span>
+                <span className="break-all font-mono text-[11px] text-mute">{info.device.id}</span>
+                <button className="chip mute" onClick={() => setNaming(info.device.name)}>RENAME</button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                <input value={naming} onChange={(e) => setNaming(e.target.value)} maxLength={60} aria-label="device name" autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") rename(); if (e.key === "Escape") { e.stopPropagation(); setNaming(null); } }}
+                  className="min-w-[200px] flex-1 border border-cyan/30 bg-void/80 px-2 py-1 text-[12px] text-ink outline-none focus:border-cyan" />
+                <button className="chip" disabled={!naming.trim()} onClick={rename}>SAVE</button>
+                <button className="chip mute" onClick={() => setNaming(null)}>CANCEL</button>
+              </div>
+            )}
+            <p className="mt-1 text-mute">The name your other devices will see when sync arrives. Each install has its own ID, even when two share a Library.</p>
+          </div>
         </section>
       </div>
     </div>

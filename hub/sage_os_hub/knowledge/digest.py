@@ -22,12 +22,12 @@ import re
 import sqlite3
 import threading
 import time
-import uuid
 from pathlib import Path
 
 import httpx
 
 from .sections import split_document
+from ..sync import new_id
 
 log = logging.getLogger("sage_os")
 MAX_NOTES_PER_PROPOSAL = 50
@@ -167,7 +167,7 @@ class Digests:
         text, secs = self.plan(source, rel)
         if not secs or not text.strip():
             raise ValueError("this document has no text to digest (a scan needs OCR first)")
-        jid, now = f"dg_{uuid.uuid4().hex[:10]}", time.time()
+        jid, now = new_id("dg_"), time.time()
         title = readable_title(rel)
         chapters = list(dict.fromkeys(s.chapter for s in secs))
         with self.lock:

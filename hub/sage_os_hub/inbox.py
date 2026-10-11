@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-import uuid
 from typing import Awaitable, Callable
+from .sync import new_id
 
 Resolver = Callable[[str, str], Awaitable[None]]   # (choice, note) -> delivered
 
@@ -31,7 +31,7 @@ class Inbox:
     def add(self, *, source: str, title: str, detail: str, choices: list[str], resolver: Resolver,
             context: dict | None = None, key: str | None = None) -> str:
         """`key` makes an item idempotent (kanban tasks re-announced on every poll)."""
-        item_id = key or f"ib_{uuid.uuid4().hex[:10]}"
+        item_id = key or new_id("ib_")
         if item_id in self._items:
             return item_id
         self._items[item_id] = {"id": item_id, "source": source, "title": title, "detail": detail,

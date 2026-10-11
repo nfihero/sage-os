@@ -16,7 +16,6 @@ import sys
 import webbrowser
 import logging
 import time
-import uuid
 from pathlib import Path
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from urllib.parse import urlparse
@@ -48,6 +47,7 @@ from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .store import Store
+from .sync import Device, new_id
 
 log = logging.getLogger("sage_os")
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
@@ -94,6 +94,7 @@ class Hub:
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        self.device = Device.load(cfg.data_dir)            # Y1.1: who this install is; stamped on every change
         self.store = Store(cfg.store, cfg.keep_events)
         self.panels: dict = {}
         self.subscribers: set[asyncio.Queue] = set()
@@ -250,7 +251,7 @@ class Hub:
         """K4 manual override: a screened proposal waits in the inbox, in memory only (never on disk),
         until the user rejects it or chooses "Save anyway". A hub restart drops it."""
         who = "(withheld)" if exc.where == "the agent name" else agent
-        key = f"held:{uuid.uuid4().hex[:10]}"
+        key = "held:" + new_id()
 
         async def resolver(choice, note):
             info = {"agent": who, "where": exc.where, "category": exc.category}
@@ -375,7 +376,7 @@ class Hub:
         data_bytes, data_files = storage.folder_size(cfg.data_dir)
         out = {"data": {"path": str(cfg.data_dir), "bytes": data_bytes, "files": data_files,
                         "legacy": cfg.data_dir == ROOT / "data"},
-               "library": None, "vault": str(self.vault.root)}
+               "library": None, "vault": str(self.vault.root), "device": self.device.public()}
         lib = cfg.library
         if lib is not None:
             nb, nn = storage.folder_size(lib / "Notes")
@@ -615,6 +616,10 @@ class BriefingSettings(BaseModel):
 class BriefingDrop(BaseModel):
     chat: str = Field(min_length=1, max_length=300)
     key: str = Field(min_length=1, max_length=2000)
+
+
+class DeviceName(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
 
 
 class Decision(BaseModel):
@@ -1026,6 +1031,15 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         folder.mkdir(parents=True, exist_ok=True)
         open_folder(folder)
         return {"ok": True, "path": str(folder)}
+
+    @app.post("/api/storage/device", dependencies=W)
+    def storage_device(body: DeviceName):
+        """Rename this device (Y1.1). Only the name changes; the ID is permanent."""
+        try:
+            hub.device.rename(body.name)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return hub.device.public()
 
     @app.get("/api/storage/export")
     async def storage_export(files: bool = False):

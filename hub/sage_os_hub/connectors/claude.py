@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import sys
 import time
-import uuid
 from dataclasses import replace
 from pathlib import Path
 
@@ -30,6 +29,7 @@ from ..inbox import Inbox, future_resolver
 from ..knowledge.tools import (LIST_DESC, PROPOSE_DESC, READ_DESC, READ_SOURCE_DESC, SEARCH_DESC,
                                SEARCH_SOURCES_DESC, BookshelfTools, as_text)
 from .base import AgentBusy, AgentConnector, InvalidRequest, SessionNotFound
+from ..sync import new_id
 
 log = logging.getLogger("sage_os")
 
@@ -372,7 +372,7 @@ class ClaudeConnector(AgentConnector):
         if not Path(cwd).is_dir():
             raise InvalidRequest(f"not a folder: {cwd}")
         now = time.time()
-        row = {"id": f"cs_{uuid.uuid4().hex[:10]}", "title": title or "New session", "cwd": cwd,
+        row = {"id": new_id("cs_"), "title": title or "New session", "cwd": cwd,
                "model": model or None, "sdk_session_id": None, "created": now, "updated": now,
                "cost_usd": 0, "turns": 0}
         self.sessions[row["id"]] = ClaudeSession(self, row)
