@@ -11,8 +11,9 @@ import { DEMO, useOrbState } from "../useOrbState";
 
 const MODELS = [["", "default"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]];
 
-export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
+export default function ClaudePane({ panel, usage, inboxCount, lowPower, bare }: {
   panel?: ClaudePanel; usage?: Record<string, UsageWindow>; inboxCount: number; lowPower?: boolean;
+  bare?: boolean;      // no side panel (planet, state, usage): the home screen's agent panel shows them (W2)
 }) {
   const sessions = panel?.sessions ?? [];
   const [sid, setSid] = useState<string | null>(() => localStorage.getItem("aos.claude.sid"));
@@ -105,8 +106,8 @@ export default function ClaudePane({ panel, usage, inboxCount, lowPower }: {
       {creating && <NewSession panel={panel} onDone={(id) => { setCreating(false); if (id) setSid(id); }} />}
       <div className="orb-host flex min-h-0 flex-1 flex-col @container">
       <div className="flex min-h-0 flex-1 flex-col @[640px]:flex-row">
-        <aside className="flex shrink-0 items-center gap-3 border-b border-orange/20 px-3 py-2
-                          @[640px]:w-[250px] @[640px]:flex-col @[640px]:border-b-0 @[640px]:border-r @[640px]:py-3">
+        <aside className={`${bare ? "hidden" : "flex"} shrink-0 items-center gap-3 border-b border-orange/20 px-3 py-2
+                          @[640px]:w-[250px] @[640px]:flex-col @[640px]:border-b-0 @[640px]:border-r @[640px]:py-3`}>
           <Orb id="claude" state={demo ?? orb.state} tone="claude" pulse={orb.pulse + demoPulse} tool={orb.tool + demoTool} size="var(--orb)" lowPower={lowPower} />
           <div className="readout min-w-0 flex-1 text-[12px] @[640px]:w-full @[640px]:flex-none">
             <Row k="State" v={(demo ?? orb.state).toUpperCase()} hot={(demo ?? orb.state) !== "idle"} dot />

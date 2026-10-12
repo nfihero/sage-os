@@ -5,9 +5,13 @@ import { ago, useNow } from "../util";
 import ChatView from "./ChatView";
 
 /** Chats with any OpenAI-compatible model (D22.2): the local engine, ChatGPT, Gemini, Ollama. */
-export default function ModelChat({ sessions, onModels }: { sessions: ChatSessionInfo[]; onModels: () => void }) {
+export default function ModelChat({ sessions, onModels, openId, onOpen }: {
+  sessions: ChatSessionInfo[]; onModels: () => void; openId?: string | null; onOpen?: (id: string | null) => void;
+}) {
   const now = useNow(10000);
-  const [open, setOpen] = useState<string | null>(null);
+  const [ownOpen, setOwnOpen] = useState<string | null>(null);
+  const open = openId !== undefined ? openId : ownOpen;          // controlled by the home screen, or on its own
+  const setOpen = (id: string | null) => { setOwnOpen(id); onOpen?.(id); };
   const [creating, setCreating] = useState(false);
   const cur = sessions.find((s) => s.id === open) ?? null;
 

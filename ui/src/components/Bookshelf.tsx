@@ -9,12 +9,13 @@ import Storage from "./Storage";
 import { ago, useNow } from "../util";
 
 /** The Bookshelf reader: browse (K1) and search (K2) the vault, read-only. Writes arrive with K3 via the inbox. */
-export default function Bookshelf({ panel, sources, digests, proposals = 0, onClose }: {
+export default function Bookshelf({ panel, sources, digests, proposals = 0, onClose, initialRef, initialSource }: {
   panel?: VaultPanel; sources?: SourcesPanel; digests?: { jobs: DigestJob[] }; proposals?: number; onClose: () => void;
+  initialRef?: string | null; initialSource?: { source: string; path: string } | null;   // opened from the home screen
 }) {
   const [fetched, setFetched] = useState<VaultPanel | null>(null);
   const vault = panel ?? fetched;
-  const [ref, setRef] = useState<string | null>(null);
+  const [ref, setRef] = useState<string | null>(initialRef ?? null);
   const [q, setQ] = useState("");
   const [archived, setArchived] = useState(false);
   const [onlyProblems, setOnlyProblems] = useState(false);
@@ -22,8 +23,8 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
   const [hits, setHits] = useState<SearchResult | null>(null);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const searching = q.trim().length > 0;
-  const [view, setView] = useState<"notes" | "history" | "sources" | "digests" | "storage">("notes");
-  const [cited, setCited] = useState<{ source: string; path: string } | null>(null);
+  const [view, setView] = useState<"notes" | "history" | "sources" | "digests" | "storage">(initialSource ? "sources" : "notes");
+  const [cited, setCited] = useState<{ source: string; path: string } | null>(initialSource ?? null);
   const showSource = (doc: { source: string; path: string } | null) => { setCited(doc); setView("sources"); };
 
   useEffect(() => {
@@ -189,7 +190,7 @@ function SearchResults({ hits, err, current, onPick }: {
 }
 
 /** The index marks matches with \x02 ... \x03; render them as highlights without any HTML parsing. */
-function Snippet({ text }: { text: string }) {
+export function Snippet({ text }: { text: string }) {
   return <>{text.split("\x02").map((part, i) => {
     if (i === 0) return <span key={i}>{part}</span>;
     const [hit, rest = ""] = part.split("\x03");

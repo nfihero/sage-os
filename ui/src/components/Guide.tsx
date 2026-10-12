@@ -33,16 +33,14 @@ const RULES: [string, string][] = [
 
 type Step = { target: string; title: string; body: string };
 const STEPS: Step[] = [
-  { target: '[data-tour="claude"]', title: "Claude: the lead agent",
-    body: "Ask it to plan, research or write. It searches your Bookshelf and your documents, and proposes notes. It can't file them; you do. Tabs across the top are separate conversations." },
-  { target: '[data-tour="local"]', title: "Hermes: the local agent",
-    body: "A second agent running a model on your GPU: free and private, good for reading through a pile of files. Same tools, same rules as Claude." },
+  { target: '[data-tour="agent"]', title: "Your agent",
+    body: "The AI answering you: a model on this PC, or Claude and other cloud AIs once you connect them. Its planet shows what it's doing; below are the others you can switch to." },
+  { target: '[data-tour="search"]', title: "Search and ask",
+    body: "Type to search your notes and files; press Enter to ask your agent instead. Answers come from your notes, and the strip under each one shows what it read." },
   { target: '[data-tour="inbox"]', title: "Inbox: everything that needs you",
     body: "Permission requests, questions from agents, and note proposals with the exact change shown. Approve, reject, or answer. Proposals that look like they contain a secret are held back until you decide." },
-  { target: '[data-tour="board"]', title: "Board: the work in flight",
-    body: "Tasks handed to agents, from triage to done. Click a card to see its history. A blocked card means an agent is waiting on your answer in the inbox." },
-  { target: '[data-tour="gpu"]', title: "System: the machine underneath",
-    body: "What's loaded on the GPU and how much memory it uses. Blocks by the safety guard show up in SAFETY at the top." },
+  { target: '[data-tour="systems-tab"]', title: "Systems: the machine underneath",
+    body: "The task board, what's on the graphics card, and Hermes if you use it. The strip at the bottom of Home sums it up in one line." },
   { target: '[data-testid="bookshelf-open"]', title: "Bookshelf: your notes",
     body: "Start here if your notes are empty. Sources holds read-only copies of folders you chose; Build notes turns them into starter notes and asks an agent to draft more. All of it arrives as proposals." },
   { target: '[data-tour="guide"]', title: "That's the tour",
