@@ -748,7 +748,8 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   5. **Her own AI:** API keys entered in the app and kept in the macOS Keychain (pulled forward from Y2); or a small
      local model from MODELS on Apple Silicon (Metal).
   6. **Report a problem:** a button that writes a report file (her description, app version, macOS version, recent
-     errors and what she was doing; never notes, files or chat text) and opens an email to the user's address; she
+     errors and what she was doing; never notes, files or chat text) and opens an email to
+     **roundederror@gmail.com** (the owner, 11 Oct 2026: reports go to this address, not a personal one); she
      attaches the file. She sees everything the report contains before sending.
   7. **Updates:** a new .dmg replaces the app; her data stays in app data (D25).
 - **Costs / limits:** unsigned apps scare non-technical users and macOS may tighten this further; PyInstaller

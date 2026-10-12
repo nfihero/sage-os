@@ -121,7 +121,7 @@ Goal: someone who isn't the developer installs Sage OS on their own Mac, starts 
 
 | Step | Scope | Gate |
 |---|---|---|
-| F1 | **Friend's Mac build**: `.app` with the hub (PyInstaller), UI and model catalog; `.dmg` built on GitHub Actions; unsigned with a first-open sheet; empty first run with the guide; API keys entered in the app (Keychain); *Report a problem* (report file + email, no notes or chat text); updates by new .dmg, data kept | On a Mac with nothing installed, a tester opens the .dmg, starts Sage OS, adds a note and a document, chats with an AI they connected in the app, and sends a problem report that arrives by email; a second .dmg updates the app with their data intact |
+| F1 | **Friend's Mac build**: `.app` with the hub (PyInstaller), UI and model catalog; `.dmg` built on GitHub Actions; unsigned with a first-open sheet; empty first run with the guide; API keys entered in the app (Keychain); *Report a problem* (report file + email to roundederror@gmail.com, no notes or chat text); updates by new .dmg, data kept | On a Mac with nothing installed, a tester opens the .dmg, starts Sage OS, adds a note and a document, chats with an AI they connected in the app, and sends a problem report that arrives by email; a second .dmg updates the app with their data intact |
 
 ## Shared hardware track (10 Oct 2026 — DECISIONS D29)
 

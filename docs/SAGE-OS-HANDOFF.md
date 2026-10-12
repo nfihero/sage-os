@@ -80,7 +80,7 @@ lead or reviewer (D26).
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.
 3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → ~~K7~~ (0.20) → **K14** meaning-based search → **F1** friend's Mac build
-   (D32: .dmg from GitHub Actions, empty first run, keys in the app, *Report a problem* by email) → **A3** own task board →
+   (D32: .dmg from GitHub Actions, empty first run, keys in the app, *Report a problem* by email to roundederror@gmail.com) → **A3** own task board →
    **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); S2 OCR (D19); K9; K11; Phases 4–6
    with any-model lead (D26). K10 (git-backed vault) is dropped (D30).
