@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sage OS: home with the agent panel (mockup C v2)</title>
+<!-- Mockup only (batch C, second pass, 11 Oct): search and chat in the centre, the agent side panel (planet, model,
+     usage) kept on the left, what waits for you on the right. Static; the planet is a 2D stand-in for the WebGL orb. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Doto:wght@800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #010703; --panel: rgba(2, 13, 6, .86); --a: #3dff8b; --c: #ff9e40; --n: #ffe14d; --red: #ff5a5a;
+    --ink: #c9ffdb; --mute: #4c8660; --copy: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --display: "Rajdhani", sans-serif; --mono: "JetBrains Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--void); color: var(--ink); font: 13px/1.45 var(--mono); }
+  body { min-height: 100dvh; display: flex; flex-direction: column;
+    background: radial-gradient(1px 1px at 12px 12px, rgba(61,255,139,.10) 1px, transparent 1.5px) 0 0 / 24px 24px, var(--void); }
+  .fx { position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px); z-index: 50; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .chip { display: inline-flex; align-items: center; gap: .3rem; padding: 1px .5rem; font-size: 11px; white-space: nowrap;
+    border: 1px solid color-mix(in oklab, var(--a) 38%, transparent); color: var(--a); }
+  .chip.mute { border-color: color-mix(in oklab, var(--mute) 45%, transparent); color: var(--mute); }
+  .chip.amber { border-color: color-mix(in oklab, var(--n) 60%, transparent); color: var(--n); }
+  button.chip:hover { background: color-mix(in oklab, currentColor 12%, transparent); }
+  .mute { color: var(--mute); }
+  .glow { color: var(--a); text-shadow: 0 0 8px color-mix(in oklab, var(--a) 70%, transparent); }
+  .light { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: color-mix(in oklab, var(--mute) 50%, transparent); }
+  .light.up { background: #9dffc4; box-shadow: 0 0 8px #9dffc4; }
+
+  header { display: flex; align-items: center; gap: 22px; padding: 8px 16px; border-bottom: 1px solid color-mix(in oklab, var(--a) 25%, transparent);
+    background: rgba(1,7,3,.6); flex-wrap: wrap; }
+  .logo { font: 700 17px var(--display); letter-spacing: .2em; }
+  .logo b { color: var(--c); text-shadow: 0 0 8px rgba(255,158,64,.7); font-weight: 700; }
+  .clock { font: 800 26px "Doto", var(--mono); color: var(--a); text-shadow: 0 0 8px rgba(61,255,139,.6); }
+  nav { display: flex; }
+  nav button { height: 30px; padding: 0 1.3rem 0 .9rem; margin-left: -8px; font: 600 13px var(--display); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--mute); background: color-mix(in oklab, var(--a) 6%, transparent); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  nav button:first-child { margin-left: 0; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  nav button.on { background: var(--a); color: var(--void); }
+  .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+  main { flex: 1; min-height: 0; display: grid; gap: 14px; padding: 14px 16px; width: 100%; max-width: 1680px; margin: 0 auto;
+    grid-template-columns: 270px minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "agent centre side" "sys sys sys"; }
+  .panel { position: relative; background: var(--panel); border: 1px solid color-mix(in oklab, var(--a) 22%, transparent);
+    box-shadow: inset 0 0 30px color-mix(in oklab, var(--a) 5%, transparent); min-height: 0; display: flex; flex-direction: column; }
+  .panel::before, .panel::after { content: ""; position: absolute; width: 12px; height: 12px; pointer-events: none; }
+  .panel::before { left: -1px; top: -1px; border-left: 2px solid var(--a); border-top: 2px solid var(--a); }
+  .panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--a); border-bottom: 2px solid var(--a); }
+  .head { display: flex; align-items: center; gap: .6rem; min-height: 30px; border-bottom: 1px solid color-mix(in oklab, var(--a) 28%, transparent);
+    font: 600 13px var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--a); padding-right: .7rem; flex: none; }
+  .tab { height: 30px; display: inline-flex; align-items: center; padding: 0 1.4rem 0 .9rem; background: var(--a); color: var(--void);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  .head .sub { font: 12px var(--copy); letter-spacing: 0; text-transform: none; color: var(--mute); }
+  .body { padding: 12px 14px; overflow: auto; min-height: 0; }
+  .kicker { display: flex; justify-content: space-between; font: 600 11px var(--display); letter-spacing: .2em; text-transform: uppercase; color: var(--mute); margin: 0 2px 4px; }
+
+  /* ---- left: the agent side panel (as today's Claude pane aside) ---- */
+  .agent-col { grid-area: agent; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .agent-card .body { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .planet { width: 210px; height: 210px; }
+  .rows { width: 100%; font: 600 12px var(--display); letter-spacing: .08em; }
+  .row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dashed color-mix(in oklab, var(--a) 12%, transparent); }
+  .row span:first-child { color: var(--mute); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; }
+  .row span:last-child { color: var(--ink); font-family: var(--mono); font-weight: 500; font-size: 12px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .hot { color: var(--a); text-shadow: 0 0 6px rgba(61,255,139,.6); }
+  .usage { width: 100%; border-top: 1px solid color-mix(in oklab, var(--a) 18%, transparent); padding-top: 10px; }
+  .meter { margin: 6px 0 10px; }
+  .meter .lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--mute); }
+  .meter .lbl b { font: 800 16px "Doto", var(--mono); color: var(--a); text-shadow: 0 0 6px rgba(61,255,139,.5); }
+  .dots { height: 10px; position: relative; margin-top: 3px; background-image: radial-gradient(circle, color-mix(in oklab, var(--a) 22%, transparent) 1px, transparent 1.5px); background-size: 5px 5px; }
+  .dots i { position: absolute; inset: 0 auto 0 0; background-image: radial-gradient(circle, var(--a) 1.3px, transparent 1.8px); background-size: 5px 5px; filter: drop-shadow(0 0 4px rgba(61,255,139,.7)); }
+  .dots i.amber { background-image: radial-gradient(circle, var(--n) 1.3px, transparent 1.8px); filter: drop-shadow(0 0 4px rgba(255,225,77,.6)); }
+  .roster { display: flex; flex-direction: column; gap: 6px; }
+  .who { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border: 1px solid color-mix(in oklab, var(--a) 28%, transparent); background: color-mix(in oklab, var(--a) 6%, transparent); }
+  .who .mini { width: 26px; height: 26px; border-radius: 50%; flex: none; background: radial-gradient(circle at 40% 38%, #d9ffe8 0 6%, #3dff8b 24%, rgba(61,255,139,.2) 58%, transparent 70%); box-shadow: 0 0 12px rgba(61,255,139,.45); }
+  .who .n { font: 600 13px var(--display); letter-spacing: .1em; text-transform: uppercase; }
+  .who .d { font: 11.5px var(--copy); color: var(--mute); }
+  .who.empty { border-style: dashed; border-color: color-mix(in oklab, var(--mute) 45%, transparent); background: none; }
+  .who.empty .mini { background: none; box-shadow: none; border: 1px dashed color-mix(in oklab, var(--mute) 60%, transparent); display: grid; place-items: center; color: var(--mute); }
+  .who.empty .n { color: var(--mute); }
+
+  /* ---- centre: search over chat ---- */
+  .centre { grid-area: centre; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .search { display: flex; align-items: center; gap: 10px; border: 1px solid color-mix(in oklab, var(--a) 45%, transparent);
+    background: rgba(1,7,3,.85); padding: 12px 14px; box-shadow: 0 0 22px color-mix(in oklab, var(--a) 12%, transparent); }
+  .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font: 16px var(--copy); }
+  .search input::placeholder { color: var(--mute); }
+  .scope { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 12px; }
+  .chat { flex: 1; }
+  .chat .body { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .msg { max-width: 760px; }
+  .msg.me { align-self: flex-end; background: color-mix(in oklab, var(--a) 8%, transparent); border: 1px solid color-mix(in oklab, var(--a) 25%, transparent); padding: 8px 12px; font: 14px/1.5 var(--copy); }
+  .msg.ai { font: 14px/1.6 var(--copy); color: color-mix(in oklab, var(--ink) 92%, transparent); }
+  .msg.ai ol { margin: 6px 0 0 1.2em; padding: 0; }
+  .who-line { font: 600 11px var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--a); margin-bottom: 4px; }
+  .reading { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 11.5px; }
+  .reading .it { border: 1px solid color-mix(in oklab, var(--a) 35%, transparent); padding: 1px 6px; color: var(--ink); }
+  .compose { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid color-mix(in oklab, var(--a) 20%, transparent); flex: none; }
+  .compose textarea { flex: 1; min-width: 0; resize: none; height: 44px; background: rgba(1,7,3,.85); border: 1px solid color-mix(in oklab, var(--a) 30%, transparent); color: var(--ink); padding: 8px 10px; font: 14px var(--copy); outline: none; }
+  .tabs-mini { display: flex; gap: 6px; margin-left: auto; }
+
+  /* ---- right: what waits for you ---- */
+  .side { grid-area: side; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .waiting { border-color: color-mix(in oklab, var(--n) 55%, transparent); }
+  .waiting .head { color: var(--n); border-color: color-mix(in oklab, var(--n) 35%, transparent); }
+  .waiting .tab { background: var(--n); }
+  .waiting::before, .waiting::after { border-color: var(--n) !important; }
+  .card { border: 1px solid color-mix(in oklab, var(--a) 20%, transparent); background: color-mix(in oklab, var(--a) 4%, transparent); padding: 10px 12px; }
+  .card + .card { margin-top: 8px; }
+  .card .t { font: 600 12px var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--n); }
+  .card p { margin: 4px 0 8px; font: 13px/1.5 var(--copy); color: color-mix(in oklab, var(--ink) 85%, transparent); }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 2px; border-bottom: 1px solid color-mix(in oklab, var(--a) 10%, transparent); }
+  .list .t { grid-column: 1; grid-row: 1; font: 13.5px var(--copy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .m { grid-column: 1; grid-row: 2; font-size: 11px; color: var(--mute); }
+  .list .w { grid-column: 2; grid-row: 1 / span 2; font-size: 11px; color: var(--mute); align-self: center; }
+
+  .systems { grid-area: sys; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding: 8px 14px; font-size: 12px; flex-direction: row; }
+  .systems .k { font: 600 11px var(--display); letter-spacing: .18em; color: var(--mute); text-transform: uppercase; margin-right: 6px; }
+  .note { max-width: 1680px; width: 100%; margin: 0 auto; padding: 0 16px 16px; font: 12.5px/1.5 var(--copy); color: var(--mute); }
+  .note b { color: var(--n); font-weight: 600; }
+
+  @media (max-width: 1180px) {
+    main { grid-template-columns: 250px minmax(0, 1fr); grid-template-areas: "agent centre" "side side" "sys sys"; grid-template-rows: auto auto auto; }
+    .side { flex-direction: row; flex-wrap: wrap; } .side > * { flex: 1 1 300px; }
+  }
+  @media (max-width: 760px) {
+    main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "centre" "agent" "side" "sys"; padding: 10px; }
+    .clock { display: none; } nav { order: 3; width: 100%; overflow-x: auto; }
+    .agent-card .body { flex-direction: row; align-items: center; } .planet { width: 110px; height: 110px; flex: none; }
+    .usage { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="fx"></div>
+<header>
+  <span class="logo glow">SAGE<b>//</b>OS</span>
+  <span class="clock">15:42:07</span>
+  <nav><button class="on">Home</button><button>Library</button><button>Inbox 25</button><button>Systems</button></nav>
+  <div class="right">
+    <button class="chip">GAME MODE · WATCHING</button>
+    <button class="chip">MODELS</button>
+    <button class="chip mute">? GUIDE</button>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: the agent side panel, as today, for whichever agent is answering -->
+  <div class="agent-col">
+    <div class="kicker"><span>Answering</span><span>local · on this PC</span></div>
+    <section class="panel agent-card">
+      <div class="head"><span class="tab">Local model</span></div>
+      <div class="body">
+        <canvas class="planet" id="planet" width="420" height="420" aria-label="The local model's planet, idle"></canvas>
+        <div class="rows">
+          <div class="row"><span>State</span><span class="hot">● IDLE</span></div>
+          <div class="row"><span>Model</span><span>Gemma 4 12B</span></div>
+          <div class="row"><span>Where</span><span>this PC · RTX 5070 Ti</span></div>
+          <div class="row"><span>Chats</span><span>2 · 14 turns</span></div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;width:100%"><span class="chip mute">search notes</span><span class="chip mute">read sources</span><span class="chip mute">propose notes</span></div>
+        <div class="usage">
+          <div class="kicker"><span>Graphics card</span><span>usage</span></div>
+          <div class="meter"><div class="lbl"><span>memory</span><span><b>9.6</b> / 15.9 GB</span></div><div class="dots"><i style="width:60%"></i></div></div>
+          <div class="meter"><div class="lbl"><span>busy</span><span><b>4</b> %</span></div><div class="dots"><i style="width:4%"></i></div></div>
+          <div class="kicker" style="margin-top:4px"><span>Claude subscription</span><span>when connected</span></div>
+          <div class="meter"><div class="lbl"><span>5-hour</span><span class="mute">—</span></div><div class="dots"></div></div>
+        </div>
+      </div>
+    </section>
+    <div class="roster">
+      <div class="kicker"><span>Agents</span><span>switch</span></div>
+      <div class="who"><span class="mini"></span><div><div class="n">Local model</div><div class="d">answering · private, works offline</div></div></div>
+      <button class="who empty"><span class="mini">+</span><div style="text-align:left"><div class="n">Connect Claude</div><div class="d">sign in once; gets the same tools</div></div></button>
+      <button class="who empty"><span class="mini">+</span><div style="text-align:left"><div class="n">Connect ChatGPT · Gemini</div><div class="d">an API key in MODELS</div></div></button>
+    </div>
+  </div>
+
+  <!-- CENTRE: search over the conversation -->
+  <div class="centre">
+    <div>
+      <label class="search">
+        <span class="glow">⌕</span>
+        <input placeholder="Search your notes and files, or ask a question…" aria-label="Search your library or ask" />
+        <span class="chip mute">Ctrl K</span>
+      </label>
+      <div class="scope">
+        <span class="mute">253 notes · 545 files ·</span>
+        <button class="chip">all</button><button class="chip mute">notes</button><button class="chip mute">files</button>
+        <button class="chip mute">ACC 201</button><button class="chip mute">FIN 101</button><button class="chip mute">Deal Club</button>
+      </div>
+    </div>
+    <section class="panel chat">
+      <div class="head"><span class="tab">Chat</span><span class="sub">Using my outreach playbook, what are the three emails?</span>
+        <div class="tabs-mini"><button class="chip mute">history</button><button class="chip">+ NEW</button></div></div>
+      <div class="body">
+        <div class="msg me">Using my outreach playbook, what are the three emails in the sequence? One line each.</div>
+        <div class="msg ai">
+          <div class="who-line">Local model · Gemma 4 12B</div>
+          From your playbooks, the sequence is:
+          <ol>
+            <li><b>The intro:</b> who you are and the one reason you're writing to this firm, with a specific deal of theirs.</li>
+            <li><b>The follow-up (day 3–4):</b> one new, useful point; restate the ask in a sentence.</li>
+            <li><b>The close-out (day 7–8):</b> a short, polite last note that leaves the door open.</li>
+          </ol>
+          <div class="reading"><span class="mute">READING</span><span class="it">Personalized Outreach Playbook ✕</span><span class="it">Jeff Weiss Generator Outreach Guide ✕</span><span class="mute">· 2 notes, 0 files</span></div>
+        </div>
+      </div>
+      <div class="compose"><textarea placeholder="Ask about your notes… (Enter to send)" aria-label="Message"></textarea><button class="chip">SEND ⏎</button></div>
+    </section>
+  </div>
+
+  <!-- RIGHT: what waits for you -->
+  <div class="side">
+    <section class="panel waiting">
+      <div class="head"><span class="tab">Waiting for you</span><span class="sub">25</span></div>
+      <div class="body">
+        <div class="card"><div class="t">Intermediate Accounting · Chapter 1 (part 1 of 2)</div>
+          <p>50 notes from 22 sections, every listed concept covered.</p>
+          <button class="chip amber">REVIEW 50 NOTES</button> <button class="chip mute">later</button></div>
+        <div class="card"><p style="margin-top:0">24 more, in chapter order.</p><button class="chip">OPEN INBOX →</button></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="head"><span class="tab">Digesting</span></div>
+      <div class="body">
+        <div style="font:14px var(--copy)">Intermediate Accounting 18e</div>
+        <div class="dots" style="margin:8px 0"><i style="width:29%"></i></div>
+        <div class="mute" style="font:12px/1.5 var(--copy)">13 of 45 chapters out for review · all 777 sections drafted</div>
+      </div>
+    </section>
+    <section class="panel" style="flex:1">
+      <div class="head"><span class="tab">Recent notes</span><button class="chip mute" style="margin-left:auto">library →</button></div>
+      <div class="body">
+        <ul class="list">
+          <li><span class="t">Revenue recognition: five steps</span><span class="w">today</span><span class="m">Books · Ch 3 · approved</span></li>
+          <li><span class="t">Deal Club Training</span><span class="w">today</span><span class="m">Drive · approved</span></li>
+          <li><span class="t">Fall 26 Schedule Syllabus</span><span class="w">2 d</span><span class="m">Drive</span></li>
+          <li><span class="t">DCF formula sheet</span><span class="w">5 d</span><span class="m">Finance · yours</span></li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel systems">
+    <span><span class="k">GPU</span>RTX 5070 Ti · 9.6 / 15.9 GB</span>
+    <span><span class="k">Engine</span><span class="light up"></span> Gemma 4 12B</span>
+    <span><span class="k">Game mode</span>watching</span>
+    <span><span class="k">Library</span>this PC only <span class="mute">· not synced</span></span>
+    <span><span class="k">Hermes</span><span class="mute">not running</span></span>
+    <button class="chip mute" style="margin-left:auto">SYSTEMS: board · GPU lane · safety feed →</button>
+  </section>
+</main>
+
+<p class="note"><b>Mockup C, second pass.</b> Search and the conversation in the centre; the agent side panel kept on the
+left with its planet, model, where it runs and its usage (graphics memory for the local model, subscription bars for
+Claude once connected), with the other agents as switchable slots under it; what waits for you on the right. The planet
+here is a flat stand-in for the real WebGL one, which the app keeps as it is.</p>
+
+<script>
+  // a dotted globe with continents, turning slowly: a stand-in for the app's WebGL planet
+  const cv = document.getElementById("planet"), g = cv.getContext("2d"), R = 150, N = 1400, pts = [];
+  const hash = (x, y, z) => { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
+  for (let i = 0; i < N; i++) {                      // Fibonacci sphere
+    const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), t = i * 2.399963;
+    const x = Math.cos(t) * r, z = Math.sin(t) * r;
+    const land = (hash(Math.round(x * 3), Math.round(y * 3), Math.round(z * 3)) * .65 + hash(Math.round(x * 6), Math.round(y * 6), Math.round(z * 6)) * .35) > .55;
+    pts.push([x, y, z, land]);
+  }
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let a = 0;
+  function frame() {
+    g.clearRect(0, 0, cv.width, cv.height);
+    const cx = cv.width / 2, cy = cv.height / 2, ca = Math.cos(a), sa = Math.sin(a), tilt = .35, ct = Math.cos(tilt), st = Math.sin(tilt);
+    const halo = g.createRadialGradient(cx, cy, R * .4, cx, cy, R * 1.35);
+    halo.addColorStop(0, "rgba(61,255,139,.10)"); halo.addColorStop(1, "rgba(61,255,139,0)");
+    g.fillStyle = halo; g.fillRect(0, 0, cv.width, cv.height);
+    for (const [x, y, z, land] of pts) {
+      const x1 = x * ca + z * sa, z1 = -x * sa + z * ca, y1 = y * ct - z1 * st, z2 = y * st + z1 * ct;
+      if (z2 < -0.15) continue;
+      const k = .35 + .65 * Math.max(0, z2), s = land ? 2.4 : 1.2;
+      g.fillStyle = land ? `rgba(160,255,200,${.35 + .65 * k})` : `rgba(61,255,139,${.12 + .3 * k})`;
+      g.beginPath(); g.arc(cx + x1 * R, cy + y1 * R, s * (.7 + .5 * k), 0, 6.283); g.fill();
+    }
+    if (!reduce) { a += .004; requestAnimationFrame(frame); }
+  }
+  frame();
+</script>
+</body>
+</html>
