@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.18.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.19.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D34), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D35), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.18.0** (0.15.2–0.18.0 local tags, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.19.0** (0.15.2–0.19.0 local tags, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -47,6 +47,9 @@ lead or reviewer (D26).
 - 0.14: K13 review proposals note by note: read rendered, keep/drop, edit, file only what's kept (D24).
 - 0.15: D25 storage (app data + Library + STORAGE tab: open folders, export zip, move Library, sync conflicts);
   Drive folders through the API; textbook fixes (year rows vs Aadhaar screening, faulty bookmarks).
+- 0.17: **G1** game mode (D29; real-game check pending). 0.18: **W1** Tauri desktop app (D33) + UI pass (D34).
+  0.19: **W2** library-first home around the planet card (D35); digest resend bug fixed (Chapter 7 duplicates undone).
+  The incumbent phosphor world stays: a SAGE-console replacement was rejected (PRODUCT.md, `.impeccable/surfaces/`).
 - 0.16: **Y1** sync-ready data (D28, D31): ULIDs, change log via TEMP triggers, tombstones, device identity
   (`dv_01M4PBTTHBWWK32YSMX4NPWRJ7`, "DESKTOP-4JPBI6U"), manifest; real data migrated 11 Oct (backup and old to
   new ID map in `%APPDATA%\Sage OS\backups\pre-ulid-20261011-141542-5F7XHK`). Nothing sends logs between
@@ -69,12 +72,13 @@ lead or reviewer (D26).
   Its folder name is the long file stem (later digests get readable titles).
 
 ### Next (order agreed 11 Oct, D30, D32)
-1. **Inbox review** (the user does this, with REVIEW): textbook chapter cards; reject the textbook's
-   front-matter cards (drafted before the "about the book itself" rule) and the older 47-note playbook card.
+1. **K7 review at scale** is next (started 11 Oct after 0.19.0): approve / reject a whole chapter (all its parts) in
+   one decision, per-agent trust levels and roles (D7 idea 5). The textbook backlog: ~30 chapters, 25 cards waiting,
+   the first seven are front matter the user may reject. Gate: a 20-note librarian run approved in one decision.
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.
-3. ~~G1 game mode~~ (built, 0.17.0; needs the user's real-game check, see STATUS) → **K7** review at scale → **K14** meaning-based search → **F1** friend's Mac build
+3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → **K7** → **K14** meaning-based search → **F1** friend's Mac build
    (D32: .dmg from GitHub Actions, empty first run, keys in the app, *Report a problem* by email) → **A3** own task board →
    **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); S2 OCR (D19); K9; K11; Phases 4–6
@@ -85,7 +89,11 @@ lead or reviewer (D26).
   terminal, using the CLI the hub found (`C:\Users\you\.local\bin\claude.EXE`).
 - **Delete** `sage-os\data.moved-20261009-014252` (362 MB) once happy, and the stale virtualized copy at
   `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Sage OS` (see gotchas).
-- **Inbox cards** (above). **Move the Library** to a synced folder when ready (STORAGE).
+- **Inbox cards**: the front-matter cards. **Move the Library** to a synced folder when ready (STORAGE).
+- **Game mode real-game check** (G1 gate): play a game, choose "Keep working" once (downloads Gemma 4 E2B, 2.6 GB).
+- **Which agent tool sets** models get first (Library, Digest, Tasks, Web) was asked 11 Oct, unanswered.
+- **Delete** `sage-os\data-y1check\` (copies of the databases used to check Y1, stand-in game scripts).
+- **Impeccable update** to 4.5.2 offered (runs `npx impeccable update`), unanswered.
 - Older, still open: guardrails hook on macOS (D13: show the diff, get an explicit OK); delete the stale alias
   scripts `swift.bat` / `coder.bat` / `guardian.bat`; spending categories for kanban `t_549737c1`; pricing,
   accounts and installers follow D27 but aren't decided.

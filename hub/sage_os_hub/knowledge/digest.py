@@ -111,6 +111,11 @@ def parse_json(text: str) -> dict:
     return {"concepts": concepts, "notes": notes[:12]}
 
 
+def _note_key(change: dict) -> str:
+    """A proposed note's identity across rounds: its title (folder-insensitive, case-insensitive)."""
+    return str(change.get("title") or change.get("uid") or "").strip().lower()
+
+
 def readable_title(rel: str) -> str:
     """A file name as a title: "Intermediate_Accounting__18th_Edition_Kieso_--_Kieso__Weygandt_--_Wiley.pdf"
     -> "Intermediate Accounting 18th Edition Kieso" (download sites append authors, publisher and hashes)."""
@@ -458,14 +463,16 @@ class Digests:
                 return True
             batches = [changes[i:i + MAX_NOTES_PER_PROPOSAL] for i in range(0, len(changes), MAX_NOTES_PER_PROPOSAL)]
             # A chapter that waited for inbox room part-way through resumes after the parts it already sent: its
-            # sections count as proposed only once every part is out, so the batches come back the same each time.
-            sent = await asyncio.to_thread(self._sent_summaries, pids)
+            # sections count as proposed only once every part is out, so the same notes come back each time. A part
+            # is skipped when all its notes went out before (by title: summaries change when a retried section
+            # changes the chapter's counts).
+            sent = await asyncio.to_thread(self._sent_titles, pids)
             for k, batch in enumerate(batches, 1):
                 part = f" (part {k} of {len(batches)})" if len(batches) > 1 else ""
                 gaps = f"; {stats['failed']} section(s) failed" if stats["failed"] else ""
                 summary = (f"{job['title']}: {chapter}{part}: {len(batch)} notes from {stats['sections']} sections, "
                            f"{stats['covered']}/{stats['concepts']} listed concepts covered{gaps}")[:500]
-                if summary in sent:
+                if sent and all(_note_key(c) in sent for c in batch):
                     continue
                 r = await self.hub.submit_proposal(f"digest:{job['model']}"[:200], summary, batch)
                 if r["status"] == "pending":
@@ -488,12 +495,12 @@ class Digests:
             return True
         return False
 
-    def _sent_summaries(self, pids: list[str]) -> set[str]:
-        """Summaries of this chapter's proposals already sent, whatever became of them (pending, filed, rejected)."""
+    def _sent_titles(self, pids: list[str]) -> set[str]:
+        """The notes this chapter's proposals already carried, whatever became of them (pending, filed, rejected)."""
         out = set()
         for pid in pids:
             try:
-                out.add(self.hub.writer.proposal(pid)["summary"])
+                out.update(_note_key(c) for c in self.hub.writer.proposal(pid)["changes"])
             except Exception:                              # noqa: BLE001 -- unknown id: nothing to skip
                 pass
         return out

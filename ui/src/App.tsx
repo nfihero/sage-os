@@ -105,12 +105,13 @@ export default function App() {
   const openSource = (source: { source: string; path: string }) => { setShelfAt({ source }); setShelf(true); };
   const ask = async (q: string) => {
     setAskErr(null);
-    if (agent === "claude" && claudeReady) { setAskErr("Paste it into Claude's message box below; asking from search goes to the local model."); return; }
+    // asking from search goes to the local model (Claude has its own message box); switch to show the answer
     const r = await askLocal(panels, q);
     if (r.id) { setAgent("local"); setChatOpen(r.id); setTab("home"); } else setAskErr(r.error ?? "couldn't start the chat");
   };
   // Centre of the home screen: the conversation with whichever agent is selected
   const showClaude = agent === "claude" && (claudeReady || peekClaude);
+  const shown: AgentKey = showClaude ? "claude" : "local";   // a saved "claude" falls back while Claude isn't connected
   const conversation = connecting && !claudeReady
     ? <ConnectAgent panel={panels.claude} onModels={() => setModels(true)} onPeek={() => { setPeekClaude(true); setAgent("claude"); setConnecting(false); }} />
     : showClaude
@@ -126,7 +127,7 @@ export default function App() {
           <ModelChat sessions={panels.chat?.sessions ?? []} onModels={() => setModels(true)} openId={chatOpen} onOpen={setChatOpen} />
         </section>
       );
-  const agentPanel = <AgentPanel agent={agent} setAgent={(a) => { setAgent(a); setConnecting(false); }} panels={panels} lowPower={lowPower}
+  const agentPanel = <AgentPanel agent={shown} setAgent={(a) => { setAgent(a); setConnecting(false); }} panels={panels} lowPower={lowPower}
     claudeReady={claudeReady} onConnectClaude={() => setConnecting(true)} onModels={() => setModels(true)} />;
   const search = <LibrarySearch panels={panels} onOpenNote={openNote} onOpenSource={openSource} onAsk={ask} />;
   const hermesRan = panels.health?.gateway.state === "up" || panels.health?.gateway.state === "down";

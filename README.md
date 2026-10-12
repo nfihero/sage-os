@@ -79,7 +79,8 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 
 | Area | Source | Notes |
 |---|---|---|
-| Claude Code pane | Claude Agent SDK, your subscription | session tabs, folder + model per session; tool requests → inbox; usage meter |
+| Home (W2) | everything below, arranged library-first | left, the agent's planet with State / Model / Where and GPU meters, agents to switch to or connect; centre, **search** over notes and files (Ctrl K; Enter asks the local model) above the chat; right, inbox, digest progress, recent notes; bottom, a one-line systems strip. **Systems** (top) holds the board, GPU lane and Hermes |
+| Claude Code pane | Claude Agent SDK, your subscription | session tabs, folder + model per session; tool requests → inbox; usage meter; shows a "Connect an agent" card until Claude Code is signed in |
 | Chat pane | the **Chat** connector: any OpenAI-compatible endpoint (local engine, ChatGPT, Gemini, Ollama) | pick where and which model; the AI uses your notes and documents through Bookshelf tools; **Hermes** tab when Hermes is installed |
 | Reading strip | briefing packs (K8, D20) | under each message: what was attached (◆ notes, ▤ documents) and what the AI opened itself (·read); ✕ = wrong or not relevant; 📖 toggles packs per chat |
 | Review | an inbox card's **REVIEW** (K13, D24) | each proposed note rendered; keep / drop; edit title, body, tags with a live preview; approve only what you kept |
@@ -87,7 +88,7 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 | Models | `data/engine` | this computer's memory and GPU, the local engine (install, start, stop), a model catalog rated *fits / tight / too big*, models already on disk, connected cloud AIs |
 | Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change; held (secret-looking) proposals: reject / save anyway |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
-| GPU lane | router `/models`, `nvidia-smi`, `psutil` | resident model, VRAM/RAM, guardian sidecar |
+| GPU lane | Windows GPU counters (any vendor), router `/models`, `psutil` | the Sage OS engine and any router model, VRAM/RAM, guardian sidecar |
 | Top bar | health checks, guard logs | service lights (Hermes, Models, Guard), safety chip (red only on new blocks), **? GUIDE** (why + tour), Bookshelf, theme, Motion |
 | Bookshelf | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; **Build notes**: propose starter notes, ask an agent to draft concept notes; Open vault in Explorer |
 

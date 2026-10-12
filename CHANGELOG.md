@@ -12,6 +12,33 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-10-11
+
+W2, the library-first home (D35). **Gate: pass** — approved by the owner in the app. pytest 297.
+
+### Added
+- Home: the agent planet panel (State / Model / Where / Chats, GPU memory and busy meters; Claude's subscription bars
+  when Claude is chosen) with agents to switch to or connect; search over notes and files with Ctrl K, results that
+  open in the Library, Enter to ask the local model; the chat in the centre; inbox, digest progress and recent notes
+  on the right; a one-line systems strip; a **Systems** view for the board, GPU lane and Hermes; phone tabs Home,
+  Agent, Inbox, Systems.
+- Shared readout components (`Readout.tsx`): rows, dot-matrix meters, Doto numerals and ages like the clock, used
+  by search, chats, inbox, digest, recent notes and the strip.
+- An always-visible GAME MODE chip in the top bar.
+- PRODUCT.md (Impeccable's product record) and a rejected-direction note for the home surface.
+
+### Changed
+- The rolling CRT refresh bar is removed.
+- The guided tour follows the new layout.
+
+### Fixed
+- A digest chapter that waited for inbox room re-sent its first part every time a slot opened (Chapter 7 part 1 went
+  out five times on 11 Oct); a resumed chapter now skips notes it already sent, even when its counts change. The
+  100 duplicate notes were undone and two duplicate cards rejected, with the owner's OK.
+- Search snippets render through the safe highlighter (never HTML); a saved "Claude" agent falls back to the local
+  model while Claude isn't connected; a search error clears on the next result; failed digest sections aren't
+  counted as drafted.
+
 ## [0.18.0] — 2026-10-11
 
 W1, the desktop app (D33), and a UI pass (D34). **Gate: pass** — installed, closed to the tray and reopened, quit with

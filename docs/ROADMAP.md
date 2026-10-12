@@ -113,7 +113,7 @@ migration and resumes under its new ID with its progress. Links copied before 0.
 | Step | Scope | Gate |
 |---|---|---|
 | W1 | **Tauri desktop app**: a window and tray around the hub; starts or attaches to the hub; close to tray, Start at sign-in, Quit stops the hub cleanly; one copy; outside links to the browser; per-user Windows installer | The user installs it, closes and reopens the window from the tray, and quits it with nothing left running — **pass** (11 Oct, v0.18.0) |
-| W2 | (proposed) **Library-first home** (D34 batch C): search, recent notes, what waits for you, agents and chats; the board, GPU lane and safety feed move to Systems | Mockup `docs/mockups/home-library-first.html`, awaiting the user |
+| W2 | **Library-first home** (D35): agent planet panel left, search and chat centre, inbox / digest / recent notes right, systems strip; Systems view for board, GPU lane, Hermes; the planet card's readouts and Doto numerals used everywhere; rolling refresh bar removed | The owner approves it in the app — **pass** (11 Oct, v0.19.0: "I like it") |
 
 ## Friends and testers track (11 Oct 2026 — DECISIONS D32)
 

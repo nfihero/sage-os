@@ -793,6 +793,28 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
      first, so a book reads from its first chapter; digest cards name the book and chapter; a line confirms what was filed.
 - **Costs / limits:** someone who wants a chat with Claude must sign in first (the card says how).
 
+## D35 — A library-first home around the agent planet card; the phosphor world stays (W2)
+
+- **Date / by:** 2026-10-11, user (approved the second home mockup: "search and chat should be in the centre",
+  "bring back the agent side panel design with the planet, the model name, the usage"; later "the planet card with
+  the system stats and orb look the coolest"; rejected a SAGE-console replacement world as "way too basic"; "I like
+  it"); design by Claude with the taste and Impeccable skills
+- **Status:** accepted; built in 0.19.0. Carries out D34 batch C (W2).
+- **Decision:**
+  1. **Layout:** left, the agent side panel (the WebGL planet, State / Model / Where / Chats readouts, usage as
+     dot-matrix meters; Claude's subscription bars when Claude is chosen) with the agents to switch to or connect
+     below; centre, search over notes and files (Ctrl K; Enter asks the local model) above the conversation; right,
+     the inbox, the digest in progress and recent notes; bottom, a one-line systems strip. Board, GPU lane and
+     Hermes move to a **Systems** view. Phone: Home, Agent, Inbox, Systems tabs.
+  2. **The planet card is the house style.** Its parts (readout rows, dot-matrix meters, Doto numerals like the clock,
+     the notched panel tab) are shared components every panel uses (`Readout.tsx`).
+  3. **The incumbent phosphor terminal world stays.** A replacement world was mocked up through Impeccable's
+     direction round and rejected; recorded in PRODUCT.md so later work refines rather than replaces.
+  4. **Motion:** the rolling CRT refresh bar is removed (it distracted); motion stays tied to state.
+- **Costs / limits:** asking from search always goes to the local model (Claude has its own message box); the
+  desktop app shows the hub's page, so UI changes need a reload, not a reinstall.
+- **Revisit if:** the owner wants a bolder change of world (then a new direction round, not polish).
+
 ---
 
 ## Proposed, awaiting the user

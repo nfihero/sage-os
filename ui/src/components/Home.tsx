@@ -126,7 +126,7 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
     if (!query) { setNotes(null); setFiles(null); setErr(null); return; }
     let alive = true;
     const t = setTimeout(() => {
-      get<SearchResult>(`/api/vault/search?q=${encodeURIComponent(query)}`).then((r) => alive && setNotes(r)).catch((e) => alive && setErr(String(e.message ?? e)));
+      get<SearchResult>(`/api/vault/search?q=${encodeURIComponent(query)}`).then((r) => { if (alive) { setNotes(r); setErr(null); } }).catch((e) => alive && setErr(String(e.message ?? e)));
       get<{ results: SourceHit[] }>(`/api/sources/search?q=${encodeURIComponent(query)}`).then((r) => alive && setFiles(r.results)).catch(() => alive && setFiles([]));
     }, 160);
     return () => { alive = false; clearTimeout(t); };
@@ -197,11 +197,12 @@ export function DigestStrip({ panels }: { panels: Panels }) {
       <div className="panel-body flex flex-col gap-2">
         {jobs.map((j) => {
           const pct = j.chapters_total ? (j.chapters_done / j.chapters_total) * 100 : 0;
-          const drafted = Object.entries(j.counts).filter(([k]) => k !== "pending" && k !== "drafting").reduce((n, [, v]) => n + v, 0);
+          const drafted = (j.counts.drafted ?? 0) + (j.counts.empty ?? 0);      // failed sections aren't drafted
+          const failed = j.counts.failed ?? 0;
           return (
             <div key={j.id}>
               <Row k="Book" v={j.title.replace(/_/g, " ").split(" -- ")[0]} />
-              <Row k="Sections" v={`${drafted} / ${j.sections_total} drafted`} />
+              <Row k="Sections" v={`${drafted} / ${j.sections_total} drafted${failed ? `, ${failed} failed` : ""}`} hot={failed > 0} />
               <div className="mt-2"><Meter label={j.status === "paused" ? "chapters out · paused" : "chapters out for review"} value={String(j.chapters_done)} of={String(j.chapters_total)} pct={pct} /></div>
             </div>
           );

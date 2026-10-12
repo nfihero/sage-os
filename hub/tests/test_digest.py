@@ -320,3 +320,24 @@ def test_a_chapter_that_waited_for_room_resumes_after_the_parts_it_sent(env, mon
         parts.setdefault(f"{m.group(1)}/{m.group(3)}", set()).add(int(m.group(2)))
     assert parts and all(got == set(range(1, int(key.split("/")[1]) + 1)) for key, got in parts.items()), parts
     assert client.get(f"/api/digest/{job['id']}").json()["status"] == "done"
+
+
+def test_a_resumed_chapter_skips_sent_notes_even_when_its_counts_change(env, monkeypatch):
+    """Review 0.19: summaries carry counts, so a retried section changed them and every part went out again."""
+    import sage_os_hub.app as app_module
+    hub, client, calls = env
+    monkeypatch.setattr(dg, "MAX_NOTES_PER_PROPOSAL", 1)
+    monkeypatch.setattr(app_module, "MAX_PENDING_PER_AGENT", 1)
+    client.post("/api/digest", json={"source": "drive", "path": "finance-book.md", "model": "m"}, headers=H)
+    run_all(hub)
+    [first] = [p for p in hub.writer.proposals("pending") if p["agent"].startswith("digest:")]
+    real = dg.Digests.chapter_changes
+
+    def recounted(self, job, chapter):                 # a retried section changes the chapter's counts
+        changes, stats = real(self, job, chapter)
+        return changes, {**stats, "covered": stats["covered"] - 1}
+    monkeypatch.setattr(dg.Digests, "chapter_changes", recounted)
+    hub.writer.approve(first["id"])
+    run_all(hub)
+    titles = [c["title"] for p in hub.writer.proposals() if p["agent"].startswith("digest:") for c in p["changes"]]
+    assert len(titles) == len(set(titles)), titles
