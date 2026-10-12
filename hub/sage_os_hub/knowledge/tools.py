@@ -64,7 +64,7 @@ class BookshelfTools:
         def run():
             if hub.index.synced_at is None:
                 hub.index.sync(hub.vault.scan(), hub.vault.read_body)
-            return hub.index.search(query, limit=max(1, min(int(limit), 30)), archived=bool(include_archive))
+            return hub.semantic.search_notes(query, limit=max(1, min(int(limit), 30)), archived=bool(include_archive))
         res = await asyncio.to_thread(run)
         await self.hub.log_tool(agent, "searched", f"searched notes for “{str(query)[:200]}”: {len(res['results'])} found",
                                 {"query": str(query)[:200], "found": len(res["results"])})
@@ -101,7 +101,7 @@ class BookshelfTools:
         return r
 
     async def search_sources(self, agent: str, query: str, limit: int = 10) -> dict:
-        res = await asyncio.to_thread(self.hub.sources.search, query, max(1, min(int(limit), 30)))
+        res = await asyncio.to_thread(self.hub.semantic.search_sources, query, max(1, min(int(limit), 30)))
         await self.hub.log_tool(agent, "searched_sources", f"searched documents for “{str(query)[:200]}”: "
                                 f"{len(res['results'])} found", {"query": str(query)[:200], "found": len(res["results"])})
         return {"query": query, "results": [r | {"snippet": _plain(r["snippet"])} for r in res["results"]],

@@ -401,6 +401,13 @@ class SourceLibrary:
         with self.lock:
             return self.db.execute("SELECT rel, status FROM files WHERE source=? ORDER BY rel", (name,)).fetchall()
 
+    def fingerprints(self) -> dict[tuple[str, str], str]:
+        """(source, path) -> what identifies this version of its text, for every file with text (K14 re-embeds
+        a document only when this changes)."""
+        with self.lock:
+            rows = self.db.execute("SELECT source, rel, size, mtime, chars FROM files WHERE chars > 0").fetchall()
+        return {(s, r): f"{size}:{mtime}:{chars}" for s, r, size, mtime, chars in rows}
+
     def summary(self) -> dict:
         with self.lock:
             out = []

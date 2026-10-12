@@ -8,6 +8,9 @@ wrong (✕): it is then left out of that chat's later packs and the agent is tol
   * Recorded: which items went with which message is stored in hub.db, so an answer can be traced.
   * Keyword search (D10) needs shared words: the prompt's key terms are picked out (stop words
     dropped) and matched with OR, then candidates sharing too few terms are dropped.
+  * Meaning (K14, D37), when the search model is running: a candidate found by its words must also be close in
+    meaning to the message (a wordy note about something else stays out), and one close enough in meaning comes
+    in without sharing the words. Items are then ranked by closeness.
 """
 from __future__ import annotations
 
@@ -21,6 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..sync import new_id
+from .semantic import PACK_MIN, PACK_STRONG, chunks
 
 MARK = "⟦Sage OS reading pack⟧"     # starts the block appended to a message; the UI strips it from display
 MAX_NOTES, MAX_SOURCES = 3, 2
@@ -167,7 +171,7 @@ class Briefings:
         return s
 
     # -- building ----------------------------------------------------------------------------------
-    def pick(self, text: str, drops: set[str]) -> tuple[list[str], list[Item]]:
+    def pick(self, text: str, drops: set[str], meaning: bool = True) -> tuple[list[str], list[Item]]:
         """-> (terms, items) for one message. Runs in a worker thread.
         Terms are weighted by rarity (a word in half the library says little), separately for notes and
         sources; a candidate needs enough shared weight, and at least half the best candidate's."""
@@ -178,14 +182,15 @@ class Briefings:
         if hub.index.synced_at is None:
             hub.index.sync(hub.vault.scan(), hub.vault.read_body)
         budget, titles = [BUDGET], set()
+        qvec = hub.semantic.embed_query(text) if meaning and getattr(hub, "semantic", None) else None    # K14; None: words only
 
-        def take(store, limit, read):          # read(row) -> (Item or None, text to score)
+        def take(store, limit, read, kind, ref_of, from_meaning):
+            """read(row) -> (Item or None, text to score); ref_of(row) -> its key in the meaning index;
+            from_meaning(meta) -> (row, passage) for an item found only by meaning."""
             weights = rare(terms, store.doc_freq)
             q = any_query(sorted(weights, key=lambda t: -weights[t]))
-            if not q:
-                return
             scored = []
-            for r in store.search_raw(q, limit=15):
+            for r in store.search_raw(q, limit=15) if q else []:
                 it, body = read(r)
                 if it is None:
                     continue
@@ -193,12 +198,30 @@ class Briefings:
                 hit = [t for t in weights if stem(t) in low]
                 score = sum(weights[t] * (2 if stem(t) in head else 1) for t in hit)
                 if len(hit) >= (1 if len(weights) <= 2 else 2):
-                    scored.append((score, it, body))
-            best = max((s for s, _, _ in scored), default=0)
+                    scored.append((score, it, body, ref_of(r), None))
             total = sum(weights.values()) or 1.0
+            if qvec is not None:                     # rank by meaning: drop wordy look-alikes, add paraphrases
+                near = {m["ref"]: (s, m) for s, m in hub.semantic.store.nearest(kind, qvec, 8)}
+                close = hub.semantic.closeness(qvec, kind, {x[3] for x in scored})
+                ranked = [(close.get(ref, 0.0), it, body, ref, None) for _, it, body, ref, _ in scored
+                          if close.get(ref, 0.0) >= PACK_MIN]
+                seen = {x[3] for x in scored}
+                for ref, (sim, m) in near.items():
+                    if sim < PACK_STRONG or ref in seen:
+                        continue
+                    row, passage = from_meaning(m)
+                    it, body = read(row)
+                    if it is not None:
+                        ranked.append((sim, it, body, ref, passage))
+                scored, total = ranked, 1.0
+                best = max((s for s, *_ in scored), default=0)
+                floor = max(best - 0.15, 0)          # within reach of the best match, like "half the best" below
+            else:
+                best = max((s for s, *_ in scored), default=0)
+                floor = max(best / 2, MIN_SCORE * total)
             taken = 0
-            for score, it, body in sorted(scored, key=lambda x: -x[0]):
-                if taken >= limit or score < best / 2 or score < MIN_SCORE * total or budget[0] <= 200:
+            for score, it, body, _, passage in sorted(scored, key=lambda x: -x[0]):
+                if taken >= limit or score < floor or budget[0] <= 200:
                     break
                 if it.kind == "note":                        # "DCF formula sheet" twice (an import and a draft)
                     if same_doc(it.title) in titles:
@@ -208,7 +231,8 @@ class Briefings:
                 if it.key in note_sources:                   # its document needn't come too
                     cited.add(note_sources[it.key])
                 it.score = round(score / total, 2)
-                it.excerpt = window(body, list(weights), min(NOTE_CHARS if it.kind == "note" else SOURCE_CHARS, budget[0]))
+                size = min(NOTE_CHARS if it.kind == "note" else SOURCE_CHARS, budget[0])
+                it.excerpt = passage[:size] if passage else window(body, list(weights), size)
                 budget[0] -= len(it.excerpt)
                 items.append(it)
 
@@ -234,6 +258,9 @@ class Briefings:
             key, doc_id = f"source:{r['source']}/{r['path']}", same_doc(r["path"])
             if key in drops or doc_id in stems or f"sources/{r['source']}/{r['path']}" in cited:
                 return None, ""                              # x.pdf next to x.docx, "x (1).pdf": one is enough
+            if r.get("meaning"):                         # found by meaning: its passage is the excerpt
+                stems.add(doc_id)
+                return Item(key, "source", Path(r["path"]).name, {"source": r["source"], "path": r["path"]}), ""
             doc = hub.sources.read(r["source"], r["path"], 0, 400_000)
             if not doc:
                 return None, ""
@@ -241,8 +268,18 @@ class Briefings:
             return (Item(key, "source", Path(r["path"]).name, {"source": r["source"], "path": r["path"]}),
                     f"{Path(r['path']).stem}\n{doc['text']}")
 
-        take(hub.index, MAX_NOTES, note)
-        take(hub.sources, MAX_SOURCES, source)
+        def note_meaning(m):
+            return {"ref": m["ref"], "archived": m["archived"]}, None
+
+        def source_meaning(m):                       # the passage that matched, not the document's first page
+            src, rel = m["ref"].split("/", 1)
+            text = hub.sources.full_text(src, rel) or ""
+            parts = chunks(text)
+            return ({"source": src, "path": rel, "meaning": True},
+                    parts[m["chunk"]][1] if m["chunk"] < len(parts) else None)
+
+        take(hub.index, MAX_NOTES, note, "note", lambda r: r["ref"], note_meaning)
+        take(hub.sources, MAX_SOURCES, source, "source", lambda r: f"{r['source']}/{r['path']}", source_meaning)
         return terms, items
 
     def prepare(self, chat: str, agent: str, session: str, text: str) -> tuple[str, dict]:

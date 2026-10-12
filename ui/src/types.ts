@@ -65,8 +65,15 @@ export type NoteMeta = {
 };
 export type NoteFull = NoteMeta & { frontmatter: Record<string, any>; body: string; text: string };   // text: the whole file
 export type VaultPanel = { root: string; exists: boolean; count: number; problems: number; folders: string[]; notes: NoteMeta[]; indexed?: number };
-export type SearchHit = { path: string; ref: string; title: string; folder: string; archived: boolean; snippet: string; score: number };
-export type SearchResult = { q: string; ms: number; results: SearchHit[] };
+export type SearchHit = { path: string; ref: string; title: string; folder: string; archived: boolean; snippet: string; score: number;
+  match?: "words" | "meaning" | "both"; similarity?: number };
+export type SearchResult = { q: string; ms: number; results: SearchHit[]; mode?: "words" | "both" };
+/** K14 (D37): meaning-based search's model and index. */
+export type SemanticPanel = {
+  state: "off" | "paused" | "indexing" | "ready" | "error"; reason?: string | null; installed: boolean;
+  download: { state: string; done: number; total: number; error: string | null } | null;
+  notes: number; documents: number; what?: string | null; done?: number; total?: number; documents_left?: number; size: number;
+};
 export type SourceInfo = {
   name: string; path: string; copy: string; include: string[]; files: number; indexed: number;
   last_sync: number | null; last_stats: { copied: number; unchanged: number; removed: number; private_content: number; errors: number; skipped: number } | null;
@@ -76,7 +83,7 @@ export type GoogleStatus = { configured: boolean; connected: boolean; client_fil
 export type SourcesPanel = { sources: SourceInfo[]; google?: GoogleStatus | null };
 export type SourceCollection = { dir: string; title: string; docs: number; markdown: number; folder: string; note: string | null; status: "new" | "pending" | "built" };
 export type BuildResult = { proposed: number; notes: number; already: number; left_out: { path: string; reason: string }[]; not_sent: { collection: string; reason: string }[] };
-export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number };
+export type SourceHit = { source: string; path: string; title: string; snippet: string; score: number; match?: "words" | "meaning" | "both" };
 export type SourceDoc = { source: string; path: string; size: number; status: string; note: string | null; chars: number; offset: number; text: string; more: boolean };
 export type Batch = {
   id: string; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
@@ -144,6 +151,7 @@ export type Panels = {
   sources?: SourcesPanel;
   agents_trust?: { agents: AgentTrust[]; auto: Batch[]; reviewer: ReviewerSettings };
   librarian?: LibrarianState;
+  semantic?: SemanticPanel;
 };
 
 export type TaskDetail = {

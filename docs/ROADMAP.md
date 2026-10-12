@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (11 Oct 2026 — DECISIONS D30, D32)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14 → F1 → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -50,11 +50,11 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K13 | **Review note by note** (D24): read each proposed note rendered, keep or drop it, edit it with a live preview, file only what was kept | Kept notes filed (edited ones marked), dropped ones not, undo exact — **pass** (9 Oct, v0.14.0, tests + browser at desktop and phone width) |
 | K9 | Work becomes knowledge: finished tasks propose a short record; chats get "save to Bookshelf" (D7 idea 3) | A finished task's record arrives in the inbox as a proposal |
 | ~~K10~~ | ~~Git-backed vault: each approved batch is a commit~~ — **dropped** (11 Oct, D30: the journal and the Y1 change log carry the history) | — |
-| K14 | **Meaning-based search** (D10's later step): notes and sources searched by meaning as well as keywords, used by search, briefing packs and Ask; embeddings rebuilt per device (D27.4) | A question worded differently from the note still finds it, and a wordy but wrong note no longer makes the briefing pack |
+| K14 | **Meaning-based search** (D10's later step): notes and sources searched by meaning as well as keywords, used by search, briefing packs and Ask; embeddings rebuilt per device (D27.4) | A question worded differently from the note still finds it, and a wordy but wrong note no longer makes the briefing pack — **pass** (12 Oct, v0.21.0, D37: on the owner's notes, 21/23 differently worded questions find their note in the top 5 vs 2/23 by keywords; briefing packs right 6/6 vs 4/6, look-alike traps now empty) |
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
 | later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
-Done: K1–K8, K12, K13, S1, S3. Open: K14, S2, K9, K11, the editor. K10 dropped (D30).
+Done: K1–K8, K12–K14, S1, S3. Open: S2, K9, K11, the editor. K10 dropped (D30).
 
 ## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
 

@@ -4,6 +4,10 @@
 several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
 every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
+**Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using
+a small model on your processor (downloaded once when you ask, 334 MB); briefing packs leave out notes that only
+share words with your question.
+
 **Review at scale (v0.20.0):** a digested chapter is one inbox card and one decision; tick cards to decide
 several at once; History undoes a whole batch or one note. **AGENTS** (in the inbox) sets each agent's trust (ask
 first, let new notes file themselves, or trusted) and shows a complete log of everything each agent did, at every

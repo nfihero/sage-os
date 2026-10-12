@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-10-12
+
+K14, meaning-based search (D37). **Gate: pass** on the owner's library: 21/23 differently worded questions find their
+note (2/23 by keywords), briefing packs right 6/6 (4/6). pytest 328.
+
+### Added
+- Search by meaning as well as words: EmbeddingGemma 300M in its own llama-server on the CPU (downloaded on request,
+  334 MB, checksum-verified), a per-device vector cache (`semantic.db`), notes and source passages indexed in the
+  background and re-embedded only when they change; paused during game mode.
+- Hybrid ranking for Ctrl K and Library search, the agents' search tools, the Reviewer and the Librarian; results found
+  only by meaning are marked "≈ meaning"; the search box says whether search is words only, indexing, or words +
+  meaning.
+- Briefing packs filtered and ranked by meaning; a source brings the passage that matched.
+- `GET /api/briefing/preview` (what a pack would carry, nothing sent), `words=true` on note search, and
+  `hub/tools/eval_search.py`, the gate check against a live hub with private questions.
+
+### Changed
+- `config.toml` is generic: your sources, Claude workspaces and Hermes path live in `config.local.toml` (the repo is
+  public). Commits use the GitHub no-reply address.
+
+### Fixed
+- The search results list opened far below the search box (a shared panel style overrode its position).
+
 ## [0.20.0] — 2026-10-11
 
 K7, review at scale (D36). **Gate: pass in tests** (a 20-note Librarian run filed in one decision); the live run waits

@@ -422,3 +422,76 @@ def safe_extract(archive: Path, dest: Path):
             if any(not ok(m.name) for m in t.getmembers()):
                 raise EngineError("archive has unsafe paths")
             t.extractall(dest, filter="data")              # also refuses links that point outside dest
+
+
+# -- the embedding server (K14, D37) ---------------------------------------------------------------------------
+EMBED_MODEL = {"id": "embeddinggemma-300m", "label": "EmbeddingGemma 300M", "repo": "ggml-org/embeddinggemma-300M-GGUF",
+               "file": "embeddinggemma-300M-Q8_0.gguf", "size": 333590944,
+               "sha256": "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63", "licence": "Gemma",
+               "dims": 768}
+EMBED_CTX = 2048          # EmbeddingGemma reads up to 2,048 tokens per text
+EMBED_SLOTS = 2           # one for the indexer, one for searches (a query never waits behind a batch)
+
+
+class EmbedEngine(LocalEngine):
+    """A second llama-server that turns text into meaning-vectors for search (K14). It runs on the CPU only, with a
+    quarter of the cores, so it works with the main engine off, beside a game and on a laptop, and never takes GPU
+    memory. Its files live in <engine>/embed; the same binary serves both."""
+
+    def __init__(self, root: Path, port: int = 8791, binary: str | None = None, on_change=None):
+        super().__init__(root, port, binary, [], on_change)
+
+    def binary(self) -> Path | None:
+        """The configured build, else one the main engine installed (one level up)."""
+        if self.configured_binary and self.configured_binary.is_file():
+            return self.configured_binary
+        bins = self.root.parent / "bin"
+        found = sorted(bins.rglob(EXE)) if bins.is_dir() else []
+        return found[0] if found else None
+
+    @property
+    def model_path(self) -> Path:
+        return self.models_dir / EMBED_MODEL["file"]
+
+    def installed(self) -> bool:
+        return self.model_path.is_file()
+
+    def download(self) -> None:
+        job = self._job("model:embed", "model", EMBED_MODEL["label"])
+        try:
+            self._fetch(HF_FILE.format(repo=EMBED_MODEL["repo"], file=EMBED_MODEL["file"]), self.model_path, job,
+                        EMBED_MODEL["sha256"], EMBED_MODEL["size"])
+            if job.state != "cancelled":
+                job.state = "done"
+        except Exception as exc:                          # noqa: BLE001 -- shown in the search status
+            job.state, job.error = "failed", str(exc)
+        finally:
+            self.on_change()
+
+    def start(self, model_id: str = "embed", small: bool = False) -> dict:
+        b = self.binary()
+        if not b:
+            raise EngineError("llama-server isn't installed yet (MODELS installs it)")
+        if not self.installed():
+            raise EngineError("the search model isn't downloaded yet")
+        self.stop()
+        threads = max(2, (os.cpu_count() or 4) // 4)
+        args = [str(b), "-m", str(self.model_path), "--host", "127.0.0.1", "--port", str(self.port), "--embeddings",
+                "--alias", "embed", "-c", str(EMBED_CTX * EMBED_SLOTS), "-b", str(EMBED_CTX), "-ub", str(EMBED_CTX),
+                "-np", str(EMBED_SLOTS),
+                "-ngl", "0", "--device", "none", "-t", str(threads), "--no-webui", "--cors-origins", "http://127.0.0.1:1"]
+        self.api_key = secrets.token_urlsafe(32)
+        env = {**os.environ, "LLAMA_API_KEY": self.api_key, "CUDA_VISIBLE_DEVICES": ""}
+        self.root.mkdir(parents=True, exist_ok=True)
+        log = open(self.root / "server.log", "ab")
+        try:
+            proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, cwd=str(b.parent), env=env,
+                                    creationflags=NO_WINDOW)
+        finally:
+            log.close()
+        with self.lock:
+            self.proc = proc
+            self.serving = {"id": "embed", "path": str(self.model_path), "started": time.time(), "ready": False,
+                            "pid": proc.pid}
+        (self.root / "server.pid").write_text(str(proc.pid))
+        return self.serving

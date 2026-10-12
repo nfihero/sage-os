@@ -851,6 +851,38 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** the log needs trimming or filtering at volume, trust should be scoped (per folder), or reviewers
   should vote (two models).
 
+## D37 — Meaning-based search: a small embedding model on the CPU, hybrid ranking, packs filtered by meaning (K14)
+
+- **Date / by:** 2026-10-12, user (chose "a small model on the CPU" over a tiny static model or the main GPU model);
+  design and calibration by Claude
+- **Status:** accepted; built in 0.21.0. D10's "later step"; amends K8 (D20) pack selection.
+- **Decision:**
+  1. **Model:** EmbeddingGemma 300M (Q8_0, 334 MB, Gemma licence, checksum-verified) in its own llama-server on the
+     **CPU only** (`--device none`, a quarter of the cores, two slots so a search never waits behind indexing). It
+     works with the main engine off, beside a game and on a laptop or Mac, and never takes GPU memory. Downloaded
+     only when the user clicks *search by meaning too*.
+  2. **Index:** every note (title, tags, first 2,000 characters; sensitive notes by title only, D12) and every
+     source document in overlapping 1,200-character passages, stored in `semantic.db`: a per-device cache (LOCAL,
+     D27.4), rebuilt from the Library and source copies, re-embedded only when the text changes. Notes first, then
+     documents a few at a time. Paused while game mode has the computer (G1).
+  3. **Search is hybrid:** keyword (FTS5, D10) and meaning merged by reciprocal rank; a question of four or more
+     words weighs meaning double, short exact terms count both equally. Results say how they matched (words /
+     meaning / both). Used by Ctrl K and Library search, the agents' `search_notes` / `search_sources`, the Reviewer's
+     duplicate check and the Librarian's link candidates. Without the model, search is keyword-only and says so.
+  4. **Briefing packs** rank candidates by closeness of meaning: a note found by its words must still be at least
+     0.40 close (wordy look-alikes stay out); one at least 0.45 close comes in without sharing words; sources bring
+     the passage that matched, not their first page.
+  5. **Calibration** on the owner's library (thresholds in `semantic.py`): right answers scored 0.31-0.77 (median
+     0.50) against differently worded questions; the best match for questions the library can't answer scored at most
+     0.35. A meaning-only search hit needs 0.30.
+  6. **Gate check** `hub/tools/eval_search.py` runs against the live hub with questions kept outside git
+     (`data-private/`), since they're about the owner's notes and the repo is public.
+- **Costs / limits:** first indexing of ~570 documents takes a while on the CPU (notes take seconds); thresholds are
+  tuned on one library and one model, so a different model means recalibrating; brute-force vectors in memory are
+  fine to tens of thousands of passages, not millions.
+- **Revisit if:** the library passes ~100k passages (an ANN index such as sqlite-vec), a better small multilingual
+  embedding model appears, or packs still bring wrong notes in practice.
+
 ---
 
 ## Proposed, awaiting the user

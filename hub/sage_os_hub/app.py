@@ -37,7 +37,7 @@ from .adapters.vault import VaultAdapter
 from .config import ROOT, Config, load
 from .connectors import build_agents, build_providers
 from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidRequest, SessionNotFound
-from .engine import EngineError, LocalEngine
+from .engine import EmbedEngine, EngineError, LocalEngine
 from .gamemode import GameMode
 from .inbox import Inbox
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
@@ -50,6 +50,7 @@ from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
 from .knowledge.roles import Librarian, Reviewer, provider_choices
+from .knowledge.semantic import Semantic
 from .knowledge.trust import LEVELS, ROLES, Trust, agent_key, allows, label as agent_label
 from .store import Store
 from .sync import ChangeLog, Device, migrate, new_id
@@ -167,6 +168,10 @@ class Hub:
         self.engine = LocalEngine(cfg.engine_root, cfg.engine_port, cfg.engine_binary,
                                   [Path(d) for d in cfg.engine_model_dirs], on_change=self.publish_engine_soon) \
             if cfg.engine_enabled else None
+        # K14 (D37): meaning-based search; its own small llama-server on the CPU, vectors cached per computer
+        embed = EmbedEngine(cfg.engine_root / "embed", cfg.engine_port + 1, cfg.engine_binary,
+                            on_change=self.publish_semantic_soon) if cfg.engine_enabled else None
+        self.semantic = Semantic(self, cfg.store.with_name("semantic.db"), embed)
         self.gamemode = GameMode(self, cfg.data_dir / "gamemode.json")      # G1: step aside for games (D29)
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         # Bookshelf over MCP (K5): Claude gets an in-process server per session, the model chat calls the
@@ -502,6 +507,7 @@ class Hub:
         finally:
             self.publish_sources()
         self.event("knowledge", "sources", "sources.synced", {"source": name, **stats})
+        self.semantic.wake.set()
         return stats
 
     # -- notes from sources (K6, D17) ---------------------------------------------------------------
@@ -627,6 +633,11 @@ class Hub:
         e = self.engine
         return e.status() | {"catalog": e.catalog(), "local": e.local_models()} if e else {"disabled": True}
 
+    def publish_semantic_soon(self):
+        """The search model's download reports from a worker thread; publish from the event loop."""
+        if self.loop:
+            self.loop.call_soon_threadsafe(lambda: self.semantic.publish(force=True))
+
     def publish_engine_soon(self):
         """Engine changes come from worker threads (downloads); publish from the event loop."""
         if self.loop and self.engine:
@@ -724,6 +735,7 @@ class Hub:
         """Re-read the vault now instead of waiting for the next poll (after an apply or undo)."""
         if self.loop:
             self.loop.create_task(asyncio.to_thread(self.vault_adapter.poll))
+        self.semantic.wake.set()                  # new or changed notes get their meaning-vectors (K14)
 
     # -- lifecycle ---------------------------------------------------------------------------
     def run_smoke(self):
@@ -919,6 +931,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             tasks.append(asyncio.create_task(hub.watch_engine(), name="engine"))
             tasks.append(asyncio.create_task(hub.digests.run(), name="digest"))
             tasks.append(asyncio.create_task(hub.reviewer.run(), name="reviewer"))
+            tasks.append(asyncio.create_task(hub.semantic.run(), name="semantic"))
             if hub.engine:
                 tasks.append(asyncio.create_task(hub.gamemode.run(), name="gamemode"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
@@ -935,6 +948,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             await a.shutdown()
         if hub.engine:
             await asyncio.to_thread(hub.engine.stop)
+        await asyncio.to_thread(hub.semantic.close)
         await mcp_stack.aclose()
         hub.index.close()
         hub.writer.close()
@@ -1012,11 +1026,15 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         return await asyncio.to_thread(hub.vault.summary)
 
     @app.get("/api/vault/search")
-    async def vault_search(q: str, archived: bool = False, limit: int = 30):
+    async def vault_search(q: str, archived: bool = False, limit: int = 30, words: bool = False):
+        """Keyword and meaning merged (K14); words=true: keyword search only (D10)."""
         def run():
             if hub.index.synced_at is None:          # first search before the watcher's first pass
                 hub.index.sync(hub.vault.scan(), hub.vault.read_body)
-            return hub.index.search(q, archived=archived, limit=max(1, min(limit, 100)))
+            n = max(1, min(limit, 100))
+            if words:
+                return hub.index.search(q, archived=archived, limit=n) | {"mode": "words"}
+            return hub.semantic.search_notes(q, limit=n, archived=archived)
         return await asyncio.to_thread(run)
 
     @app.get("/api/sources")
@@ -1025,7 +1043,38 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
 
     @app.get("/api/sources/search")
     async def sources_search(q: str, limit: int = 20):
-        return await asyncio.to_thread(hub.sources.search, q, limit)
+        return await asyncio.to_thread(hub.semantic.search_sources, q, max(1, min(limit, 50)))
+
+    # -- meaning-based search (K14, D37) ------------------------------------------------------------------
+    @app.get("/api/briefing/preview")
+    async def briefing_preview(q: str = Query(max_length=4000), words: bool = False):
+        """What a briefing pack would carry for this message; nothing is sent or recorded (checks K14's gate)."""
+        terms, items = await asyncio.to_thread(hub.briefings.pick, q, set(), not words)
+        return {"terms": terms, "items": [{"kind": i.kind, "title": i.title, "score": i.score} for i in items]}
+
+    @app.get("/api/semantic")
+    def semantic_status():
+        return hub.semantic.status()
+
+    @app.post("/api/semantic/download", dependencies=W)
+    async def semantic_download():
+        """The search model (334 MB) is downloaded only when the user asks."""
+        e = hub.semantic.engine
+        if e is None:
+            raise HTTPException(409, "the local engine is turned off in config")
+        if e.installed():
+            return hub.semantic.status()
+        try:
+            e.claim("model:embed", "model", "EmbeddingGemma 300M")
+        except EngineError as exc:
+            raise HTTPException(409, str(exc))
+
+        async def go():
+            await asyncio.to_thread(e.download)
+            hub.semantic.wake.set()
+        asyncio.create_task(go())
+        hub.semantic.publish(force=True)
+        return hub.semantic.status()
 
     @app.get("/api/sources/read")
     async def sources_read(source: str, path: str, offset: int = 0, limit: int = 20000):

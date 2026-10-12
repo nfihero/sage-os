@@ -152,7 +152,7 @@ class Reviewer:
                 continue
             title = c.get("title") or f"(update to note {c['uid']})"
             try:
-                hits = self.hub.index.search(title, limit=4)["results"]
+                hits = self.hub.semantic.search_notes(title, limit=4)["results"]     # words and meaning (K14)
             except Exception:                     # noqa: BLE001 -- no index yet: review without it
                 hits = []
             same = [h["title"] for h in hits if h.get("ref") != c.get("uid")][:3]
@@ -231,7 +231,7 @@ class Librarian:
 
     def _candidates(self, n) -> list[dict]:
         try:
-            hits = self.hub.index.search(n.title, limit=8)["results"]
+            hits = self.hub.semantic.search_notes(n.title, limit=8)["results"]
         except Exception:                         # noqa: BLE001
             hits = []
         return [{"uid": h["ref"], "title": h["title"]} for h in hits if h["ref"] != n.uid and not h.get("archived")][:6]

@@ -43,6 +43,7 @@ TABLES: dict[str, dict[str, str]] = {
     },
     "bookshelf-index.db": {"*": LOCAL},     # keyword index of the notes, rebuilt from the Library (D10)
     "sources-index.db": {"*": LOCAL},       # index of source copies; each device keeps its own sources
+    "semantic.db": {"*": LOCAL},            # meaning-vectors of notes and sources, rebuilt per device (K14, D27.4)
 }
 
 # each synced table's key: the columns that name one record across devices

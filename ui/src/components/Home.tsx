@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { get, post } from "../api";
-import type { ClaudePanel, Panels, SearchResult, SourceHit } from "../types";
+import type { ClaudePanel, Panels, SearchResult, SemanticPanel, SourceHit } from "../types";
 import { shortModel, useNow } from "../util";
 import Orb from "./LazyOrb";
 import { Snippet } from "./Bookshelf";
@@ -158,10 +158,14 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
           className="copy min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-mute" />
         <span className="chip mute hidden sm:inline-flex">CTRL K</span>
       </label>
-      <div className="border-t border-dashed border-cyan/10 px-3.5 py-1 text-[11px] uppercase tracking-[.16em] text-mute">Enter asks your agent · results open in the Library</div>
+      <div className="flex flex-wrap items-center gap-x-3 border-t border-dashed border-cyan/10 px-3.5 py-1 text-[11px] uppercase tracking-[.16em] text-mute">
+        <span>Enter asks your agent · results open in the Library</span>
+        <SearchMode s={panels.semantic} />
+      </div>
       </section>
       {query && (
-        <div className="panel absolute inset-x-0 top-[calc(100%+4px)] z-20 max-h-[60vh] overflow-auto" style={{ flex: "none" }} role="listbox" aria-label="Search results">
+        <div className="panel inset-x-0 top-[calc(100%+4px)] max-h-[60vh] overflow-auto" role="listbox" aria-label="Search results"
+          style={{ flex: "none", position: "absolute", zIndex: 20 }}>{/* .panel sets position: relative, unlayered */}
           <div className="panel-body flex flex-col gap-1">
             <button className="card text-left" onClick={() => { onAsk(query); close(); }}>
               <span className="text-cyan">Ask about it:</span> <span className="copy text-ink">"{query}"</span>
@@ -171,13 +175,18 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
             {notes && notes.results.length === 0 && (files?.length ?? 0) === 0 && <div className="py-2 text-mute">Nothing in your notes or files matches. Enter asks the agent anyway.</div>}
             {notes && notes.results.slice(0, 8).map((h) => (
               <button key={h.ref} className="card text-left" onClick={() => { onOpenNote(h.ref); close(); }}>
-                <div className="flex items-baseline gap-2"><span className="copy min-w-0 flex-1 truncate text-[13.5px] text-ink">{h.title}</span><span className="text-[11px] text-mute">note · {h.folder}</span></div>
+                <div className="flex items-baseline gap-2"><span className="copy min-w-0 flex-1 truncate text-[13.5px] text-ink">{h.title}</span>
+                  {h.match === "meaning" && <span className="text-[11px] text-cyan/80" title="Found by meaning: it doesn't use your words">≈ meaning</span>}
+                  <span className="text-[11px] text-mute">note · {h.folder}</span></div>
                 {h.snippet && <div className="copy mt-0.5 line-clamp-2 text-[12px] text-ink/70"><Snippet text={h.snippet} /></div>}
               </button>
             ))}
             {files && files.slice(0, 5).map((h) => (
               <button key={h.source + h.path} className="card text-left" onClick={() => { onOpenSource({ source: h.source, path: h.path }); close(); }}>
-                <div className="flex items-baseline gap-2"><span className="copy min-w-0 flex-1 truncate text-[13.5px] text-ink">{h.title}</span><span className="text-[11px] text-mute">file · {h.source}</span></div>
+                <div className="flex items-baseline gap-2"><span className="copy min-w-0 flex-1 truncate text-[13.5px] text-ink">{h.title}</span>
+                  {h.match === "meaning" && <span className="text-[11px] text-cyan/80" title="Found by meaning: it doesn't use your words">≈ meaning</span>}
+                  <span className="text-[11px] text-mute">file · {h.source}</span></div>
+                {h.match === "meaning" && h.snippet && <div className="copy mt-0.5 line-clamp-2 text-[12px] text-ink/70">{h.snippet}</div>}
               </button>
             ))}
           </div>
@@ -185,6 +194,31 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
       )}
     </div>
   );
+}
+
+/** How search works right now (K14): words only, words + meaning, indexing, or an offer to turn meaning on. */
+function SearchMode({ s }: { s?: SemanticPanel }) {
+  const [err, setErr] = useState<string | null>(null);
+  if (!s) return null;
+  const dl = s.download && (s.download.state === "running" || s.download.state === "queued") ? s.download : null;
+  const turnOn = async () => {
+    setErr(null);
+    try { await post("/api/semantic/download"); } catch (e) { setErr(String((e as Error).message)); }
+  };
+  let body: ReactNode;
+  if (dl) body = <>downloading the search model <Num className="text-[13px]">{dl.total ? Math.round((dl.done / dl.total) * 100) : 0}</Num>%</>;
+  else if (!s.installed) body = <>{s.download?.state === "failed" && <span className="mr-2 text-amber" title={s.download.error ?? ""}>download failed: {s.download.error}</span>}
+    <button className="chip h-6 normal-case tracking-normal" onClick={turnOn}
+    title={`Downloads EmbeddingGemma 300M (${Math.round(s.size / 1e6)} MB) once; it runs on the processor, not the graphics card`}>
+    search by meaning too · {Math.round(s.size / 1e6)} MB</button></>;
+  else if (s.state === "indexing") body = <span title="Search uses meaning for what's done; the rest still matches by words">
+    {s.what === "documents" ? <>words + meaning · reading documents, <Num className="text-[13px]">{s.documents_left ?? 0}</Num> to go</>
+      : <>reading notes <Num className="text-[13px]">{s.done ?? 0}</Num>/{s.total ?? "?"}</>}</span>;
+  else if (s.state === "paused") body = <span title={s.reason ?? ""}>words only · paused for a game</span>;
+  else if (s.state === "error") body = <span className="text-amber" title={s.reason ?? ""}>words only · search model stopped</span>;
+  else if (s.state === "ready" || s.notes > 0) body = <span className="text-cyan/80" title={`${s.notes} notes and ${s.documents} documents searchable by meaning`}>words + meaning</span>;
+  else body = <span>words only</span>;
+  return <span className="ml-auto normal-case tracking-normal">{body}{err && <span className="ml-2 text-red">{err}</span>}</span>;
 }
 
 /** Right: the digest in progress and the latest notes. (The inbox sits above them.) */

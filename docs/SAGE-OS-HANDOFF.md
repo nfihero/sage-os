@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.20.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 12 Oct, v0.21.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D36), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D37), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.20.0** (0.15.2–0.20.0 local tags, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.21.0** (local tags through 0.21.0, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -74,12 +74,12 @@ lead or reviewer (D26).
 ### Next (order agreed 11 Oct, D30, D32)
 1. ~~K7~~ built (0.20.0, D36): one card and one decision per chapter, ticked cards decided together, undo of one note,
    trust ladder per agent with a complete activity log (AGENTS in the inbox), the Librarian and the Reviewer. Live
-   gate still to run: Librarian on `Books`, 20 notes, with the engine on, approved in one decision. **Next: K14**
-   meaning-based search (it also sharpens the Reviewer's duplicate check).
+   gate still to run: Librarian on `Books`, 20 notes, with the engine on, approved in one decision. ~~K14~~ done
+   (0.21.0, D37): meaning-based search on the CPU, gate passed on the owner's notes. **Next: F1** friend's Mac build.
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.
-3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → ~~K7~~ (0.20) → **K14** meaning-based search → **F1** friend's Mac build
+3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → ~~K7~~ (0.20) → ~~K14~~ (0.21) → **F1** meaning-based search → **F1** friend's Mac build
    (D32: .dmg from GitHub Actions, empty first run, keys in the app, *Report a problem* by email to roundederror@gmail.com) → **A3** own task board →
    **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); S2 OCR (D19); K9; K11; Phases 4–6
