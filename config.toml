@@ -16,7 +16,7 @@ keep_events = 5000          # persisted events kept for catch-up
 # library = "C:/Users/you/OneDrive/Sage Library"      # default: <data>/Library
 
 [hermes]
-home = "C:/Users/you/AppData/Local/hermes"
+# home = "C:/Users/you/AppData/Local/hermes"   # default: %LOCALAPPDATA%\hermes (~/.hermes elsewhere)
 gateway = "http://127.0.0.1:8642"
 router = "http://127.0.0.1:18434"
 sidecar = "http://127.0.0.1:18435"
@@ -72,48 +72,27 @@ port = 8790
 # Source library (DECISIONS D15): read-only copies of chosen folders, kept in data/sources/<name>,
 # text indexed for search by you and agents. The original is only ever read. Files that look private
 # by name or content are never copied (they're listed in Bookshelf -> Sources).
-[[sources]]
-name = "drive"
-path = "G:/"
-include = [
-  "My Drive/Archive/Finance Classes",
-  "My Drive/Deal Club",
-  "My Drive/Investing Course",
-  "My Drive/Accounting Project",
-  "My Drive/Colab Notebooks",
-  "My Drive/Resume CV",
-  "Other computers/My MacBook Air",
-]
-exclude = [
-  "My Drive/Private",                                # card statements: private (user, 1 Oct)
-  "My Drive/Archive/Photos",                       # photos: no text (user, 1 Oct)
-  "Other computers/My MacBook Air/Downloads/7z2409-mac",   # a downloaded app's manual
-  "Other computers/My MacBook Air/Documents/Card statements",   # card statements named by date: private (2 Oct)
-  # other people's contact details: kept out of the knowledge base (user, 6 Oct)
-  "My Drive/Deal Club/contacts/Contact list.xlsx",
-]
-google = true                              # Google Docs/Sheets/Slides come through the Drive API once connected (D22)
-notes_folder = "Drive"                     # starter notes from this source go under Drive/ in the vault (K6)
-strip = ["My Drive", "Other computers"]    # dropped from vault paths: Drive/Archive/... not Drive/My Drive/Archive/...
-
-# A Drive folder read straight through the Drive API (no Drive for desktop needed; D22.5). Needs Google Drive
-# connected in Sources. `path` is a Drive path; `include` picks folders under it.
-[[sources]]
-name = "gdrive"
-path = "My Drive"
-api = true
-include = ["School"]
-notes_folder = "Drive"
+# [[sources]]
+# name = "drive"
+# path = "G:/"                              # e.g. Google Drive for desktop
+# include = ["My Drive/Coursework", "My Drive/Work"]
+# exclude = ["My Drive/Private"]             # never copied
+# google = true                              # Google Docs/Sheets/Slides through the Drive API once connected (D22)
+# notes_folder = "Drive"                     # starter notes from this source go under Drive/ in the vault (K6)
+# strip = ["My Drive"]                       # dropped from vault paths
+#
+# A Drive folder read straight through the Drive API (no Drive for desktop needed; D22.5):
+# [[sources]]
+# name = "gdrive"
+# path = "My Drive"
+# api = true
+# include = ["Coursework"]
+# Your own sources go in config.local.toml (per computer, untracked).
 
 [claude]
 # Folders a Claude session may start in (first is the default). Claude still asks before
-# running commands or editing files; answers come from the Sage OS inbox.
-workspaces = [
-  "C:/Users/you/hermes-workspace",
-  "C:/Users/you/hermes-workspace/budget-tracker",
-  "C:/Users/you/sage-os",
-  "C:/Users/you/claude-workspace",
-]
+# running commands or editing files; answers come from the Sage OS inbox. Set yours in config.local.toml:
+# workspaces = ["C:/Users/you/projects"]
 
 [ui]
 pinned_profiles = ["default"]

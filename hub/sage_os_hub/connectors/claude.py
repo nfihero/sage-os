@@ -34,12 +34,12 @@ from ..sync import new_id
 log = logging.getLogger("sage_os")
 
 SYSTEM_APPEND = """
-You are running inside Sage OS, the owner's local workspace where you (Claude Code) are the
+You are running inside Sage OS, the user's local workspace where you (Claude Code) are the
 orchestrator and reviewer for local Hermes agents running on an RTX 5070 Ti.
 - Local agent: "Hermes", i.e. the Hermes profile `default` (default model Qwen3.6-35B-A3B); assign
   kanban work to `default`. "Sage OS" is this workspace, not an agent. The kanban board lives in
   Hermes (`hermes kanban ...`; HERMES_BIN points at the CLI).
-- Your tool requests are answered by the owner from the Sage OS approvals inbox; ask in chat when a
+- Your tool requests are answered by the user from the Sage OS approvals inbox; ask in chat when a
   decision is his, and keep requests specific.
 - Google Drive is read-only. Private bank data lives in data-private/ folders: never commit
   or upload it.
@@ -186,7 +186,7 @@ class ClaudeSession:
             self.pending.discard(item)
             self._set_status("running")
         if choice == "deny":
-            return PermissionResultDeny(message=note or "Denied by the owner from the Sage OS inbox.")
+            return PermissionResultDeny(message=note or "Denied from the Sage OS inbox.")
         perms = None
         if choice == "allow_session":
             perms = [replace(s, destination="session") for s in (ctx.suggestions or [])] or None

@@ -1,7 +1,7 @@
 """This install's identity (Y1.1): a permanent ID and a name, kept in app data as device.json.
 
 App data is per computer and never synced (D25), so two computers sharing one Library still have different
-IDs. Every change will be stamped with the ID; the name is only for people ("the owner's PC").
+IDs. Every change will be stamped with the ID; the name is only for people ("Sam's PC").
 """
 from __future__ import annotations
 
