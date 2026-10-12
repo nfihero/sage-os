@@ -110,7 +110,7 @@ def run(paths: dict[str, Path], backups: Path, device_id: str) -> dict | None:
         seeded = {}
         for name, con in cons.items():
             con.isolation_level = ""                      # back to the default: ChangeLog commits itself
-            seeded[name] = ChangeLog(con, name, device_id).seed()
+            seeded[name] = ChangeLog(con, name, device_id, missing_ok=True).seed()
     except Exception:
         for con in cons.values():
             try:

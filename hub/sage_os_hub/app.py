@@ -49,6 +49,8 @@ from .knowledge.gdrive import DriveError, GoogleDrive
 from .knowledge.proposals import IMPORTER
 from .knowledge.sources import SourceLibrary, SourceSpec
 from .knowledge.tools import BookshelfTools
+from .knowledge.roles import Librarian, Reviewer, provider_choices
+from .knowledge.trust import LEVELS, ROLES, Trust, agent_key, allows, label as agent_label
 from .store import Store
 from .sync import ChangeLog, Device, migrate, new_id
 
@@ -128,6 +130,7 @@ class Hub:
         self.vault.ensure()
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
+        self.trust = Trust(self.writer.db, self.writer.lock)     # K7: levels, roles and every agent's log (D36)
         self.drive = GoogleDrive(cfg.google_client, cfg.google_token)
         specs = [SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
                             s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
@@ -150,6 +153,9 @@ class Hub:
             "briefings.db": ChangeLog(self.briefings.db, "briefings.db", self.device.id, self.briefings.lock),
         }
         self.digests.requeue_interrupted()
+        for pid, (grp, title) in self.digests.chapter_groups().items():     # K7: chapter parts sent before 0.20
+            self.writer.set_group(pid, grp, title)
+        self.reviewer, self.librarian = Reviewer(self), Librarian(self)
         for batch in self.writer.recover():
             log.warning("Bookshelf: batch %s was interrupted by a crash and has been rolled back", batch)
         self.vault_adapter = VaultAdapter(self, self.vault, self.index, cfg.poll["vault"])
@@ -230,17 +236,165 @@ class Hub:
             review = self.reviews.pop(pid, None)          # the user's keep/edit pass from the review screen
             if choice == "approve":
                 batch = await asyncio.to_thread(self.writer.approve, pid, note, review)
-                self.event("knowledge", "bookshelf", "proposal.applied",
-                           {"proposal": pid, "batch": batch["id"], "agent": p["agent"], "files": batch["files"]})
+                await self.filed([p], batch, note)
             else:
                 await asyncio.to_thread(self.writer.reject, pid, note)
-                self.event("knowledge", "bookshelf", "proposal.rejected", {"proposal": pid, "agent": p["agent"], "note": note})
+                await self.rejected([p], note)
             self.refresh_vault()
 
         title, detail = proposal_card(p)
         self.inbox.add(source="bookshelf", key=f"bookshelf:{pid}", title=title, detail=detail,
                        choices=["approve", "reject"], resolver=resolver, created=p.get("created"),
-                       context={"proposal_id": pid, "agent": p["agent"], "changes": preview or [], "problem": problem})
+                       context={"proposal_id": pid, "agent": p["agent"], "agent_label": agent_label(agent_key(p["agent"])),
+                                "changes": preview or [], "problem": problem, "notes": len(p["changes"]),
+                                "group": p.get("grp"), "group_title": p.get("grp_title"), "verdict": p.get("verdict")})
+
+    # -- decisions, trust and the activity log (K7, D36) -------------------------------------------------------
+    async def filed(self, props: list[dict], batch: dict, note: str = "", auto: str | None = None,
+                    withheld: bool = False):
+        """Proposals reached the vault: by the user's decision, or by the agent's trust level (`auto`).
+        `withheld`: the agent's name itself looked secret (K4), so it is neither shown nor logged."""
+        files = sum(1 for f in batch["files"] if f["op"] != "remove")
+        for p in props:
+            self.event("knowledge", "bookshelf", "proposal.applied",
+                       {"proposal": p["id"], "batch": batch["id"], "agent": "(withheld)" if withheld else p["agent"],
+                        "files": batch["files"], "auto": auto})
+
+        def write():                              # the log shares the writer's lock: never on the event loop
+            for p in props if not withheld else []:
+                self.trust.log(p["agent"], "filed.auto" if auto else "filed",
+                               (f"filed by its trust level ({auto})" if auto else "approved by you")
+                               + f": {p.get('grp_title') or p['summary'] or p['id']}",
+                               {"proposal": p["id"], "batch": batch["id"], "notes": len(p["changes"]), "note": note or None})
+            if not auto:
+                self.trust.log("you", "decided", f"filed {len(props)} proposal{'s' if len(props) != 1 else ''} "
+                               f"({files} file{'s' if files != 1 else ''}) as one decision", {"batch": batch["id"]}, key="you")
+        await asyncio.to_thread(write)
+        if not auto and not withheld:
+            for key in dict.fromkeys(agent_key(p["agent"]) for p in props):
+                await self.offer_trust_suggestion(key)
+        self.publish_agents()
+
+    async def rejected(self, props: list[dict], note: str = ""):
+        for p in props:
+            self.event("knowledge", "bookshelf", "proposal.rejected", {"proposal": p["id"], "agent": p["agent"], "note": note})
+
+        def write():
+            for p in props:
+                self.trust.log(p["agent"], "rejected", f"rejected by you: {p.get('grp_title') or p['summary'] or p['id']}",
+                               {"proposal": p["id"], "note": note or None})
+        await asyncio.to_thread(write)
+        self.publish_agents()
+
+    async def decide_many(self, item_ids: list[str], choice: str, note: str = "", reviews: dict | None = None) -> dict:
+        """Approve or reject several Bookshelf cards as ONE decision (K7): a chapter's parts, or a selection.
+        Approving files them all as one batch (one undo) or nothing at all."""
+        if choice not in ("approve", "reject"):
+            raise ValueError("choice must be approve or reject")
+        if not item_ids or len(set(item_ids)) != len(item_ids):
+            raise ValueError("choose at least one card, each once")
+        pids = []
+        for iid in item_ids:
+            item = self.inbox.get(iid)
+            if item is None:
+                raise KeyError(iid)
+            pid = item["context"].get("proposal_id")
+            if item["source"] != "bookshelf" or not pid:
+                raise ValueError("only Bookshelf proposals can be decided together")
+            pids.append(pid)
+        props = [await asyncio.to_thread(self.writer.proposal, pid) for pid in pids]
+        if choice == "approve":
+            batch = await asyncio.to_thread(self.writer.approve_many, pids, note, reviews or None)
+            filed = [p for p in props if (await asyncio.to_thread(self.writer.proposal, p["id"]))["status"] == "applied"]
+            dropped = [p for p in props if p not in filed]
+            self.inbox.settle(item_ids, choice, note)
+            await self.filed(filed, batch, note)
+            if dropped:
+                await self.rejected(dropped, note or "every note was dropped in review")
+            result = {"batch": batch, "filed": len(filed), "rejected": len(dropped)}
+        else:
+            for pid in pids:
+                await asyncio.to_thread(self.writer.reject, pid, note)
+            self.inbox.settle(item_ids, choice, note)
+            await self.rejected(props, note)
+            result = {"batch": None, "filed": 0, "rejected": len(pids)}
+        self.refresh_vault()
+        self.digests.wake.set()                  # room in the inbox: the next chapters can go out
+        return result
+
+    async def offer_trust_suggestion(self, key: str):
+        """After a run of clean approvals, ask once whether the agent may file more by itself."""
+        item_key = f"trust:{key}"
+        if self.inbox.get(item_key):
+            return
+        rec = await asyncio.to_thread(self.trust.record, key)
+        nxt = await asyncio.to_thread(self.trust.suggestion, key, rec)
+        if not nxt:
+            return
+        name = agent_label(key)
+        what = ("file new notes by itself (changes to your existing notes still wait for you)" if nxt == "new_notes"
+                else "file everything by itself")
+
+        async def resolver(choice, note):
+            if choice == "raise":
+                await asyncio.to_thread(lambda: self.trust.set(key, level=nxt))
+            else:                                  # ask again after another run of approvals
+                await asyncio.to_thread(lambda: self.trust.set(key, quiet_until=rec["decided"] + 10))
+                self.trust.log(key, "trust.not_now", f"you kept {name} at its level for now", key=key)
+            self.publish_agents()
+
+        self.inbox.add(source="trust", key=item_key, title=f"Let {name} {what}?",
+                       detail=f"You approved its last {rec['streak']} proposals without dropping or editing a note. "
+                              "Whatever it files by itself appears under Filed for you and in its activity log, and "
+                              "can be undone. You can change this any time in AGENTS.",
+                       choices=["raise", "not_now"], resolver=resolver, context={"agent_key": key, "level": nxt})
+
+    async def offer_trust_lower(self, key: str):
+        """The user undid something an agent filed by itself: offer to take a step back down the ladder."""
+        cur = (await asyncio.to_thread(self.trust.get, key))["level"]
+        item_key = f"trust-lower:{key}"
+        if cur == "ask" or self.inbox.get(item_key):
+            return
+        lower, name = LEVELS[LEVELS.index(cur) - 1], agent_label(key)
+
+        async def resolver(choice, note):
+            if choice == "lower":
+                await asyncio.to_thread(lambda: self.trust.set(key, level=lower))
+            self.publish_agents()
+
+        self.inbox.add(source="trust", key=item_key, title=f"You undid something {name} filed by itself. Ask first again?",
+                       detail=f"{name} files {'new notes' if cur == 'new_notes' else 'everything'} without asking. "
+                              f"Lowering it to “{'ask first' if lower == 'ask' else 'new notes only'}” puts its proposals "
+                              "back in the inbox.",
+                       choices=["lower", "keep"], resolver=resolver, context={"agent_key": key, "level": lower})
+
+    def agents_panel(self) -> dict:
+        """Trust levels, records and recent auto-filings (reads the journal: call it off the event loop)."""
+        seen = [agent_key(a.id) for a in self.agents.values()] if hasattr(self, "agents") else []
+        return {"agents": self.trust.agents(seen), "auto": self.writer.auto_batches(20), "reviewer": self.reviewer.settings()}
+
+    def publish_agents(self):
+        async def run():
+            try:
+                self.panel("agents_trust", await asyncio.to_thread(self.agents_panel))
+            except Exception as exc:              # noqa: BLE001 -- a panel never breaks a decision
+                log.warning("agents panel: %s", exc)
+        asyncio.get_running_loop().create_task(run())
+
+    async def undone(self, batch: dict, detail: str):
+        keys = []
+        for pid in batch["proposal_ids"]:
+            p = await asyncio.to_thread(self.writer.proposal, pid)
+            if p:
+                await asyncio.to_thread(self.trust.log, p["agent"], "undone", detail, {"batch": batch["id"], "proposal": pid})
+                keys.append(agent_key(p["agent"]))
+        if batch.get("auto") and keys:
+            await self.offer_trust_lower(keys[0])
+        self.publish_agents()
+
+    async def log_tool(self, agent: str, action: str, detail: str, ref: dict | None = None):
+        """An agent used a Bookshelf tool (K7 activity log)."""
+        await asyncio.to_thread(self.trust.log, agent, action, detail, ref)
 
     def offer_pending_proposals(self):
         for p in self.writer.proposals("pending"):
@@ -249,11 +403,13 @@ class Hub:
             except ProposalError as exc:      # e.g. the note was edited while the hub was down
                 self.offer_proposal(p, problem=str(exc))
 
-    async def submit_proposal(self, agent: str, summary: str, changes: list) -> dict:
-        """The one way a proposal enters Sage OS (HTTP route and agent tools alike).
-        -> {"status": "pending", "proposal"} | {"status": "held", "message"} | {"status": "refused", "error"}"""
-        waiting = sum(1 for p in await asyncio.to_thread(self.writer.proposals, "pending", 1000) if p["agent"] == agent)
-        if waiting >= MAX_PENDING_PER_AGENT:
+    async def submit_proposal(self, agent: str, summary: str, changes: list, *, group: str | None = None,
+                              group_title: str | None = None) -> dict:
+        """The one way a proposal enters Sage OS (HTTP route and agent tools alike). An agent whose trust level
+        allows it has the proposal filed at once (K7, D36); everything is in its activity log either way.
+        -> {"status": "pending" | "filed", "proposal"} | {"status": "held", "message"} | {"status": "refused", "error"}"""
+        waiting = await asyncio.to_thread(self.writer.pending_groups, agent)     # a chapter's parts are one card
+        if waiting >= MAX_PENDING_PER_AGENT and not (group and await asyncio.to_thread(self.writer.group_pending, group)):
             return {"status": "refused", "code": "inbox_cap", "error": f"{waiting} of your proposals are already waiting for the user. "
                     "Wait for their decisions (list_proposals) before proposing more."}
         held = sum(1 for i in self.inbox.items() if i["context"].get("held") and i["context"].get("agent") == agent)
@@ -261,7 +417,7 @@ class Hub:
             return {"status": "refused", "error": "Too many of your proposals are held for looking like they contain "
                     "secrets. Never put secrets in notes."}
         try:
-            p = await asyncio.to_thread(self.writer.propose, agent, summary, changes)
+            p = await asyncio.to_thread(lambda: self.writer.propose(agent, summary, changes, group=group, group_title=group_title))
         except SensitiveContent as exc:
             # The event says who, where and what kind -- never the content (I4). If the agent name
             # itself tripped the screen, it isn't recorded either.
@@ -272,11 +428,31 @@ class Hub:
             except ProposalError as invalid:          # not worth holding: it couldn't be filed anyway
                 return {"status": "refused", "error": f"{exc} Also: {invalid}"}
             self.hold_screened(agent, summary, changes, exc, preview)
+            if who != "(withheld)":
+                await asyncio.to_thread(self.trust.log, agent, "held", f"held: {exc.where} looks like it contains "
+                                        f"{exc.category} (nothing stored)", {"where": exc.where, "category": exc.category})
             return {"status": "held", "message": f"{exc} It is held for the user's review; only they can save it anyway."}
         except ProposalError as exc:
+            await asyncio.to_thread(self.trust.log, agent, "refused", f"proposal refused: {str(exc)[:300]}")
             return {"status": "refused", "error": str(exc)}
-        self.offer_proposal(p, p.pop("preview"))
+        preview = p.pop("preview")
+        n = len(p["changes"])
+        await asyncio.to_thread(self.trust.log, agent, "proposed",
+                                f"proposed {n} change{'s' if n != 1 else ''}: {group_title or summary or p['id']}",
+                                {"proposal": p["id"], "notes": n, "ops": sorted({c["op"] for c in p["changes"]})})
         self.event("knowledge", "bookshelf", "proposal.created", {"proposal": p["id"], "agent": p["agent"]})
+        level = await asyncio.to_thread(self.trust.level, agent)
+        if allows(level, p["changes"]):
+            try:
+                batch = await asyncio.to_thread(self.writer.approve, p["id"], "", auto=level)
+            except ProposalError as exc:          # can't be filed as it stands: it waits for the user like any other
+                self.offer_proposal(p, preview, problem=str(exc))
+                return {"status": "pending", "proposal": p}
+            await self.filed([p], batch, auto=level)
+            self.refresh_vault()
+            return {"status": "filed", "proposal": await asyncio.to_thread(self.writer.proposal, p["id"]), "batch": batch}
+        self.offer_proposal(p, preview)
+        self.reviewer.offered(p)
         return {"status": "pending", "proposal": p}
 
     def hold_screened(self, agent: str, summary: str, changes: list, exc, preview: list[dict]):
@@ -289,6 +465,8 @@ class Hub:
             info = {"agent": who, "where": exc.where, "category": exc.category}
             if choice != "save_anyway":
                 self.event("knowledge", "bookshelf", "proposal.held_rejected", info)
+                if who != "(withheld)":
+                    self.trust.log(agent, "rejected", f"you rejected a held proposal ({exc.category})")
                 return
             p = await asyncio.to_thread(lambda: self.writer.propose(agent, summary, changes, override=exc.category))
             self.event("knowledge", "bookshelf", "proposal.override", info | {"proposal": p["id"]})
@@ -297,8 +475,7 @@ class Hub:
             except ProposalError as err:          # e.g. a note changed meanwhile: it stays as a normal proposal
                 self.offer_proposal(p, problem=str(err))
                 return
-            self.event("knowledge", "bookshelf", "proposal.applied",
-                       {"proposal": p["id"], "batch": batch["id"], "agent": who, "files": batch["files"]})
+            await self.filed([p], batch, note, withheld=who == "(withheld)")
             self.refresh_vault()
 
         self.inbox.add(source="bookshelf", key=key, title=f"Held: a Bookshelf proposal looks like it contains {exc.category}",
@@ -353,7 +530,7 @@ class Hub:
         sent, not_sent = [], []
         for prop in planned["proposals"]:
             r = await self.submit_proposal(IMPORTER, prop["summary"], prop["changes"])
-            if r["status"] == "pending":
+            if r["status"] in ("pending", "filed"):
                 sent.append({"collection": prop["collection"], "proposal": r["proposal"]["id"], "notes": len(prop["changes"])})
             else:
                 not_sent.append({"collection": prop["collection"], "reason": r.get("error") or r.get("message")})
@@ -681,6 +858,36 @@ class Decision(BaseModel):
     review: dict | None = None
 
 
+class BatchDecision(BaseModel):
+    """Several Bookshelf cards decided as one (K7): a chapter's parts or a selection."""
+    ids: list[str] = Field(min_length=1, max_length=200)
+    choice: str
+    note: str = Field(default="", max_length=20_000)
+    reviews: dict[str, dict] | None = None      # proposal id -> {"keep": [...], "edits": {...}}
+
+
+class TrustUpdate(BaseModel):
+    level: str | None = None
+    role: str | None = None
+
+
+class ReviewerSettings(BaseModel):
+    provider: str = Field(max_length=100)
+    model: str | None = Field(default=None, max_length=300)
+    auto: bool = False
+
+
+class ReviewRequest(BaseModel):
+    proposal_ids: list[str] = Field(min_length=1, max_length=200)
+
+
+class LibrarianRun(BaseModel):
+    folder: str | None = Field(default=None, max_length=300)
+    count: int = Field(default=20, ge=1, le=50)
+    provider: str = Field(default="engine", max_length=100)
+    model: str | None = Field(default=None, max_length=300)
+
+
 def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAPI:
     cfg = cfg or load()
     hub = Hub(cfg)
@@ -695,6 +902,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if hub.claude:
             hub.claude.publish_sessions()
         hub.offer_pending_proposals()
+        hub.reviewer.resume()
+        hub.publish_agents()
         hub.publish_sources()
         if "chat" in hub.agents:
             hub.agents["chat"].publish()
@@ -709,6 +918,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             tasks = [asyncio.create_task(a.run(), name=a.name) for a in hub.adapters]
             tasks.append(asyncio.create_task(hub.watch_engine(), name="engine"))
             tasks.append(asyncio.create_task(hub.digests.run(), name="digest"))
+            tasks.append(asyncio.create_task(hub.reviewer.run(), name="reviewer"))
             if hub.engine:
                 tasks.append(asyncio.create_task(hub.gamemode.run(), name="gamemode"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
@@ -954,8 +1164,21 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         except ProposalError as exc:
             raise HTTPException(409, str(exc))
         hub.event("knowledge", "bookshelf", "batch.undone", {"batch": batch_id, "files": b["files"]})
+        await hub.undone(b, f"you undid {b['summary'] or batch_id}")
         hub.refresh_vault()
         return b
+
+    @app.post("/api/vault/batches/{batch_id}/notes/{seq}/undo", dependencies=W)
+    async def vault_undo_note(batch_id: str = FPath(max_length=40), seq: int = FPath(ge=0, le=100_000)):
+        """Undo one note of a filed batch (K7); the rest stay filed."""
+        try:
+            r = await asyncio.to_thread(hub.writer.undo_note, batch_id, seq)
+        except ProposalError as exc:
+            raise HTTPException(409, str(exc))
+        hub.event("knowledge", "bookshelf", "note.undone", {"batch": batch_id, "paths": r["paths"]})
+        await hub.undone(r["batch"], f"you undid one note: {r['paths'][0]}")
+        hub.refresh_vault()
+        return r
 
     @app.post("/api/vault/reindex", dependencies=W)
     async def vault_reindex():
@@ -1261,6 +1484,71 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             return await hub.drop_reading(body.chat, body.key)
         except KeyError:
             raise HTTPException(404, "that item isn't in this chat's reading")
+
+    @app.post("/api/inbox/batch", dependencies=W)
+    async def inbox_decide_many(body: BatchDecision):
+        """K7: approve or reject several Bookshelf cards as one decision (one batch, one undo)."""
+        if body.reviews is not None and len(json.dumps(body.reviews)) > 5_000_000:
+            raise HTTPException(413, "review too large")
+        try:
+            return await hub.decide_many(body.ids, body.choice, body.note, body.reviews)
+        except KeyError:
+            raise HTTPException(404, "a card was already answered or has expired")
+        except ProposalError as exc:
+            raise HTTPException(409, str(exc))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+
+    # -- agents: trust levels, roles, activity (K7, D36) ------------------------------------------------------
+    @app.get("/api/trust")
+    async def trust_list():
+        seen = [agent_key(a.id) for a in hub.agents.values()]
+        return {"agents": await asyncio.to_thread(hub.trust.agents, seen), "levels": list(LEVELS), "roles": list(ROLES),
+                "auto": await asyncio.to_thread(hub.writer.auto_batches, 20), "reviewer": hub.reviewer.settings(),
+                "librarian": hub.librarian.state, "providers": provider_choices(hub),
+                "folders": [f for f in (hub.panels.get("vault") or {}).get("folders", []) if f and f != "Archive"]}
+
+    @app.post("/api/trust/{key}", dependencies=W)
+    async def trust_set(body: TrustUpdate, key: str = FPath(max_length=200)):
+        try:
+            r = await asyncio.to_thread(lambda: hub.trust.set(key, level=body.level, role=body.role))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        for k in (f"trust:{key}", f"trust-lower:{key}"):     # a suggestion the user answered here instead
+            hub.inbox.drop(k)
+        hub.publish_agents()
+        return r
+
+    @app.get("/api/trust/activity")
+    async def trust_activity(key: str | None = Query(default=None, max_length=200), limit: int = 200,
+                             before: float | None = None):
+        return await asyncio.to_thread(hub.trust.activity, key, limit, before)
+
+    @app.post("/api/reviewer/settings", dependencies=W)
+    async def reviewer_settings(body: ReviewerSettings):
+        try:
+            r = await asyncio.to_thread(hub.reviewer.set, body.provider, body.model, body.auto)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        hub.publish_agents()
+        return r
+
+    @app.post("/api/reviewer/review", dependencies=W)
+    async def reviewer_review(body: ReviewRequest):
+        """Ask the Reviewer to pre-mark drops on waiting proposals (a chapter's parts)."""
+        pending = {p["id"] for p in await asyncio.to_thread(hub.writer.proposals, "pending", 1000)}
+        if any(pid not in pending for pid in body.proposal_ids):
+            raise HTTPException(404, "a proposal isn't waiting any more")
+        return {"queued": [pid for pid in body.proposal_ids if hub.reviewer.ask(pid)]}
+
+    @app.post("/api/librarian/run", dependencies=W)
+    async def librarian_run(body: LibrarianRun):
+        if body.provider != "claude" and body.provider not in hub.providers:
+            raise HTTPException(400, f"no model provider {body.provider!r}")
+        try:
+            return hub.librarian.start(body.folder, body.count, body.provider, body.model)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc))
 
     @app.post("/api/inbox/{item_id}", dependencies=W)
     async def inbox_decide(item_id: str, body: Decision):

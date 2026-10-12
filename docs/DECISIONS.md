@@ -815,6 +815,41 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
   desktop app shows the hub's page, so UI changes need a reload, not a reinstall.
 - **Revisit if:** the owner wants a bolder change of world (then a new direction round, not polish).
 
+## D36 — Review at scale: one decision per chapter, trust levels that file by themselves, a complete activity log (K7)
+
+- **Date / by:** 2026-10-11, user ("start K7"; chose the full trust ladder and the Reviewer inside K7; "make sure there
+  is a transparent log of each agent's actions as well, even at the trusted level"); design by Claude
+- **Status:** accepted; built in 0.20.0. Carries out D7 idea 5 and the batch half of idea 6. **Amends I1** (no write
+  without approval): a write is approved either by the user's decision or by a trust level the user gave that agent.
+- **Decision:**
+  1. **One card per chapter.** Proposals carry a group (a digest chapter's parts; set only by Sage OS's own jobs). The
+     inbox shows a group as one card: APPROVE ALL, REJECT ALL, REVIEW (every part in one run). Cards can also be
+     selected and decided together. Approving several proposals files them as **one batch**: all filed or none (I9),
+     one undo. A part whose notes were all dropped in review is rejected and the rest filed.
+  2. **The per-agent inbox limit counts cards**, not parts (25), and a later part of a waiting chapter joins its card.
+  3. **Undo one note** of a filed batch, byte for byte (an archive's two halves together); refused if edited since.
+  4. **Trust ladder per agent** (agents are keyed without their session: `claude`, `hermes:<profile>`, `digest`, …):
+     *Ask first* (default) · *New notes file themselves* (create-only proposals) · *Trusted* (everything). Only the
+     user sets levels (AGENTS screen or an inbox suggestion). After 10 clean approvals in a row (filed by the user
+     without dropping, editing or undoing a note) Sage OS asks once whether to raise the level ("Not now" waits for
+     10 more decisions); undoing something an agent filed by itself offers a step down. Secret-looking proposals are
+     held at every level (K4). What agents file by themselves is listed under *Filed for you* in the inbox and marked
+     in History.
+  5. **Activity log.** Every agent action is recorded in `agent_log` (bookshelf.db, synced, never trimmed) at every
+     level: searches, reads of notes and documents, proposals, what was filed and by whom, rejections, held and
+     refused proposals, undos, trust and role changes, Reviewer verdicts, Librarian runs; the user's own decisions too.
+     AGENTS shows it per agent or for everyone.
+  6. **Roles:** Researcher (drafts notes; the default), **Librarian** (a run over a folder proposes tags, links to
+     related notes and clearer titles as ONE proposal; links only to notes found by search), **Reviewer** (Claude Code,
+     the local engine or any configured model reads a waiting proposal and marks notes it would drop, with reasons;
+     the review screen starts with them dropped; it never decides). Reviews run on request (ASK REVIEWER) or for every
+     new proposal when the user turns that on. Both wait for the engine and for game mode like the digest.
+- **Costs / limits:** the log grows with every read (kept in full on purpose); the Reviewer's duplicate check is
+  keyword search until K14; Claude as Reviewer needs Claude Code signed in; a trust level is per agent, not per
+  folder or kind of note.
+- **Revisit if:** the log needs trimming or filtering at volume, trust should be scoped (per folder), or reviewers
+  should vote (two models).
+
 ---
 
 ## Proposed, awaiting the user

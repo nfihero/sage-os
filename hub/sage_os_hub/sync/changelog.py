@@ -44,12 +44,16 @@ def _q(name: str) -> str:
 
 
 class ChangeLog:
-    def __init__(self, con: sqlite3.Connection, db_name: str, device_id: str, lock: threading.RLock | None = None):
+    def __init__(self, con: sqlite3.Connection, db_name: str, device_id: str, lock: threading.RLock | None = None,
+                 missing_ok: bool = False):
         self.con, self.db_name, self.device_id = con, db_name, device_id
         self.lock = lock or threading.RLock()
         self._on = True
         self._columns: dict[str, list[str]] = {}
         self.streams = manifest.synced_tables().get(db_name, [])
+        if missing_ok:          # the migration opens databases from older versions, which lack newer tables
+            have = {r[0] for r in con.execute("SELECT name FROM main.sqlite_master WHERE type='table'")}
+            self.streams = [s for s in self.streams if s in have]
         con.create_function("sage_change_id", 0, lambda: ulid())
         con.create_function("sage_device", 0, lambda: self.device_id)
         con.create_function("sage_now", 0, time.time)

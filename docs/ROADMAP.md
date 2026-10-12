@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (11 Oct 2026 — DECISIONS D30, D32)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7 → K14 → F1 → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14 → F1 → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -43,7 +43,7 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | S1 | Source library: read-only, searchable copy of chosen folders (Google Drive first), private files left out; agents search and cite (D15) | Chosen Drive folders searchable in Sage OS and by agents, Drive untouched — **pass** (1 Oct, v0.8.0) |
 | K6 | Notes from whatever the user provides (redefined 2 Oct, D17): starter notes from any source (markdown imported, a collection note per folder of documents) + agent-drafted concept notes that cite their sources; an existing Obsidian vault is just another source | A source becomes approvable starter notes and agent drafts, nothing written before approval — **pass** (2 Oct, v0.9.0) |
 | S2 | **OCR**: read text from images and scanned PDFs during sync, marked as OCR text; Windows' built-in engine first (D19) | A CamScanner PDF and a photo of a page are found by search and readable by agents |
-| K7 | Review at scale: batch approvals, per-agent trust levels and roles (Librarian, Researcher, Reviewer) (D7 idea 5) | A 20-note librarian run is approved in one decision |
+| K7 | Review at scale (D36): one card and one decision per chapter, cards decided together, undo of one note, per-agent trust ladder (Ask first / New notes / Trusted) with a complete activity log, roles Researcher, Librarian (tidy runs) and Reviewer (marks drops) | A 20-note librarian run is approved in one decision — **pass in tests** (11 Oct, v0.20.0: a 20-note run approved as one batch); the run on the real library waits for the engine |
 | K8 | Briefing packs chosen **per prompt** from notes and sources, shown to you in a *Reading* strip with everything the agent read (D20; D7 idea 2) | An agent's reply uses a fact that exists only in your notes, and the strip shows the note it came from — **pass** (6 Oct, v0.12.0: the local Gemma 4 12B answered the three-email sequence from the outreach playbooks, both shown in the strip) |
 | S3 | **Google Drive connector** (D22.5): Google Docs, Sheets and Slides read through the Drive API with the user's read-only consent, exported and indexed with the rest | A Google Doc's text is found by search — **pass** (8 Oct, v0.12.2: 10 of 13 Google Docs exported and searchable) |
 | K12 | **Long documents** (D23): split a textbook or long report into sections that tile its text, draft notes per section on the local model, check concept coverage, one inbox card per chapter, coverage map | A long document becomes per-chapter proposals with every section accounted for — **pass** (8 Oct, v0.13.0: outreach playbook 32 pages → 34 notes, 55/55 concepts; options lecture 55 pages → 12 notes, 36/36) |
@@ -54,7 +54,7 @@ package inside this repo (DECISIONS D2). The vault lives in the app's data folde
 | K11 | Ask: answers only from the vault, with citations and an honest empty answer (D7 idea 10) | A question with no matching notes gets "nothing in your notes" |
 | later | In-app markdown editor (D6) — edits go through the single writer + journal | — |
 
-Done: K1–K6, K8, K12, K13, S1, S3. Open: K7, K14, S2, K9, K11, the editor. K10 dropped (D30).
+Done: K1–K8, K12, K13, S1, S3. Open: K14, S2, K9, K11, the editor. K10 dropped (D30).
 
 ## Architecture track (30 Sep 2026 — DECISIONS D4, D5; recorded "for now")
 

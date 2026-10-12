@@ -24,7 +24,7 @@ mentor plans and reviews, and nothing important happens without your say.
 | **Kanban workflows** | Boards for different workflows, worked by agents, unblocked by you | Partly: one Hermes board shown; multiple workflow boards planned |
 | **Agent hub** | Claude Code (cloud) and Hermes (local) in one workspace: chat panes, live board, GPU lane, sessions | Built (Phases 1–2) |
 | **Approvals inbox and safety** | Every risky action from any agent lands in one inbox; guards (write guard, guardian) stay independent of the UI and can't be overridden from it | Built for Claude and Bookshelf proposals, with secret screening and a manual *Save anyway* override (v0.7.0); Hermes and kanban paths untested live |
-| **Bookshelf** (built-in knowledge base) | Plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Partly: read, search, approved writes with exact undo, secret screening, agent tools, Drive source library, notes grown from your sources (K1–K6 + S1, v0.4.0–v0.9.0); batch review and briefing packs next (K7–K11) |
+| **Bookshelf** (built-in knowledge base) | Plain-markdown knowledge that grows from your conversations; agents read it and *propose* additions, with your approval, journaled undo and secret screening | Partly: read, search, approved writes with exact undo, secret screening, agent tools, Drive source library, notes grown from your sources (K1–K6 + S1, v0.4.0–v0.9.0); briefing packs (K8), batch review, trust levels and an activity log (K7, v0.20.0); meaning-based search next (K14) |
 | **Orchestration and review** | Claude delegates to local agents and reviews what they hand back | Planned (Phases 4–5) |
 
 ## Who it's for

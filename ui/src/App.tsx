@@ -6,6 +6,7 @@ import ClaudePane from "./components/ClaudePane";
 import ConnectAgent from "./components/ConnectAgent";
 import LocalPane from "./components/LocalPane";
 import Inbox from "./components/Inbox";
+import Agents from "./components/Agents";
 import BoardView from "./components/Board";
 import GpuLane from "./components/GpuLane";
 import TaskDrawer from "./components/TaskDrawer";
@@ -56,12 +57,15 @@ export default function App() {
   const [shelfAt, setShelfAt] = useState<{ ref?: string; source?: { source: string; path: string } } | null>(null);
   const [shelf, setShelf] = useState(false);
   const [models, setModels] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
   const [peekClaude, setPeekClaude] = useState(false);
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
   const { panels } = hub;
   const safety = useSafety(panels.safety ?? []);
   const inbox = panels.inbox ?? [];
+  // K7: a chapter's parts are one card, so every count shows cards, not parts
+  const cards = new Set(inbox.map((i) => (i.source === "bookshelf" && i.context.group ? `g:${i.context.group}` : i.id))).size;
   const lowPower = (panels.gpu?.gpu?.vram_used_mb ?? 0) > LOW_POWER_MB;
   const [boot, setBoot] = useState(0);
 
@@ -115,7 +119,7 @@ export default function App() {
   const conversation = connecting && !claudeReady
     ? <ConnectAgent panel={panels.claude} onModels={() => setModels(true)} onPeek={() => { setPeekClaude(true); setAgent("claude"); setConnecting(false); }} />
     : showClaude
-      ? <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={inbox.length} lowPower={lowPower} bare={!phone} />
+      ? <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={cards} lowPower={lowPower} bare={!phone} />
       : (
         <section className="panel min-h-0" data-testid="local-chat">
           <div className="panel-head">
@@ -133,7 +137,7 @@ export default function App() {
   const hermesRan = panels.health?.gateway.state === "up" || panels.health?.gateway.state === "down";
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
     chats={panels.chat?.sessions} game={panels.gamemode} hermes={panels.health?.gateway.state} onModels={() => setModels(true)} />;
-  const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} events={hub.events} />;
+  const inboxView = <Inbox items={inbox} onOpenTask={setOpenTask} events={hub.events} auto={panels.agents_trust?.auto} onAgents={() => setAgentsOpen(true)} />;
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;
   const cell = (a: Area, node: React.ReactNode) => (
@@ -151,7 +155,7 @@ export default function App() {
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={inbox.length} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} />
+        <TopBar hub={hub} inboxCount={cards} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col gap-2 p-2">
@@ -161,7 +165,7 @@ export default function App() {
               {tab === "systems" && <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto"><div className="flex min-h-[60%] flex-col">{board}</div>{gpu}</div>}
             </main>
             <nav className="grid grid-cols-4 border-t border-cyan/30 bg-void/90 pb-[env(safe-area-inset-bottom)]">
-              {([["home", "Home", 0], ["agent", "Agent", 0], ["inbox", "Inbox", inbox.length], ["systems", "Systems", 0]] as const)
+              {([["home", "Home", 0], ["agent", "Agent", 0], ["inbox", "Inbox", cards], ["systems", "Systems", 0]] as const)
                 .map(([k, label, badge]) => (
                   <button key={k} onClick={() => setTab(k)}
                     className={`display relative py-3 text-[11px] ${tab === k ? "glow-cyan" : "text-mute"}`}>
@@ -208,6 +212,7 @@ export default function App() {
       {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} digests={panels.digests} proposals={inbox.filter((i) => i.source === "bookshelf").length}
         initialRef={shelfAt?.ref} initialSource={shelfAt?.source} onClose={() => { setShelf(false); setShelfAt(null); }} />}
       {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} />}
+      {agentsOpen && <Agents panel={panels.agents_trust} librarian={panels.librarian} onClose={() => setAgentsOpen(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}
     </>

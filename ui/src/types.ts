@@ -80,8 +80,24 @@ export type SourceHit = { source: string; path: string; title: string; snippet: 
 export type SourceDoc = { source: string; path: string; size: number; status: string; note: string | null; chars: number; offset: number; text: string; more: boolean };
 export type Batch = {
   id: string; proposal_id: string; agent: string; summary: string; status: "applying" | "applied" | "undoing" | "undone" | "rolled_back";
-  started: number; finished: number | null; undone: number | null; files: { path: string; op: "create" | "update" | "remove" }[];
+  started: number; finished: number | null; undone: number | null; proposal_ids?: string[];
+  auto?: string | null;            // K7: filed by the agent's trust level, not by a decision of yours
+  files: { seq: number; path: string; op: "create" | "update" | "remove"; undone?: number | null }[];
 };
+
+/** K7 (D36): an agent's standing with you, and what it did. */
+export type TrustLevel = "ask" | "new_notes" | "trusted";
+export type AgentTrust = {
+  key: string; label: string; level: TrustLevel; role: "researcher" | "librarian" | "reviewer"; config: Record<string, any>;
+  record: { decided: number; approved: number; rejected: number; streak: number; auto_undone: number };
+  suggest: TrustLevel | null;
+};
+export type ActivityEntry = { id: string; ts: number; agent: string; key: string; action: string; detail: string; ref: Record<string, any> };
+export type ReviewerSettings = { provider: string; model: string | null; auto: boolean };
+export type LibrarianState = { status: "idle" | "running" | "done" | "failed"; folder?: string | null; done?: number; total?: number;
+  proposal?: string | null; error?: string | null; result?: string; ts?: number };
+export type Verdict = { status: "queued" | "running" | "waiting" | "done" | "failed"; by?: string; drops?: Record<string, string>;
+  reviewed?: number; reason?: string; error?: string };
 
 // -- Models (D22): local engine + providers + model chat --------------------------------------------
 export type Hardware = { os: string; arch: string; ram_gb: number; ram_free_gb: number; backend: string;
@@ -126,6 +142,8 @@ export type Panels = {
   hermes_runs?: Record<string, { run_id: string | null; profile: string }>;
   vault?: VaultPanel;
   sources?: SourcesPanel;
+  agents_trust?: { agents: AgentTrust[]; auto: Batch[]; reviewer: ReviewerSettings };
+  librarian?: LibrarianState;
 };
 
 export type TaskDetail = {

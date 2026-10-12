@@ -116,6 +116,11 @@ def _note_key(change: dict) -> str:
     return str(change.get("title") or change.get("uid") or "").strip().lower()
 
 
+def chapter_group(jid: str, chapter: str) -> str:
+    """The group every part of one chapter's proposals shares (K7: one card, one decision)."""
+    return f"digest:{jid}:{chapter}"[:300]
+
+
 def readable_title(rel: str) -> str:
     """A file name as a title: "Intermediate_Accounting__18th_Edition_Kieso_--_Kieso__Weygandt_--_Wiley.pdf"
     -> "Intermediate Accounting 18th Edition Kieso" (download sites append authors, publisher and hashes)."""
@@ -378,10 +383,12 @@ class Digests:
                 break
         return {"concepts": concepts, "notes": notes, "covered": covered(concepts, notes)}
 
-    async def complete(self, provider, model: str, msgs: list[dict], temperature: float = 0.2) -> str:
+    async def complete(self, provider, model: str, msgs: list[dict], temperature: float = 0.2,
+                       schema: dict | None = None, name: str = "notes") -> str:
+        """One JSON reply from an OpenAI-compatible model (also used by the Reviewer and Librarian, K7)."""
         key = provider.key()
         body = {"model": model, "messages": msgs, "temperature": temperature, "max_tokens": 6000,
-                "response_format": {"type": "json_schema", "json_schema": {"name": "notes", "schema": SCHEMA}}}
+                "response_format": {"type": "json_schema", "json_schema": {"name": name, "schema": schema or SCHEMA}}}
         if provider.id == "engine":           # llama.cpp only (cloud APIs reject unknown fields): small models can
             body["repeat_penalty"] = 1.08     # loop inside a JSON string until the context is full
         async with httpx.AsyncClient(timeout=httpx.Timeout(30, read=900)) as c:
@@ -474,8 +481,10 @@ class Digests:
                            f"{stats['covered']}/{stats['concepts']} listed concepts covered{gaps}")[:500]
                 if sent and all(_note_key(c) in sent for c in batch):
                     continue
-                r = await self.hub.submit_proposal(f"digest:{job['model']}"[:200], summary, batch)
-                if r["status"] == "pending":
+                r = await self.hub.submit_proposal(f"digest:{job['model']}"[:200], summary, batch,
+                                                   group=chapter_group(job["id"], chapter),
+                                                   group_title=f"{readable_title(job['title'])} · {chapter}")
+                if r["status"] in ("pending", "filed"):
                     pids.append(r["proposal"]["id"])
                 elif r.get("code") == "inbox_cap":
                     self._set_chapter(job["id"], chapter, "waiting", pids, "waiting for earlier chapters to be decided")
@@ -504,6 +513,14 @@ class Digests:
             except Exception:                              # noqa: BLE001 -- unknown id: nothing to skip
                 pass
         return out
+
+    def chapter_groups(self) -> dict[str, tuple[str, str]]:
+        """proposal id -> (group, card title) for every chapter's proposals (K7 groups the parts as one card)."""
+        with self.lock:
+            rows = self.db.execute("SELECT c.job, c.chapter, c.proposals, j.title FROM chapters c JOIN jobs j ON j.id=c.job "
+                                   "WHERE c.proposals IS NOT NULL AND c.proposals != '[]'").fetchall()
+        return {pid: (chapter_group(jid, chapter), f"{readable_title(title)} · {chapter}")
+                for jid, chapter, props, title in rows for pid in json.loads(props)}
 
     def _chapter_pids(self, jid, chapter) -> list[str]:
         with self.lock:

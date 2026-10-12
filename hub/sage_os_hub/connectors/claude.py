@@ -300,6 +300,21 @@ class ClaudeConnector(AgentConnector):
         self.usage: dict = hub.store.load_panels().get("claude_usage", {})
         self.logged_in: bool | None = None     # None = not checked yet
 
+    async def complete(self, system: str, prompt: str, model: str | None = None) -> str:
+        """One answer with no tools and no session (the Reviewer role, K7): the reply's text."""
+        from claude_agent_sdk import query
+        if not self.cli:
+            raise RuntimeError("Claude Code isn't installed on this computer")
+        if self.logged_in is False:
+            raise RuntimeError("Claude Code isn't signed in (claude auth login)")
+        opts = ClaudeAgentOptions(cli_path=self.cli, model=model or None, system_prompt=system, tools=[], max_turns=1,
+                                  setting_sources=[], cwd=str(self.hub.cfg.data_dir))
+        parts = []
+        async for msg in query(prompt=prompt, options=opts):
+            if isinstance(msg, AssistantMessage):
+                parts += [b.text for b in msg.content if isinstance(b, TextBlock)]
+        return "".join(parts)
+
     async def check_auth(self) -> bool | None:
         """`claude auth status` (JSON, no secrets) -> loggedIn. Runs without touching credentials."""
         if not self.cli:

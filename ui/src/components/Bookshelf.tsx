@@ -127,7 +127,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
   );
 }
 
-/** Every batch the writer applied, newest first, with exact undo (K3). */
+/** Every batch the writer applied, newest first, with exact undo (K3), of the batch or one note of it (K7). */
 function History({ changed }: { changed: unknown }) {
   const now = useNow(10000);
   const [batches, setBatches] = useState<Batch[] | null>(null);
@@ -135,14 +135,20 @@ function History({ changed }: { changed: unknown }) {
   const [err, setErr] = useState<string | null>(null);
   const load = () => get<Batch[]>("/api/vault/history").then(setBatches).catch((e) => setErr(String(e.message ?? e)));
   useEffect(() => { load(); }, [changed]);
+  const [open, setOpen] = useState<Set<string>>(new Set());
   const undo = async (id: string) => {
     setErr(null); setConfirm(null);
     try { await post(`/api/vault/batches/${id}/undo`); } catch (e) { setErr(String((e as Error).message ?? e)); }
     load();
   };
+  const undoNote = async (id: string, seq: number) => {
+    setErr(null); setConfirm(null);
+    try { await post(`/api/vault/batches/${id}/notes/${seq}/undo`); } catch (e) { setErr(String((e as Error).message ?? e)); }
+    load();
+  };
   return (
     <div className="panel-body text-[12.5px]">
-      <p className="mb-2 text-[11.5px] text-mute">Every change Sage OS made to the vault, applied only after you approved it in the inbox. Undo puts the files back exactly as they were; it refuses if a file was edited since.</p>
+      <p className="mb-2 text-[11.5px] text-mute">Every change Sage OS made to the vault: approved by you in the inbox, or filed by an agent you trust (marked). Undo puts the files back exactly as they were, a whole batch or one note; it refuses if a file was edited since.</p>
       {err && <div className="mb-2 border border-red/40 bg-red/5 p-1.5 text-red">{err}</div>}
       {batches?.length === 0 && <div className="text-mute">Nothing written yet.</div>}
       {batches?.map((b) => (
@@ -152,13 +158,23 @@ function History({ changed }: { changed: unknown }) {
             <span className="text-ink">{b.agent}</span>
             <span className="text-mute">{ago(b.finished ?? b.started, now)}</span>
             <span className={`chip ${b.status === "applied" ? "" : "mute"}`}>{b.status.replace("_", " ")}</span>
+            {b.auto && <span className="chip amber" title="Filed by the agent's trust level, without a decision of yours">filed by trust</span>}
             {b.status === "applied" && (confirm === b.id
               ? <span className="ml-auto flex gap-1"><button className="chip red" onClick={() => undo(b.id)}>CONFIRM UNDO</button><button className="chip mute" onClick={() => setConfirm(null)}>keep</button></span>
               : <button className="chip ml-auto" onClick={() => setConfirm(b.id)}>UNDO</button>)}
           </div>
           {b.summary && <div className="text-ink/80">{b.summary}</div>}
           <ul className="mt-0.5 font-mono text-[11px] text-ink/70">
-            {b.files.map((f) => <li key={f.path + f.op}><span className="text-mute">{f.op}</span> {f.path}</li>)}
+            {(open.has(b.id) ? b.files : b.files.slice(0, 6)).map((f) => (
+              <li key={f.seq} className={`group flex items-baseline gap-1.5 ${f.undone ? "line-through opacity-50" : ""}`}>
+                <span className="text-mute">{f.op}</span><span className="min-w-0 flex-1 truncate" title={f.path}>{f.path}</span>
+                {b.status === "applied" && b.files.length > 1 && !f.undone && !(f.op === "remove" && b.files.some((g) => g.path === `Archive/${f.path}`)) && (
+                  <button className="font-sans text-[11px] text-mute opacity-60 hover:text-cyan group-hover:opacity-100 focus:opacity-100"
+                    onClick={() => undoNote(b.id, f.seq)} title="Put this one file back exactly as it was; the rest stay">undo</button>)}
+              </li>))}
+            {b.files.length > 6 && <li><button className="font-sans text-[11px] text-cyan hover:underline"
+              onClick={() => { const n = new Set(open); n.has(b.id) ? n.delete(b.id) : n.add(b.id); setOpen(n); }}>
+              {open.has(b.id) ? "show fewer" : `all ${b.files.length} files${b.files.some((f) => f.undone) ? ` (${b.files.filter((f) => f.undone).length} undone)` : ""}`}</button></li>}
           </ul>
         </div>
       ))}

@@ -4,7 +4,12 @@
 several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
 every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
-**Today (v0.14.0):** a long document (a textbook, a handbook, a long report) can be digested into notes:
+**Review at scale (v0.20.0):** a digested chapter is one inbox card and one decision; tick cards to decide
+several at once; History undoes a whole batch or one note. **AGENTS** (in the inbox) sets each agent's trust (ask
+first, let new notes file themselves, or trusted) and shows a complete log of everything each agent did, at every
+level. The Librarian tidies a folder's notes as one proposal; the Reviewer marks notes it would drop before you read.
+
+**Since v0.14.0:** a long document (a textbook, a handbook, a long report) can be digested into notes:
 the local model reads it section by section, and a coverage map shows that every part was read. Every
 proposal opens in a reviewer where you read each note, keep or drop it and edit it before it's filed.
 Also: chat with Claude Code, a model running on your own computer (Sage OS installs and
@@ -86,7 +91,7 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 | Review | an inbox card's **REVIEW** (K13, D24) | each proposed note rendered; keep / drop; edit title, body, tags with a live preview; approve only what you kept |
 | Digests | `data/digest.db` (K12, D23) | Bookshelf → Sources → *Digest into notes* on a long document; Bookshelf → **DIGESTS**: a coverage map with one square per section, concepts covered, pause / resume / cancel; one inbox card per chapter |
 | Models | `data/engine` | this computer's memory and GPU, the local engine (install, start, stop), a model catalog rated *fits / tight / too big*, models already on disk, connected cloud AIs |
-| Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals | allow once / session / deny + note; reply + unblock; approve & file / reject with a diff per change; held (secret-looking) proposals: reject / save anyway |
+| Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals, trust suggestions | allow once / session / deny + note; reply + unblock; a chapter is one card (approve all / reject all / review every part); tick cards to decide them together (one batch); held (secret-looking) proposals: reject / save anyway; *Filed for you*; **AGENTS**: trust levels, roles, Librarian, Reviewer, every agent's activity log |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | Windows GPU counters (any vendor), router `/models`, `psutil` | the Sage OS engine and any router model, VRAM/RAM, guardian sidecar |
 | Top bar | health checks, guard logs | service lights (Hermes, Models, Guard), safety chip (red only on new blocks), **? GUIDE** (why + tour), Bookshelf, theme, Motion |

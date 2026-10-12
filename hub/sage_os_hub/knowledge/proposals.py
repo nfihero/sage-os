@@ -269,17 +269,20 @@ class Planned:
 
 
 def plan(vault: Vault, changes: list[dict], agent: str, bases: dict[str, str] | None = None,
-         notes: list | None = None) -> list[Planned]:
+         notes: list | None = None, taken: set[str] | None = None) -> list[Planned]:
     """Render every change against the vault as it is now.
 
     `bases` (path -> sha256 at proposal time) makes this refuse notes edited since the proposal.
-    Every rendered note must pass the vault contract, or nothing is planned (I9).
+    Every rendered note must pass the vault contract, or nothing is planned (I9). `taken` (lower-case paths)
+    is shared by proposals filed together (K7), so two of them can't pick the same file name.
     """
     notes = vault.scan() if notes is None else notes
     by_uid = {}
     for n in notes:
         by_uid.setdefault(n.uid, []).append(n)
-    taken = {n.path.lower() for n in notes}
+    if taken is None:
+        taken = set()
+    taken.update(n.path.lower() for n in notes)
     now = dt.datetime.now().replace(microsecond=0)
     out = []
     for ch in changes:

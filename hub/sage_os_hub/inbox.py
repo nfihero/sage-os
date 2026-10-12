@@ -50,6 +50,26 @@ class Inbox:
             self._resolvers.pop(item_id, None)
             self._changed()
 
+    def update(self, item_id: str, context: dict) -> None:
+        """Add to a waiting item's context (a reviewer's verdict arriving on a proposal card)."""
+        item = self._items.get(item_id)
+        if item is not None:
+            item["context"] = {**item["context"], **context}
+            self._changed()
+
+    def get(self, item_id: str) -> dict | None:
+        return self._items.get(item_id)
+
+    def settle(self, item_ids: list[str], choice: str, note: str = "") -> None:
+        """Remove items whose decision the hub has already carried out together (K7 batch decisions)."""
+        for item_id in item_ids:
+            item = self._items.pop(item_id, None)
+            self._resolvers.pop(item_id, None)
+            if item is not None:
+                self._event("approval", item["source"], "approval.resolved",
+                            {"id": item_id, "title": item["title"], "choice": choice, "note": note})
+        self._changed()
+
     def keys(self, prefix: str) -> list[str]:
         return [k for k in self._items if k.startswith(prefix)]
 

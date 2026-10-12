@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-10-11
+
+K7, review at scale (D36). **Gate: pass in tests** (a 20-note Librarian run filed in one decision); the live run waits
+for the engine. pytest 316.
+
+### Added
+- One inbox card per chapter: the parts of a digest chapter are grouped (older cards too) with APPROVE ALL, REJECT ALL
+  and REVIEW across every part; approving files every part as one batch with one undo.
+- Tick cards to approve or reject several at once (one batch); counts in the top bar and tabs show cards, not parts.
+- History: undo one note of a batch (an archive's two halves together), and a "filed by trust" mark.
+- AGENTS screen: per-agent trust levels (Ask first / New notes file themselves / Trusted), roles, each agent's record,
+  and a complete activity log (searches, reads, proposals, filings, rejections, held and refused proposals, undos,
+  trust changes, reviews, Librarian runs, your decisions), per agent or for everyone. Kept at every trust level.
+- Trust suggestions in the inbox after 10 clean approvals, and an offer to step back down after undoing something an
+  agent filed by itself; *Filed for you* in the inbox lists what agents filed themselves this week, each undoable.
+- The Librarian: tidies a folder's notes (tags, links to related notes, clearer titles) as one proposal.
+- The Reviewer (Claude Code, the local engine or any model): marks the notes it would drop, with reasons; REVIEW starts
+  with them dropped and a card can approve without them. On request or for every new proposal.
+
+### Changed
+- The per-agent inbox limit counts cards: a chapter's later parts join its card.
+- The approvals inbox, agent tools and digest record everything they do in the activity log (bookshelf.db, synced).
+
 ## [0.19.0] — 2026-10-11
 
 W2, the library-first home (D35). **Gate: pass** — approved by the owner in the app. pytest 297.

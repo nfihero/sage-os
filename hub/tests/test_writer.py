@@ -186,7 +186,7 @@ def test_routes_inbox_approval_and_undo(tmp_path):
         r = c.post(f"/api/inbox/{item['id']}", json={"choice": "approve"}, headers=H)
         assert r.status_code == 200 and (vault / "Finance" / "wacc-notes.md").exists()
         (batch,) = c.get("/api/vault/history").json()
-        assert batch["proposal_id"] == p["id"] and batch["files"] == [{"path": "Finance/wacc-notes.md", "op": "create"}]
+        assert batch["proposal_id"] == p["id"] and [{k: f[k] for k in ("path", "op")} for f in batch["files"]] == [{"path": "Finance/wacc-notes.md", "op": "create"}]
         assert c.post(f"/api/vault/batches/{batch['id']}/undo").status_code == 403
         assert c.post(f"/api/vault/batches/{batch['id']}/undo", headers=H).json()["status"] == "undone"
         assert snapshot(vault) == before

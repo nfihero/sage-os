@@ -66,6 +66,8 @@ class BookshelfTools:
                 hub.index.sync(hub.vault.scan(), hub.vault.read_body)
             return hub.index.search(query, limit=max(1, min(int(limit), 30)), archived=bool(include_archive))
         res = await asyncio.to_thread(run)
+        await self.hub.log_tool(agent, "searched", f"searched notes for “{str(query)[:200]}”: {len(res['results'])} found",
+                                {"query": str(query)[:200], "found": len(res["results"])})
         return {"query": query, "results": [
             {"uid": r["ref"], "title": r["title"], "folder": r["folder"] or "(vault root)", "archived": r["archived"],
              "snippet": _plain(r["snippet"])} for r in res["results"]],
@@ -76,6 +78,8 @@ class BookshelfTools:
         if note is None:
             return {"error": f"No note with uid {uid}. Use search_notes to find uids."}
         await self.hub.note_read(agent, "note", {"uid": note["ref"]}, note["title"])   # K8 Reading strip
+        await self.hub.log_tool(agent, "read", f"read the note “{note['title']}”" + (" (text withheld: sensitive)"
+                                if note.get("sensitive") else ""), {"uid": note["ref"], "path": note["path"]})
         out = {k: note[k] for k in ("uid", "title", "path", "type", "status", "origin", "agent", "source", "created",
                                     "updated", "tags", "links", "archived")}   # source: follow it with read_source
         if note.get("sensitive"):
@@ -91,10 +95,15 @@ class BookshelfTools:
         if r["status"] == "pending":
             return {"status": "pending", "proposal_id": r["proposal"]["id"],
                     "message": "Waiting for the user's approval in the Sage OS inbox. Check later with list_proposals."}
+        if r["status"] == "filed":
+            return {"status": "applied", "proposal_id": r["proposal"]["id"],
+                    "message": "Filed: the user lets you file these without asking. They can see and undo it."}
         return r
 
     async def search_sources(self, agent: str, query: str, limit: int = 10) -> dict:
         res = await asyncio.to_thread(self.hub.sources.search, query, max(1, min(int(limit), 30)))
+        await self.hub.log_tool(agent, "searched_sources", f"searched documents for “{str(query)[:200]}”: "
+                                f"{len(res['results'])} found", {"query": str(query)[:200], "found": len(res["results"])})
         return {"query": query, "results": [r | {"snippet": _plain(r["snippet"])} for r in res["results"]],
                 "note": None if res["results"] else "Nothing in the source library matches."}
 
@@ -112,6 +121,9 @@ class BookshelfTools:
             return {"error": f"No source file {source}/{path}. Use search_sources to find one."}
         if offset == 0:                                    # K8 Reading strip: once per document, not per page
             await self.hub.note_read(agent, "source", {"source": source, "path": path}, path.rsplit("/", 1)[-1])
+        await self.hub.log_tool(agent, "read_source", f"read the document {source}/{path}"
+                                + (f" from character {offset:,}" if offset else ""), {"source": source, "path": path,
+                                                                                         "offset": offset})
         return doc | {"caution": UNTRUSTED.replace("Note text", "Source text").replace("inside a note", "inside a source")}
 
     async def proposals(self, agent: str, status: str | None = None) -> dict:

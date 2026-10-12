@@ -29,6 +29,8 @@ TABLES: dict[str, dict[str, str]] = {
         "proposals": SYNCED,
         "batches": SYNCED,
         "entries": SYNCED,
+        "trust": SYNCED,                # each agent's trust level and role, set by the user (K7, D36)
+        "agent_log": SYNCED,            # everything each agent did, kept in full (K7)
     },
     "digest.db": {                      # long-document digests and their progress (D23)
         "jobs": SYNCED,
@@ -47,6 +49,7 @@ TABLES: dict[str, dict[str, str]] = {
 KEYS: dict[str, tuple[str, ...]] = {
     "chat_sessions": ("id",), "chat_items": ("id",), "claude_sessions": ("id",),
     "proposals": ("id",), "batches": ("id",), "entries": ("batch_id", "seq"),
+    "trust": ("key",), "agent_log": ("id",),
     "jobs": ("id",), "chapters": ("job", "chapter"), "secs": ("job", "idx"),
     "briefings": ("id",), "briefing_chats": ("chat",),
 }

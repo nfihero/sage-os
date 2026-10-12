@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.19.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 11 Oct, v0.20.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D35), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D36), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.19.0** (0.15.2–0.19.0 local tags, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.20.0** (0.15.2–0.20.0 local tags, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -67,18 +67,19 @@ lead or reviewer (D26).
   `POST /api/engine/start {"model": "file:gemma-4-12b-it-qat-q4_0"}` with header `X-Sage-OS: 1`).
 - **Digest `dg_01M4FT8XM5VHAMWA7DC4DC6H72`** (`dg_7cbf09dbad` before 0.16): Kieso *Intermediate Accounting* 18e (1,588 pages), 777 sections / 45 chapters,
   ~35 s per section on the GPU. On 10 Oct: all 777 sections drafted (2,741 notes, 4,987/4,987 concepts),
-  13/45 chapters sent to the inbox; the rest wait for inbox space (and the engine) to continue. It
-  stops sending chapters to the inbox at 25 waiting cards (MAX_PENDING_PER_AGENT) but keeps drafting.
+  On 11 Oct (0.20) chapters up to 18 are in the inbox as 25 chapter cards; the rest go out as cards are decided.
+  The limit is 25 waiting *cards* (MAX_PENDING_PER_AGENT); a chapter's later parts join its card.
   Its folder name is the long file stem (later digests get readable titles).
 
 ### Next (order agreed 11 Oct, D30, D32)
-1. **K7 review at scale** is next (started 11 Oct after 0.19.0): approve / reject a whole chapter (all its parts) in
-   one decision, per-agent trust levels and roles (D7 idea 5). The textbook backlog: ~30 chapters, 25 cards waiting,
-   the first seven are front matter the user may reject. Gate: a 20-note librarian run approved in one decision.
+1. ~~K7~~ built (0.20.0, D36): one card and one decision per chapter, ticked cards decided together, undo of one note,
+   trust ladder per agent with a complete activity log (AGENTS in the inbox), the Librarian and the Reviewer. Live
+   gate still to run: Librarian on `Books`, 20 notes, with the engine on, approved in one decision. **Next: K14**
+   meaning-based search (it also sharpens the Reviewer's duplicate check).
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.
-3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → **K7** → **K14** meaning-based search → **F1** friend's Mac build
+3. ~~G1~~ (built, 0.17.0; real-game check pending) → ~~W1, W2~~ (0.18, 0.19) → ~~K7~~ (0.20) → **K14** meaning-based search → **F1** friend's Mac build
    (D32: .dmg from GitHub Actions, empty first run, keys in the app, *Report a problem* by email) → **A3** own task board →
    **Y2 keychain** for secrets + API keys entered in the app (today: env vars, plain token file).
 4. Then the account + E2EE sync service (Y3–Y5), phone app and installers (Y6); S2 OCR (D19); K9; K11; Phases 4–6

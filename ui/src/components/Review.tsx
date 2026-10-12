@@ -3,19 +3,23 @@ import { createPortal } from "react-dom";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { get, post } from "../api";
-import type { InboxItem } from "../types";
+import type { InboxItem, Verdict } from "../types";
 import { SAFE_MD } from "./ChatView";
 
 /** K13: review a Bookshelf proposal note by note. Read each note rendered, keep or drop it, edit it (markdown
- *  with a live preview), then file only what you kept. Nothing reaches the vault until "Approve". */
+ *  with a live preview), then file only what you kept. Nothing reaches the vault until "Approve".
+ *  K7: a chapter's parts are reviewed as one run and filed as one batch; notes the Reviewer marked start dropped,
+ *  with its reason shown, and you keep or drop each as before. */
 type Change = { op: "create" | "update" | "archive"; uid: string; folder?: string; title?: string; body?: string;
   tags?: string[]; source?: string; type?: string };
 type Proposal = { id: string; agent: string; summary: string; status: string; changes: Change[] };
 type Edit = { title: string; body: string; tags: string[] };
+/** Every note of every part, in order: which proposal it belongs to and its index there. */
+type Row = Change & { pid: string; at: number; part: number; why?: string };
 
-export default function Review({ item, onClose }: { item: InboxItem; onClose: () => void }) {
-  const pid = item.context.proposal_id as string;
-  const [p, setP] = useState<Proposal | null>(null);
+export default function Review({ items, onClose }: { items: InboxItem[]; onClose: () => void }) {
+  const pids = items.map((i) => i.context.proposal_id as string);
+  const [p, setP] = useState<{ summary: string; changes: Row[] } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
   const [keep, setKeep] = useState<boolean[]>([]);
@@ -26,9 +30,16 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
   const [list, setList] = useState(false);            // phone: the list of notes as its own screen
 
   useEffect(() => {
-    get<Proposal>(`/api/vault/proposals/${encodeURIComponent(pid)}`)
-      .then((x) => { setP(x); setKeep(x.changes.map(() => true)); }).catch((e) => setErr(String(e.message)));
-  }, [pid]);
+    Promise.all(pids.map((pid) => get<Proposal>(`/api/vault/proposals/${encodeURIComponent(pid)}`))).then((ps) => {
+      const rows: Row[] = ps.flatMap((x, part) => {
+        const drops = (items[part].context.verdict as Verdict | undefined)?.drops ?? {};
+        return x.changes.map((c, at) => ({ ...c, pid: x.id, at, part, why: drops[String(at)] }));
+      });
+      const title = items[0].context.group_title as string | undefined;
+      setP({ summary: title && ps.length > 1 ? `${title} · ${ps.length} parts` : ps[0]?.summary ?? "", changes: rows });
+      setKeep(rows.map((r) => !r.why));
+    }).catch((e) => setErr(String(e.message)));
+  }, [pids.join(",")]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (editing || (e.target as HTMLElement)?.tagName?.match(/INPUT|TEXTAREA/)) return;
@@ -50,16 +61,23 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
   const decide = async (choice: "approve" | "reject") => {
     if (!p) return;
     setBusy(true); setErr(null);
-    const reviewed = kept < p.changes.length || edited > 0;
-    const review = reviewed ? {
-      keep: keep.map((k, i) => (k ? i : -1)).filter((i) => i >= 0),
-      edits: Object.fromEntries(Object.entries(edits).filter(([i]) => keep[Number(i)])),
-    } : undefined;
+    // One review per part that changed: the indexes it keeps and its edits, in that part's own numbering.
+    const reviews: Record<string, { keep: number[]; edits: Record<string, Edit> }> = {};
+    pids.forEach((pid) => {
+      const rows = p.changes.map((r, i) => ({ r, i })).filter(({ r }) => r.pid === pid);
+      if (rows.every(({ i }) => keep[i] && !edits[i])) return;
+      reviews[pid] = {
+        keep: rows.filter(({ i }) => keep[i]).map(({ r }) => r.at),
+        edits: Object.fromEntries(rows.filter(({ i }) => keep[i] && edits[i]).map(({ r, i }) => [String(r.at), edits[i]])),
+      };
+    });
     try {
-      await post(`/api/inbox/${encodeURIComponent(item.id)}`, choice === "approve" && review ? { choice, note, review } : { choice, note });
+      await post("/api/inbox/batch", { ids: items.map((i) => i.id), choice, note,
+        reviews: choice === "approve" && Object.keys(reviews).length ? reviews : undefined });
       onClose();
     } catch (e) { setErr(String((e as Error).message)); setBusy(false); }
   };
+  const marked = p?.changes.filter((r) => r.why).length ?? 0;
 
   // A portal: panels use backdrop-filter, which makes `position: fixed` relative to the panel, not the window.
   return createPortal(
@@ -67,7 +85,7 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
       <div className="panel flex h-full w-full max-w-[1300px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="review">
         <div className="panel-head flex-wrap gap-y-1">
           <span className="tab">REVIEW</span>
-          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-ink/85" title={p?.summary}>{p?.summary || item.title}</span>
+          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-ink/85" title={p?.summary}>{p?.summary || items[0].title}</span>
           <span className="md:hidden"><button className="chip" onClick={() => setList(!list)}>{list ? "NOTE" : `ALL ${p?.changes.length ?? ""}`}</button></span>
           <button onClick={onClose} className="text-mute hover:text-cyan" aria-label="close review">✕</button>
         </div>
@@ -75,12 +93,17 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
         {!p ? <div className="p-4 text-mute">loading…</div> : (
           <div className="flex min-h-0 flex-1">
             <aside className={`panel-body min-h-0 flex-col gap-0.5 border-cyan/20 md:flex md:w-[300px] md:flex-none md:border-r ${list ? "flex flex-1" : "hidden"}`}>
-              <div className="mb-1 flex gap-1.5 text-[11px]">
+              <div className="mb-1 flex flex-wrap gap-1.5 text-[11px]">
                 <button className="chip" onClick={() => setKeep(keep.map(() => true))}>KEEP ALL</button>
                 <button className="chip mute" onClick={() => setKeep(keep.map(() => false))}>DROP ALL</button>
+                {marked > 0 && <button className="chip amber" onClick={() => setKeep(p.changes.map((r) => !r.why))}
+                  title="Drop exactly the notes the Reviewer marked">REVIEWER'S {marked}</button>}
               </div>
-              {p.changes.map((c, i) => (
-                <div key={i} className={`flex items-center gap-1.5 border-l-2 py-0.5 pl-1.5 text-[12px] ${i === idx ? "border-cyan bg-cyan/10" : "border-transparent"}`}>
+              {marked > 0 && <p className="mb-1 text-[11px] text-ink/70">The Reviewer marked {marked} note{marked === 1 ? "" : "s"} to drop (⚑); they start dropped. You decide.</p>}
+              {p.changes.map((c, i) => (<div key={i}>
+                {pids.length > 1 && (i === 0 || p.changes[i - 1].part !== c.part) && (
+                  <div className="mt-1.5 text-[11px] uppercase tracking-[.16em] text-mute">Part {c.part + 1}</div>)}
+                <div className={`flex items-center gap-1.5 border-l-2 py-0.5 pl-1.5 text-[12px] ${i === idx ? "border-cyan bg-cyan/10" : "border-transparent"}`}>
                   <input type="checkbox" checked={keep[i] ?? true} aria-label={`keep ${c.title ?? c.uid}`}
                     onChange={() => setKeep(keep.map((v, j) => (j === i ? !v : v)))} className="accent-[var(--color-cyan)]" />
                   <button onClick={() => { setIdx(i); setEditing(false); setList(false); }}
@@ -88,8 +111,9 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
                     {edits[i]?.title ?? c.title ?? `${c.op} ${c.uid}`}
                   </button>
                   {edits[i] && <span className="text-amber" title="edited by you">✎</span>}
+                  {c.why && <span className="text-amber" title={`Reviewer: ${c.why}`}>⚑</span>}
                 </div>
-              ))}
+              </div>))}
             </aside>
             <section className={`min-h-0 min-w-0 flex-1 flex-col ${list ? "hidden md:flex" : "flex"}`}>
               {cur && shown && (
@@ -118,6 +142,8 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
                           {edits[idx] && <span className="text-amber">edited by you</span>}
                           {cur.source && <span className="truncate" title={cur.source}>from {cur.source.split("/").pop()}</span>}
                         </div>
+                        {cur.why && <div className="mb-3 border-l-2 border-amber px-2 py-1 text-[12.5px] text-ink/85">
+                          <span className="text-[11px] uppercase tracking-[.16em] text-amber">Reviewer would drop this</span> · {cur.why}</div>}
                         {cur.op === "archive" ? <p className="text-ink/80">Moves this note to Archive/ (nothing is deleted).</p>
                           : <div className="md reading text-[14.5px] leading-[1.7]"><Markdown remarkPlugins={[remarkGfm]} components={SAFE_MD}>{shown.body || "_(metadata change only)_"}</Markdown></div>}
                       </div>
@@ -131,7 +157,7 @@ export default function Review({ item, onClose }: { item: InboxItem; onClose: ()
                   className="min-w-[120px] flex-1 border border-cyan/25 bg-void/80 px-2 py-1 text-[12px] text-ink outline-none placeholder:text-mute focus:border-cyan" />
                 <button className="chip h-8 px-3" disabled={busy || kept === 0} onClick={() => decide("approve")}>
                   {busy ? "FILING…" : `APPROVE ${kept} NOTE${kept === 1 ? "" : "S"}`}</button>
-                <button className="chip red h-8 px-3" disabled={busy} onClick={() => decide("reject")}>REJECT ALL</button>
+                <button className="chip red h-8 px-3" disabled={busy} onClick={() => decide("reject")}>{pids.length > 1 ? `REJECT ALL ${pids.length} PARTS` : "REJECT ALL"}</button>
               </div>
             </section>
           </div>

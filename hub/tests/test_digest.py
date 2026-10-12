@@ -330,7 +330,7 @@ def test_a_resumed_chapter_skips_sent_notes_even_when_its_counts_change(env, mon
     monkeypatch.setattr(app_module, "MAX_PENDING_PER_AGENT", 1)
     client.post("/api/digest", json={"source": "drive", "path": "finance-book.md", "model": "m"}, headers=H)
     run_all(hub)
-    [first] = [p for p in hub.writer.proposals("pending") if p["agent"].startswith("digest:")]
+    first = [p for p in hub.writer.proposals("pending") if p["agent"].startswith("digest:")][-1]   # K7: parts join one card
     real = dg.Digests.chapter_changes
 
     def recounted(self, job, chapter):                 # a retried section changes the chapter's counts
