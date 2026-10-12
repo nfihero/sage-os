@@ -4,31 +4,68 @@
 several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
 every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
-**Updates (v0.22.0):** the desktop app is self-contained and updates itself: when a new version is released it shows
-UPDATE in the top bar, and one click installs it (signed; your data stays). Releases are built on GitHub Actions from
-version tags.
+## Install
 
-**Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using
-a small model on your processor (downloaded once when you ask, 334 MB); briefing packs leave out notes that only
-share words with your question.
+**[Download the latest release](https://github.com/nfihero/sage-os/releases/latest)**: pick the file for your computer
+under *Assets*. No Python, Node or code needed; the app carries everything it runs.
 
-**Review at scale (v0.20.0):** a digested chapter is one inbox card and one decision; tick cards to decide
-several at once; History undoes a whole batch or one note. **AGENTS** (in the inbox) sets each agent's trust (ask
-first, let new notes file themselves, or trusted) and shows a complete log of everything each agent did, at every
-level. The Librarian tidies a folder's notes as one proposal; the Reviewer marks notes it would drop before you read.
+| Computer | Download | Needs |
+|---|---|---|
+| Windows | `Sage OS_<version>_x64-setup.exe` | Windows 10 or 11, 64-bit |
+| Mac | `Sage OS_<version>_aarch64.dmg` | Apple Silicon (M1 or newer), macOS 11+ |
 
-**Since v0.14.0:** a long document (a textbook, a handbook, a long report) can be digested into notes:
-the local model reads it section by section, and a coverage map shows that every part was read. Every
-proposal opens in a reviewer where you read each note, keep or drop it and edit it before it's filed.
-Also: chat with Claude Code, a model running on your own computer (Sage OS installs and
-runs llama.cpp itself and rates each model for your hardware), ChatGPT, Gemini or Ollama. Each message
-you send carries the notes and documents that match it, shown next to the message in a *Reading* strip
-with anything the AI opened itself; ✕ on an item corrects the AI and leaves it out from then on.
-Bookshelf holds your notes and a read-only, searchable copy of your documents, Google Docs, Sheets and
-Slides included (through the Drive API, read-only). Agents propose notes; nothing is written until you
-approve it in the inbox (screened for secrets, undoable byte for byte). Hermes, its kanban board and the
-GPU lane remain for those who have them. Windows and macOS; local only. Note sync between devices,
-installers and phone access are on the [roadmap](docs/ROADMAP.md).
+**Windows**
+
+1. Run the `.exe`. It installs for your user only (no admin password).
+2. Windows may say *Windows protected your PC*, because the installer isn't signed with a paid certificate. Click
+   **More info → Run anyway**.
+3. Open **Sage OS** from the Start menu.
+
+**Mac**
+
+1. Open the `.dmg` and drag **Sage OS** into **Applications**.
+2. The first time, macOS may say it can't check the app for malware (it isn't notarized). Open
+   **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Sage OS, and confirm.
+   If it says the app is *damaged*, run this once in Terminal, then open it again:
+   ```
+   xattr -dr com.apple.quarantine "/Applications/Sage OS.app"
+   ```
+
+**First run:** Sage OS opens with a short guide (**? GUIDE** brings it back). To get going:
+
+- **Add your notes and files:** Library → STORAGE and Sources (or drop documents in the Library's `Files` folder).
+- **Connect an AI:** start a local model from **MODELS** (Sage OS downloads it and rates which models fit your
+  computer), or connect Claude Code, ChatGPT, Gemini or Ollama.
+- **Search by meaning:** under the search box, *search by meaning too* downloads a small model once (334 MB).
+
+**Updates:** when a new version is out, an amber **UPDATE** chip appears in the top bar. Click it to see what's new,
+then **Update and restart**. Updates are signed; anything not signed by this project is refused. Your notes and
+settings are kept.
+
+**Closing and quitting:** closing the window keeps Sage OS running in the tray (digests and agents carry on). To stop
+it, use **Quit Sage OS** in the tray menu. *Start at sign-in* is in the same menu.
+
+**Uninstall:** Windows: Settings → Apps → Sage OS → Uninstall. Mac: drag Sage OS from Applications to the Trash. Your
+data stays (see *Where your data lives* below) until you delete that folder yourself.
+
+## What it does
+
+- **Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using
+  a small model on your processor; briefing packs leave out notes that only share words with your question.
+- **Review at scale (v0.20.0):** a digested chapter is one inbox card and one decision; tick cards to decide several
+  at once; History undoes a whole batch or one note. **AGENTS** (in the inbox) sets each agent's trust (ask first,
+  let new notes file themselves, or trusted) and shows a complete log of everything each agent did, at every level.
+  The Librarian tidies a folder's notes as one proposal; the Reviewer marks notes it would drop before you read.
+- **Long documents:** a textbook, handbook or long report can be digested into notes by the local model, section by
+  section, with a coverage map showing every part was read. Every proposal opens in a reviewer where you keep, drop
+  or edit each note before it's filed.
+- **Any AI, same library:** chat with Claude Code, a model on your own computer (Sage OS runs llama.cpp itself),
+  ChatGPT, Gemini or Ollama. Each message carries the notes and documents that match it, shown in a *Reading* strip
+  next to it; ✕ on an item corrects the AI and leaves it out from then on.
+- **Nothing enters without you:** agents propose notes; nothing is written until you approve it in the inbox
+  (screened for secrets, undoable byte for byte). Google Docs, Sheets and Slides can be read through the Drive API
+  (read-only). Windows and macOS; local only. Sync between devices and phone access are on the
+  [roadmap](docs/ROADMAP.md).
 
 | Read | For |
 |---|---|
@@ -39,13 +76,8 @@ installers and phone access are on the [roadmap](docs/ROADMAP.md).
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what was decided, why, costs, when to revisit |
 | [CHANGELOG.md](CHANGELOG.md) | Version history: one version and tag per roadmap step that passes its gate |
 | [docs/SAGE-OS-HANDOFF.md](docs/SAGE-OS-HANDOFF.md) | Context primer for a fresh session: architecture, agent model, knowledge-backend contract, reversed decisions, open questions |
-| [Design doc](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899) | Original design (architecture, UI, phases) |
 
-## Run
-
-**Desktop app (W1):** open **Sage OS** from the Start menu. It starts the hub (or uses one already running), and
-closing the window keeps it in the tray; Quit is in the tray menu. Build it from `desktop\` with `npx tauri build`
-(needs Rust and the MSVC build tools); the installer lands in `desktop\src-tauri\target\release\bundle\nsis`.
+## Run from source (developers)
 
 **From a terminal:**
 
@@ -55,7 +87,15 @@ start.cmd
 
 Opens http://127.0.0.1:8787 when ready (first run creates `hub\.venv` and builds `ui\dist`). The window
 stays open while it runs. UI hot reload: keep the hub running, then `npm run dev` in `ui\` →
-http://127.0.0.1:5173.
+http://127.0.0.1:5173. A developer build of the desktop app (`npx tauri build` in `desktop\`, needs Rust and the MSVC
+build tools) runs this checkout's hub instead of a bundled one.
+
+**Releasing (maintainers):** bump the version in `hub/sage_os_hub/__init__.py`, `hub/pyproject.toml`,
+`ui/package.json`, `ui/package-lock.json`, `desktop/package.json`, `desktop/package-lock.json`,
+`desktop/src-tauri/Cargo.toml` and `desktop/src-tauri/tauri.conf.json`; add the version's section to CHANGELOG.md;
+commit; tag `vX.Y.Z`; push the tag. GitHub Actions builds Windows and Mac, signs the updates (secrets
+`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) and publishes the release that installed copies
+update from (D38).
 
 **Where your data lives** (D25): app data in `%APPDATA%\Sage OS` (Windows) or `~/Library/Application Support/Sage OS`
 (Mac): databases, indexes, source copies, models, sign-ins, per computer. Your notes and files are in its
