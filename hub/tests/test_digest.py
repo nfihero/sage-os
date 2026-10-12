@@ -290,3 +290,33 @@ def test_the_same_model_file_under_its_other_id_counts(env):
     assert d._same_model("gemma-4-12b", {"id": "file:gemma", "path": str(file)})
     assert not d._same_model("gemma-4-12b", {"id": "gemma-4-e2b", "path": "C:/models/e2b.gguf"})
     assert not d._same_model("unknown", {"id": "x", "path": "y"})
+
+
+def test_a_chapter_that_waited_for_room_resumes_after_the_parts_it_sent(env, monkeypatch):
+    """11 Oct: a two-part chapter that hit the inbox cap re-sent part 1 every time a slot opened (5 copies)."""
+    import sage_os_hub.app as app_module
+    hub, client, calls = env
+    monkeypatch.setattr(dg, "MAX_NOTES_PER_PROPOSAL", 1)          # each chapter's 2 notes = 2 parts
+    monkeypatch.setattr(app_module, "MAX_PENDING_PER_AGENT", 1)    # room for one card
+    job = client.post("/api/digest", json={"source": "drive", "path": "finance-book.md", "model": "m"}, headers=H).json()
+
+    def pending():
+        return [p for p in hub.writer.proposals("pending") if p["agent"].startswith("digest:")]
+
+    def summaries():
+        return [p["summary"] for p in hub.writer.proposals() if p["agent"].startswith("digest:")]
+    run_all(hub)
+    for _ in range(6):                                  # approve whatever waits, then let the digest send more
+        waiting = pending()
+        if not waiting:
+            break
+        hub.writer.approve(waiting[0]["id"])
+        run_all(hub)
+    sent = summaries()
+    assert len(sent) == len(set(sent)), sent            # no part sent twice
+    parts: dict[str, set[int]] = {}
+    for s in sent:
+        m = re.search(r"(Chapter \d+).*\(part (\d+) of (\d+)\)", s)
+        parts.setdefault(f"{m.group(1)}/{m.group(3)}", set()).add(int(m.group(2)))
+    assert parts and all(got == set(range(1, int(key.split("/")[1]) + 1)) for key, got in parts.items()), parts
+    assert client.get(f"/api/digest/{job['id']}").json()["status"] == "done"

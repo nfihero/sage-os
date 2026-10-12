@@ -457,11 +457,16 @@ class Digests:
                 await asyncio.to_thread(self._maybe_done, job["id"])
                 return True
             batches = [changes[i:i + MAX_NOTES_PER_PROPOSAL] for i in range(0, len(changes), MAX_NOTES_PER_PROPOSAL)]
+            # A chapter that waited for inbox room part-way through resumes after the parts it already sent: its
+            # sections count as proposed only once every part is out, so the batches come back the same each time.
+            sent = await asyncio.to_thread(self._sent_summaries, pids)
             for k, batch in enumerate(batches, 1):
                 part = f" (part {k} of {len(batches)})" if len(batches) > 1 else ""
                 gaps = f"; {stats['failed']} section(s) failed" if stats["failed"] else ""
                 summary = (f"{job['title']}: {chapter}{part}: {len(batch)} notes from {stats['sections']} sections, "
                            f"{stats['covered']}/{stats['concepts']} listed concepts covered{gaps}")[:500]
+                if summary in sent:
+                    continue
                 r = await self.hub.submit_proposal(f"digest:{job['model']}"[:200], summary, batch)
                 if r["status"] == "pending":
                     pids.append(r["proposal"]["id"])
@@ -482,6 +487,16 @@ class Digests:
             self.publish(job["id"])
             return True
         return False
+
+    def _sent_summaries(self, pids: list[str]) -> set[str]:
+        """Summaries of this chapter's proposals already sent, whatever became of them (pending, filed, rejected)."""
+        out = set()
+        for pid in pids:
+            try:
+                out.add(self.hub.writer.proposal(pid)["summary"])
+            except Exception:                              # noqa: BLE001 -- unknown id: nothing to skip
+                pass
+        return out
 
     def _chapter_pids(self, jid, chapter) -> list[str]:
         with self.lock:
