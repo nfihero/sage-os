@@ -1,6 +1,6 @@
 [package]
 name = "sage-os"
-version = "0.21.0"
+version = "0.22.0"
 description = "Sage OS desktop app (W1)"
 edition = "2021"
 
@@ -17,6 +17,9 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [profile.release]
 codegen-units = 1

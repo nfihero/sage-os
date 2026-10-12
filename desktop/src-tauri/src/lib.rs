@@ -2,8 +2,11 @@
 //!
 //! * Finds a running hub on 127.0.0.1:<port> (it answers /api/ping as "sage-os"), or starts one: the bundled
 //!   hub next to the app when packaged (F1), else this checkout's Python hub (a developer build).
-//! * The window shows the hub's own page, so the hub's security rules apply unchanged; no Tauri command is
-//!   exposed to any page. Links to anywhere else open in the default browser.
+//! * The window shows the hub's own page, so the hub's security rules apply unchanged. Links to anywhere else open
+//!   in the default browser. The only commands any page can call are update_check and update_install, and only the
+//!   hub's page on localhost (D38).
+//! * Updates (D38): the app asks GitHub Releases for latest.json; an update installs only if it is signed with the
+//!   owner's key. Installing stops the hub cleanly first, so its files can be replaced; data lives elsewhere.
 //! * Closing the window keeps Sage OS running in the tray (digests, game mode and agents carry on); the tray's
 //!   Quit stops the hub cleanly (POST /api/quit, which unloads the local model) and then the app.
 //! * One copy runs at a time: starting it again shows the window. Start at sign-in is a tray toggle, off by
@@ -20,6 +23,7 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_updater::{Update, UpdaterExt};
 use tauri_plugin_window_state::{StateFlags, WindowExt};
 
 const HIDDEN_ARG: &str = "--hidden";
@@ -62,13 +66,13 @@ fn hub_up(port: u16) -> bool {
              Some((200, body)) if body.contains("\"app\":\"sage-os\""))
 }
 
-/// How to start the hub: the bundled one next to the app (packaged, F1), else this checkout's Python hub.
-fn hub_command(log: &PathBuf) -> Option<Command> {
-    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
-    let bundled = exe_dir.join(if cfg!(windows) { "sage-os-hub.exe" } else { "sage-os-hub" });
-    let mut cmd = if bundled.is_file() {
-        let mut c = Command::new(bundled);
-        c.current_dir(&exe_dir);
+/// How to start the hub: the bundled one in the app's resources (packaged, F1), else this checkout's Python hub.
+fn hub_command(app: &AppHandle, log: &PathBuf) -> Option<Command> {
+    let exe = if cfg!(windows) { "sage-os-hub.exe" } else { "sage-os-hub" };
+    let bundled = app.path().resource_dir().ok().map(|d| d.join("hub").join(exe)).filter(|p| p.is_file());
+    let mut cmd = if let Some(bundled) = bundled {
+        let mut c = Command::new(&bundled);
+        c.current_dir(bundled.parent()?);
         c
     } else {
         let root = std::env::var("SAGE_OS_ROOT").map(PathBuf::from).unwrap_or_else(|_| {
@@ -147,7 +151,7 @@ fn connect(app: AppHandle) {
         let port = hub.port;
         if !hub_up(port) {
             let log = log_path(&app);
-            match hub_command(&log).map(|mut c| c.spawn()) {
+            match hub_command(&app, &log).map(|mut c| c.spawn()) {
                 Some(Ok(child)) => *hub.child.lock().unwrap() = Some(child),
                 Some(Err(e)) => return say(&app, &format!("Couldn't start Sage OS's hub: {e}")),
                 None => return say(&app, "Couldn't find Sage OS's hub next to the app or in the checkout (set SAGE_OS_ROOT)."),
@@ -176,11 +180,17 @@ fn connect(app: AppHandle) {
 
 /// Quit: stop the hub cleanly (it unloads the local model on the way out), then the app.
 fn quit(app: &AppHandle) {
-    let hub = app.state::<Hub>();
-    let port = hub.port;
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }
+    stop_hub(app);
+    app.exit(0);
+}
+
+/// Ask the hub to stop and wait (up to 20 s) until it has; kill it if it hasn't.
+fn stop_hub(app: &AppHandle) {
+    let hub = app.state::<Hub>();
+    let port = hub.port;
     let _ = http(port, "POST", "/api/quit", Duration::from_secs(3));
     let deadline = Instant::now() + Duration::from_secs(20);
     let mut child = hub.child.lock().unwrap().take();
@@ -199,7 +209,43 @@ fn quit(app: &AppHandle) {
             let _ = c.kill(); // it didn't stop in time; the next hub start stops any model it left loaded
         }
     }
-    app.exit(0);
+}
+
+// -- updates (D38) ---------------------------------------------------------------------------------------------
+#[derive(Default)]
+struct Pending(Mutex<Option<Update>>);
+
+#[derive(serde::Serialize)]
+struct UpdateInfo {
+    version: String,
+    current: String,
+    notes: Option<String>,
+    date: Option<String>,
+}
+
+/// Is there a newer signed release? Remembers it for update_install.
+#[tauri::command]
+async fn update_check(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    let found = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+    let info = found.as_ref().map(|u| UpdateInfo {
+        version: u.version.clone(),
+        current: u.current_version.clone(),
+        notes: u.body.clone(),
+        date: u.date.map(|d| d.to_string()),
+    });
+    *app.state::<Pending>().0.lock().unwrap() = found;
+    Ok(info)
+}
+
+/// Download the update (its signature is checked), stop the hub, install, restart.
+#[tauri::command]
+async fn update_install(app: AppHandle) -> Result<(), String> {
+    let update = app.state::<Pending>().0.lock().unwrap().take().ok_or("no update to install; check again")?;
+    let bytes = update.download(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || stop_hub(&handle)).await.map_err(|e| e.to_string())?;
+    update.install(bytes).map_err(|e| e.to_string())?; // Windows: the installer takes over and this app exits
+    app.restart();
 }
 
 fn allowed(url: &tauri::Url, port: u16) -> bool {
@@ -217,7 +263,10 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![HIDDEN_ARG])))
         .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::all() & !StateFlags::VISIBLE).build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Hub { port: port(), child: Mutex::new(None) })
+        .manage(Pending::default())
+        .invoke_handler(tauri::generate_handler![update_check, update_install])
         .setup(move |app| {
             let port = app.state::<Hub>().port;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))

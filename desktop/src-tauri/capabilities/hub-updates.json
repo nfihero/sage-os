@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "hub-updates",
+  "description": "The hub's own page (localhost only) may ask the app for an update and to install it (D38). Updates are signed: only a build signed with the owner's key installs. Nothing else is exposed.",
+  "windows": ["main"],
+  "remote": { "urls": ["http://127.0.0.1:*/*"] },
+  "permissions": ["allow-update-check", "allow-update-install"]
+}

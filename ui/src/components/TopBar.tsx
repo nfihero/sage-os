@@ -4,6 +4,7 @@ import { THEMES, osReducedMotion, type Motion, type Theme } from "../theme";
 import { useNow } from "../util";
 import { SafetyChip } from "./Safety";
 import { UsageBars } from "./Usage";
+import { UpdateChip } from "./Update";
 
 // Hermes' services, named for what they do; the tooltip keeps the technical name and port.
 const SERVICES = [
@@ -63,6 +64,7 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         )}
         <SafetyChip safety={hub.panels.safety ?? []} unseen={unseen} onClick={onSafety} />
         <span className={`chip ${inboxCount ? "amber pulse-amber" : "mute"}`} title="Items waiting for you in the inbox">INBOX <span className="font-dot text-[15px] leading-none">{inboxCount}</span></span>
+        <UpdateChip />
         <button className="chip" onClick={onGuide} data-tour="guide" title="Why Sage OS exists, and a tour of the screen">? GUIDE</button>
         {(() => {          // game mode (G1): always visible, opens its settings in MODELS
           const g = hub.panels.gamemode;

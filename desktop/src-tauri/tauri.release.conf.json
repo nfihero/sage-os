@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "createUpdaterArtifacts": true,
+    "resources": {
+      "../../build/sage-os-hub/": "hub/"
+    }
+  }
+}

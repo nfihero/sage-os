@@ -883,6 +883,36 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** the library passes ~100k passages (an ANN index such as sqlite-vec), a better small multilingual
   embedding model appears, or packs still bring wrong notes in practice.
 
+## D38 — Self-contained app and signed updates from version tags (F1, first part)
+
+- **Date / by:** 2026-10-12, user ("let's work on the updater, so someone using Sage can in real time download an
+  update I pushed"; chose version tags as the trigger and Windows + Mac); design by Claude
+- **Status:** accepted; built in 0.22.0. First part of F1 (D32); amends D33 (the window exposed no commands).
+- **Decision:**
+  1. **Self-contained app:** the hub is bundled with PyInstaller (`hub/packaging/sage-os-hub.spec`) together with
+     `config.toml`, the built UI and the model catalog, and shipped as the app's `hub` resource; the app starts it from
+     there (a developer build still runs the checkout's Python hub). Inside the bundle, `config.local.toml` lives in
+     app data, since every update replaces the bundle.
+  2. **Releases from version tags only:** pushing `vX.Y.Z` runs `.github/workflows/release.yml`, which builds
+     Windows (NSIS, per user) and macOS (Apple Silicon, .app and .dmg), refuses a tag that differs from the app's
+     version, and publishes a GitHub Release with the version's CHANGELOG section, the signed update files and
+     `latest.json`. Everyday pushes to main release nothing.
+  3. **Signed updates:** every update is signed with the owner's key (minisign, via Tauri); the private key and its
+     password are GitHub secrets and stay with the owner; the public key is in `tauri.conf.json`. An installed app
+     refuses anything not signed with it.
+  4. **In the app:** it checks `releases/latest/download/latest.json` 20 s after start and then hourly; a newer
+     release shows an UPDATE chip in the top bar with the changelog; "Update and restart" downloads it, checks the
+     signature, stops the hub cleanly, installs and relaunches. Data, notes and settings live in app data and are
+     untouched. In a plain browser nothing shows.
+  5. **Two commands for the hub's page:** `update_check` and `update_install`, allowed only for
+     `http://127.0.0.1:*` (capability `hub-updates`). Nothing else is exposed; the worst a script on the page could do
+     is install the latest release signed by the owner.
+- **Costs / limits:** the first self-contained version (0.22.0) is installed by hand once; installers aren't
+  code-signed with an OS certificate, so Windows SmartScreen and macOS Gatekeeper warn on first install (updates after
+  that don't); macOS runner minutes count ten times against the free Actions allowance; the bundle is ~80 MB.
+- **Revisit if:** testers need an Intel Mac build, OS code-signing becomes worth paying for, or an early-builds
+  channel is wanted (pushes to main to opted-in users).
+
 ---
 
 ## Proposed, awaiting the user

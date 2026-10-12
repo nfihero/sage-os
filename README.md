@@ -4,6 +4,10 @@
 several AIs and keep notes in many places: a "Wikipedia for yourself" built from your own files, which
 every AI you talk to reads from, and which grows only with your approval (DECISIONS D22).
 
+**Updates (v0.22.0):** the desktop app is self-contained and updates itself: when a new version is released it shows
+UPDATE in the top bar, and one click installs it (signed; your data stays). Releases are built on GitHub Actions from
+version tags.
+
 **Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using
 a small model on your processor (downloaded once when you ask, 334 MB); briefing packs leave out notes that only
 share words with your question.

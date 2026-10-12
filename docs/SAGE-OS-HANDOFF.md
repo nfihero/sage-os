@@ -15,10 +15,10 @@ system · **planned** = not built.
 
 ---
 
-## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 12 Oct, v0.21.0)
+## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 12 Oct, v0.22.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D37), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D38), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.21.0** (local tags through 0.21.0, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.22.0** (tags through 0.22.0, not pushed; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -75,7 +75,10 @@ lead or reviewer (D26).
 1. ~~K7~~ built (0.20.0, D36): one card and one decision per chapter, ticked cards decided together, undo of one note,
    trust ladder per agent with a complete activity log (AGENTS in the inbox), the Librarian and the Reviewer. Live
    gate still to run: Librarian on `Books`, 20 notes, with the engine on, approved in one decision. ~~K14~~ done
-   (0.21.0, D37): meaning-based search on the CPU, gate passed on the owner's notes. **Next: F1** friend's Mac build.
+   (0.21.0, D37): meaning-based search on the CPU, gate passed on the owner's notes. F1 part one done (0.22.0, D38):
+   self-contained app + signed updates from `vX.Y.Z` tags via GitHub Actions (Windows + Mac). **To release:** bump the
+   eight version strings, add the CHANGELOG section, commit, tag, push the tag. **Next:** the rest of F1 (empty first
+   run on a Mac, keys in the app, *Report a problem* to roundederror@gmail.com).
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.

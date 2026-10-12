@@ -49,3 +49,21 @@ def test_byte_order_mark_is_accepted(tmp_path):
     (tmp_path / "config.local.toml").write_bytes(b"\xef\xbb\xbf[engine]\nport = 8799\n")
     c = load(p)
     assert c.port == 9999 and c.engine_port == 8799
+
+
+def test_bundled_app_keeps_this_computers_settings_in_app_data(tmp_path, monkeypatch):
+    """F1 (D38): inside the desktop app the bundle is replaced by every update, so config.local.toml lives in app
+    data, and the bundle's config.toml is read from the bundle."""
+    from sage_os_hub import config
+    bundle, data = tmp_path / "bundle", tmp_path / "data"
+    bundle.mkdir()
+    data.mkdir()
+    (bundle / "config.toml").write_text('[hub]\nport = 8787\n', encoding="utf-8")
+    (data / "config.local.toml").write_text('[hub]\nport = 8797\n', encoding="utf-8")
+    monkeypatch.setattr(config, "FROZEN", True)
+    monkeypatch.setattr(config, "ROOT", bundle)
+    monkeypatch.setenv("SAGE_OS_DATA", str(data))
+    monkeypatch.delenv("SAGE_OS_CONFIG", raising=False)
+    assert config.local_config_path() == data / "config.local.toml"
+    cfg = config.load()
+    assert cfg.port == 8797 and cfg.local_config == data / "config.local.toml"

@@ -10,7 +10,14 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# Bundled in the desktop app (PyInstaller, F1): config.toml and ui/dist sit inside the bundle, read-only and replaced by
+# every update, so this computer's own settings (config.local.toml) live in app data instead.
+FROZEN = bool(getattr(sys, "frozen", False))
+ROOT = Path(getattr(sys, "_MEIPASS", "")) if FROZEN else Path(__file__).resolve().parents[2]
+
+
+def local_config_path() -> Path:
+    return default_data_dir() / "config.local.toml" if FROZEN else ROOT / "config.local.toml"
 
 
 @dataclass
@@ -22,7 +29,7 @@ class Config:
     # between a user's devices. Paths left as None are derived from them in __post_init__.
     data_dir: Path | None = None
     library: Path | None = None
-    local_config: Path = ROOT / "config.local.toml"   # where per-computer settings (like the Library) are written
+    local_config: Path = field(default_factory=lambda: local_config_path())   # per-computer settings (the Library, …)
     store: Path | None = None
     keep_events: int = 5000
     hermes_home: Path = field(default_factory=lambda: default_hermes_home())
@@ -121,8 +128,9 @@ def merge(base: dict, over: dict) -> dict:
 
 
 def load(path: Path | None = None) -> Config:
+    default = path is None and not os.environ.get("SAGE_OS_CONFIG")
     path = path or Path(os.environ.get("SAGE_OS_CONFIG", ROOT / "config.toml"))
-    local = path.with_name(path.stem + ".local.toml")
+    local = local_config_path() if default and FROZEN else path.with_name(path.stem + ".local.toml")
     if not path.exists() and not local.exists():
         return Config()
     # utf-8-sig: Windows Notepad (and PowerShell 5) save UTF-8 with a byte-order mark, which TOML rejects

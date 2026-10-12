@@ -12,6 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.22.0] — 2026-10-12
+
+The first self-contained release with updates (D38, the first part of F1). Install this one by hand from the Releases
+page; later versions arrive as updates. pytest 329.
+
+### Added
+- The desktop app carries its own hub (bundled with PyInstaller, with the UI, config and model catalog): no Python,
+  Node or copy of the code needed.
+- Updates: the app checks for a new release when it starts and every hour; an UPDATE chip in the top bar shows what's
+  new; "Update and restart" installs it (signed by the owner's key; anything else is refused) and keeps your data.
+- Release pipeline: a version tag builds Windows and macOS (Apple Silicon) on GitHub Actions and publishes the release
+  with its notes and update files.
+
+### Changed
+- Inside the app, this computer's settings (`config.local.toml`) live in app data, so updates never overwrite them.
+
 ## [0.21.0] — 2026-10-12
 
 K14, meaning-based search (D37). **Gate: pass** on the owner's library: 21/23 differently worded questions find their

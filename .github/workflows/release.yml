@@ -1,0 +1,72 @@
+# A version tag (vX.Y.Z) builds Sage OS for Windows and macOS and publishes a GitHub Release with signed update files
+# and latest.json, which every installed copy checks (D38). Everyday pushes to main don't release anything.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-latest          # Apple Silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release notes (and the tag matches the app's version)
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo "body<<SAGE_NOTES_EOF"
+            python .github/scripts/release_notes.py "${GITHUB_REF_NAME}"
+            echo "SAGE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: UI
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Hub, bundled with PyInstaller
+        shell: bash
+        run: |
+          python -m pip install ./hub pyinstaller
+          python -m PyInstaller hub/packaging/sage-os-hub.spec --noconfirm --distpath build --workpath build/work
+
+      - name: Desktop app tools
+        working-directory: desktop
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop
+          tauriScript: npx tauri
+          args: --config src-tauri/tauri.release.conf.json
+          tagName: ${{ github.ref_name }}
+          releaseName: Sage OS ${{ github.ref_name }}
+          releaseBody: ${{ steps.notes.outputs.body }}
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
