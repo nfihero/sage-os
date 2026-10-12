@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sage OS: situation display (mockup v3)</title>
+<!-- Mockup only, for approval (11 Oct): the SAGE situation display world on the approved home layout. Static data
+     from the owner's real library; the planet is a canvas stand-in for the app's WebGL orb. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  :root {
+    --steel: #0c1215; --steel-2: #121a1e; --steel-edge: #22303a; --rivet: #2c3b44;
+    --glass: #020806; --phos: #9dff5c; --phos-dim: #5d9c38; --flash: #d8f3ff; --flash-b: #8fd8ff;
+    --ink: #d9f5df; --mute: #7a9a86; --amber: #ffb547; --red: #ff6159;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", -apple-system, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+    --dot: "Doto", var(--mono);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--steel); color: var(--ink); font: 14px/1.5 var(--sans); display: flex; flex-direction: column; min-height: 100dvh; }
+  ::selection { background: rgba(157,255,92,.28); color: #fff; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  i.ph { font-size: 16px; line-height: 1; }
+
+  /* --- console furniture --- */
+  .label { font: 800 12px/1 var(--dot); letter-spacing: .14em; text-transform: uppercase; color: var(--phos); }
+  .num { font-family: var(--dot); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+  .key { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px; border-radius: 3px;
+    background: linear-gradient(#17222a, #0f171b); border: 1px solid var(--steel-edge); box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.5);
+    font: 800 11.5px/1 var(--dot); letter-spacing: .12em; text-transform: uppercase; color: var(--mute); transition: color .15s, background .15s, box-shadow .15s; }
+  .key:hover { color: var(--ink); }
+  .key.lit { color: var(--phos); background: linear-gradient(#173018, #0d1d10); border-color: #2f5a2a; box-shadow: inset 0 0 12px rgba(157,255,92,.18), 0 0 0 1px rgba(157,255,92,.08), 0 1px 2px rgba(0,0,0,.5); }
+  .key.need { color: var(--amber); border-color: #5a4320; box-shadow: inset 0 0 12px rgba(255,181,71,.16); }
+  .key:active { transform: translateY(1px); }
+  .lamp { width: 9px; height: 9px; border-radius: 50%; background: #1b2620; box-shadow: inset 0 1px 1px rgba(0,0,0,.6); display: inline-block; }
+  .lamp.on { background: var(--phos); box-shadow: 0 0 8px rgba(157,255,92,.8); }
+  .lamp.need { background: var(--amber); box-shadow: 0 0 8px rgba(255,181,71,.7); }
+
+  /* tube: glass set into a steel mount */
+  .mount { background: var(--steel-2); border: 1px solid var(--steel-edge); border-radius: 18px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04); display: flex; flex-direction: column; min-height: 0; }
+  .tube { position: relative; flex: 1; min-height: 0; border-radius: 13px; overflow: hidden; background: radial-gradient(120% 90% at 50% 40%, #04120a 0%, var(--glass) 70%);
+    box-shadow: inset 0 0 0 1px rgba(157,255,92,.14), inset 0 0 40px rgba(0,0,0,.9), inset 0 0 120px rgba(157,255,92,.035); display: flex; flex-direction: column; }
+  .tube::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(140% 100% at 30% 0%, rgba(216,243,255,.05), transparent 45%); }
+  .tube-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+  .tube-body { padding: 4px 14px 14px; overflow: auto; min-height: 0; flex: 1; }
+  .tube-body::-webkit-scrollbar { width: 6px; } .tube-body::-webkit-scrollbar-thumb { background: rgba(157,255,92,.25); border-radius: 3px; }
+
+  /* P7 afterglow: what just changed flashes blue-white and decays to phosphor green */
+  @keyframes p7 { 0% { color: var(--flash); text-shadow: 0 0 10px var(--flash-b), 0 0 22px rgba(143,216,255,.6); } 100% { color: var(--phos); text-shadow: 0 0 6px rgba(157,255,92,.35); } }
+  .afterglow { animation: p7 1.8s cubic-bezier(.16,1,.3,1) both; }
+  @media (prefers-reduced-motion: reduce) { .afterglow { animation: none; color: var(--phos); } }
+
+  /* light-pen reticle on what you point at */
+  .row { position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 12px; padding: 9px 10px 9px 30px; border-radius: 8px; cursor: pointer; }
+  .row::before { content: ""; position: absolute; left: 9px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; border: 1px solid rgba(157,255,92,.25); }
+  .row:hover { background: rgba(157,255,92,.06); }
+  .row:hover::before { border-color: var(--flash); box-shadow: 0 0 0 3px rgba(143,216,255,.12), 0 0 10px rgba(143,216,255,.5);
+    background: radial-gradient(circle, var(--flash) 0 1.5px, transparent 2px); }
+  .row .t { font-size: 14px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .m { grid-column: 1; font: 12px var(--mono); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .w { grid-column: 2; grid-row: 1 / span 2; align-self: center; font: 12px var(--mono); color: var(--mute); }
+
+  /* --- top --- */
+  header { display: flex; align-items: center; gap: 18px; padding: 10px 18px; background: linear-gradient(#10171b, #0b1114); border-bottom: 1px solid var(--steel-edge); flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand b { font: 900 20px/1 var(--dot); letter-spacing: .18em; color: var(--phos); text-shadow: 0 0 10px rgba(157,255,92,.45); }
+  .clock { font: 800 24px/1 var(--dot); color: var(--phos); text-shadow: 0 0 8px rgba(157,255,92,.4); }
+  nav { display: flex; gap: 6px; }
+  .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* --- console --- */
+  main { flex: 1; min-height: 0; display: grid; gap: 14px; padding: 14px 18px; width: 100%; max-width: 1700px; margin: 0 auto;
+    grid-template-columns: 300px minmax(0, 1fr) 360px; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "scope main side" "strip strip strip"; }
+
+  /* the scope */
+  .scope-col { grid-area: scope; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .scope-mount { border-radius: 26px; padding: 10px; }
+  .scope { position: relative; aspect-ratio: 1; width: 100%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 46%, #062012 0%, #031008 46%, #010504 72%);
+    box-shadow: inset 0 0 0 2px #2b3a33, inset 0 0 0 9px #0b1310, inset 0 0 0 10px rgba(157,255,92,.25), inset 0 0 50px rgba(0,0,0,.95), 0 0 0 1px #33434c; }
+  .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+  .readout { padding: 10px 6px 2px; }
+  .r { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 2px; border-bottom: 1px solid rgba(157,255,92,.08); gap: 10px; }
+  .r span:first-child { font: 800 11px/1 var(--dot); letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+  .r span:last-child { font: 13px var(--mono); color: var(--ink); text-align: right; }
+  .meter { margin-top: 10px; }
+  .meter .top { display: flex; justify-content: space-between; align-items: baseline; font: 800 11px/1 var(--dot); letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+  .meter .top b { font: 800 18px/1 var(--dot); color: var(--phos); letter-spacing: .04em; }
+  .dots { height: 10px; margin-top: 6px; position: relative; background-image: radial-gradient(circle, rgba(157,255,92,.18) 1px, transparent 1.6px); background-size: 6px 6px; }
+  .dots i { position: absolute; inset: 0 auto 0 0; background-image: radial-gradient(circle, var(--phos) 1.5px, transparent 2px); background-size: 6px 6px; filter: drop-shadow(0 0 3px rgba(157,255,92,.7)); }
+  .agents { display: flex; flex-direction: column; gap: 6px; }
+  .agent { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--steel-2); border: 1px solid var(--steel-edge); text-align: left; }
+  .agent .scopelet { width: 26px; height: 26px; border-radius: 50%; flex: none; background: radial-gradient(circle at 45% 42%, #e9ffe0 0 8%, var(--phos) 30%, rgba(157,255,92,.15) 62%, transparent 72%); box-shadow: inset 0 0 0 1px rgba(157,255,92,.4), 0 0 12px rgba(157,255,92,.35); }
+  .agent.empty .scopelet { background: none; box-shadow: inset 0 0 0 1px dashed; border: 1px dashed #3d5045; display: grid; place-items: center; color: var(--mute); }
+  .agent .n { font: 800 13px/1.2 var(--dot); letter-spacing: .1em; text-transform: uppercase; color: var(--phos); }
+  .agent.empty .n { color: var(--mute); }
+  .agent .d { font-size: 12.5px; color: var(--mute); }
+  .agent.on { border-color: #2f5a2a; box-shadow: inset 0 0 14px rgba(157,255,92,.1); }
+
+  /* main tube: search line + conversation */
+  .main { grid-area: main; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .pen { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 54px; border-radius: 12px; background: var(--glass);
+    box-shadow: inset 0 0 0 1px rgba(157,255,92,.35), inset 0 0 30px rgba(157,255,92,.06), 0 0 0 6px var(--steel-2), 0 0 0 7px var(--steel-edge); }
+  .pen i { color: var(--phos); font-size: 20px; }
+  .pen input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font: 16px var(--sans); caret-color: var(--flash); }
+  .pen input::placeholder { color: var(--mute); }
+  .pen-sub { display: flex; gap: 18px; padding: 8px 4px 0; font: 12px var(--mono); color: var(--mute); flex-wrap: wrap; }
+  .msg-me { align-self: flex-end; max-width: 70%; padding: 10px 14px; border-radius: 12px 12px 3px 12px; background: rgba(157,255,92,.07); box-shadow: inset 0 0 0 1px rgba(157,255,92,.2); }
+  .msg-ai { max-width: 72ch; }
+  .msg-ai .who { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .msg-ai p { margin: 0 0 8px; } .msg-ai ol { margin: 0 0 8px 1.2em; padding: 0; } .msg-ai li { margin: 4px 0; }
+  .msg-ai b { color: #f0fff2; font-weight: 600; }
+  .read { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+  .read .label { color: var(--mute); }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 3px; font: 12px var(--mono); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(157,255,92,.25); }
+  .compose { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-top: 1px solid rgba(157,255,92,.1); }
+  .compose input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border-radius: 8px; background: rgba(0,0,0,.4); box-shadow: inset 0 0 0 1px rgba(157,255,92,.22); border: 0; color: var(--ink); font: 14px var(--sans); outline: none; caret-color: var(--flash); }
+
+  /* side */
+  .side { grid-area: side; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .card { padding: 12px; border-radius: 10px; background: rgba(255,181,71,.05); box-shadow: inset 0 0 0 1px rgba(255,181,71,.28); }
+  .card .t { font-size: 14px; color: #fff6e6; }
+  .card .s { font: 12px var(--mono); color: #c8a873; margin-top: 3px; }
+  .card .acts { display: flex; gap: 6px; margin-top: 10px; }
+  .need-head .label { color: var(--amber); }
+
+  .strip { grid-area: strip; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 26px; padding: 9px 16px; border-radius: 12px; background: linear-gradient(#10181c, #0c1316); border: 1px solid var(--steel-edge); }
+  .strip .it { display: flex; align-items: center; gap: 8px; font: 12.5px var(--mono); color: var(--ink); }
+  .strip .it .label { color: var(--mute); }
+
+  .note { max-width: 1700px; margin: 0 auto; padding: 0 18px 16px; color: var(--mute); font-size: 13px; }
+  .note b { color: var(--amber); font-weight: 600; }
+
+  @media (max-width: 1180px) { main { grid-template-columns: 260px minmax(0,1fr); grid-template-areas: "scope main" "side side" "strip strip"; grid-template-rows: auto auto auto; } }
+  @media (max-width: 760px) {
+    main { grid-template-columns: minmax(0,1fr); grid-template-areas: "main" "scope" "side" "strip"; padding: 10px; }
+    .clock { display: none; } nav { order: 3; width: 100%; overflow-x: auto; }
+    .scope-mount { max-width: 300px; align-self: center; width: 100%; }
+    .msg-me { max-width: 90%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>SAGE OS</b></div>
+  <span class="clock num">15:42:07</span>
+  <nav aria-label="Views"><button class="key lit">Home</button><button class="key">Library</button><button class="key">Systems</button></nav>
+  <div class="right">
+    <button class="key need"><span class="lamp need"></span>Inbox <span class="num">25</span></button>
+    <button class="key"><span class="lamp on"></span>Game mode</button>
+    <button class="key">Models</button>
+    <button class="key"><i class="ph ph-question"></i>Guide</button>
+  </div>
+</header>
+
+<main>
+  <!-- the scope: the agent lives here -->
+  <div class="scope-col">
+    <div class="mount scope-mount">
+      <div class="scope"><canvas id="scope" width="560" height="560" aria-label="The local model's planet on its scope, idle"></canvas></div>
+      <div class="readout">
+        <div class="r"><span>State</span><span class="afterglow" style="font-family:var(--dot);font-weight:800;letter-spacing:.1em">IDLE</span></div>
+        <div class="r"><span>Model</span><span>Gemma 4 12B</span></div>
+        <div class="r"><span>Where</span><span>this PC, GPU</span></div>
+        <div class="r"><span>Chats</span><span>2</span></div>
+        <div class="meter"><div class="top"><span>RTX 5070 Ti memory</span><span><b>9.6</b> / 15.9 GB</span></div><div class="dots"><i style="width:60%"></i></div></div>
+        <div class="meter"><div class="top"><span>Busy</span><span><b>4</b> %</span></div><div class="dots"><i style="width:4%"></i></div></div>
+      </div>
+    </div>
+    <div class="agents" role="group" aria-label="Agents">
+      <button class="agent on"><span class="scopelet"></span><span><span class="n">Local model</span><br><span class="d">answering, private, offline</span></span></button>
+      <button class="agent empty"><span class="scopelet"><i class="ph ph-plus"></i></span><span><span class="n">Connect Claude</span><br><span class="d">sign in once</span></span></button>
+      <button class="agent empty"><span class="scopelet"><i class="ph ph-plus"></i></span><span><span class="n">ChatGPT or Gemini</span><br><span class="d">an API key, in Models</span></span></button>
+    </div>
+  </div>
+
+  <!-- the main tube: search line, then the conversation -->
+  <div class="main">
+    <div>
+      <label class="pen"><i class="ph ph-crosshair-simple"></i><input placeholder="Search your notes and files, or ask a question" aria-label="Search or ask" /><span class="key" style="height:24px">Ctrl K</span></label>
+      <div class="pen-sub"><span>165 notes</span><span>573 files</span><span>Enter asks your agent</span></div>
+    </div>
+    <section class="mount" style="flex:1">
+      <div class="tube">
+        <div class="tube-head"><span class="label">Chat</span><span style="color:var(--mute);font-size:13px">Using my outreach playbook, what are the three emails?</span><span style="margin-left:auto;display:flex;gap:6px"><button class="key">History</button><button class="key"><i class="ph ph-plus"></i>New</button></span></div>
+        <div class="tube-body" style="display:flex;flex-direction:column;gap:16px">
+          <div class="msg-me">Using my outreach playbook, what are the three emails in the sequence? One line each.</div>
+          <div class="msg-ai">
+            <div class="who"><span class="lamp on"></span><span class="label">Local model</span><span style="font:12px var(--mono);color:var(--mute)">Gemma 4 12B</span></div>
+            <p>From your playbooks, the sequence is:</p>
+            <ol>
+              <li><b>The intro:</b> who you are and the one reason you're writing to this firm, with a specific deal of theirs.</li>
+              <li><b>The follow-up, day 3 or 4:</b> one new, useful point; restate the ask in a sentence.</li>
+              <li><b>The close-out, day 7 or 8:</b> a short, polite last note that leaves the door open.</li>
+            </ol>
+            <div class="read"><span class="label">Read</span><span class="tag"><i class="ph ph-file-text"></i>Personalized Outreach Playbook</span><span class="tag"><i class="ph ph-file-text"></i>Jeff Weiss Generator Outreach Guide</span></div>
+          </div>
+        </div>
+        <div class="compose"><input placeholder="Ask about your notes" aria-label="Message" /><button class="key lit"><i class="ph ph-paper-plane-tilt"></i>Send</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- what waits for you -->
+  <div class="side">
+    <section class="mount" style="flex:1.2">
+      <div class="tube">
+        <div class="tube-head need-head"><span class="label">Inbox</span><span class="num" style="color:var(--amber);font-size:18px">25</span><span style="margin-left:auto;font-size:12.5px;color:var(--mute)">in chapter order</span></div>
+        <div class="tube-body" style="display:flex;flex-direction:column;gap:8px">
+          <div class="card"><div class="t">Intermediate Accounting · Chapter 7, part 2 of 3</div><div class="s">50 notes from 30 sections, 214 of 214 concepts</div>
+            <div class="acts"><button class="key need">Review 50 notes</button><button class="key">Later</button></div></div>
+          <div class="card"><div class="t">Intermediate Accounting · Chapter 7, part 3 of 3</div><div class="s">7 notes from 30 sections</div></div>
+          <div class="card"><div class="t">Intermediate Accounting · Chapter 8, part 1 of 2</div><div class="s">50 notes from 31 sections</div></div>
+        </div>
+      </div>
+    </section>
+    <section class="mount" style="flex:none">
+      <div class="tube">
+        <div class="tube-head"><span class="label">Digesting</span></div>
+        <div class="tube-body">
+          <div style="font-size:14px">Intermediate Accounting 18e</div>
+          <div class="dots" style="margin:8px 0"><i style="width:31%"></i></div>
+          <div style="font:12px var(--mono);color:var(--mute)">14 of 45 chapters out for review</div>
+        </div>
+      </div>
+    </section>
+    <section class="mount" style="flex:1">
+      <div class="tube">
+        <div class="tube-head"><span class="label">Recent notes</span><button class="key" style="margin-left:auto">Library</button></div>
+        <div class="tube-body">
+          <div class="row"><span class="t afterglow">Average-cost methods</span><span class="w">now</span><span class="m">Books, chapter 7</span></div>
+          <div class="row"><span class="t">Deal Club Training</span><span class="w">today</span><span class="m">Drive</span></div>
+          <div class="row"><span class="t">DCF formula sheet</span><span class="w">5 d</span><span class="m">Finance, yours</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="strip" aria-label="Systems">
+    <span class="it"><span class="lamp on"></span><span class="label">GPU</span>9.6 / 15.9 GB</span>
+    <span class="it"><span class="lamp on"></span><span class="label">Engine</span>Gemma 4 12B</span>
+    <span class="it"><span class="lamp on"></span><span class="label">Game mode</span>watching</span>
+    <span class="it"><span class="lamp"></span><span class="label">Library</span>this PC only</span>
+    <span class="it"><span class="lamp"></span><span class="label">Hermes</span>not running</span>
+    <button class="key" style="margin-left:auto">Systems<i class="ph ph-arrow-right"></i></button>
+  </section>
+</main>
+
+<p class="note"><b>Mockup v3, SAGE situation display.</b> The agent lives in the round scope (range rings, bearing ticks, the planet at
+its centre); everything else is a phosphor tube set in console steel; buttons are back-lit keys; what just changed flashes blue-white and
+fades to green (the readout STATE and the newest note here); pointing at a row shows a light-pen reticle. The real app keeps its WebGL
+planet inside this scope.</p>
+
+<script>
+  // the scope: range rings, bearing ticks, a slow sweep that only shows while the agent works (static here: idle), and the planet
+  const cv = document.getElementById("scope"), g = cv.getContext("2d"), W = cv.width, C = W / 2, R = W / 2 - 22;
+  const pts = []; const N = 1500;
+  const hash = (x, y, z) => { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
+  for (let i = 0; i < N; i++) { const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), t = i * 2.399963;
+    const x = Math.cos(t) * r, z = Math.sin(t) * r;
+    pts.push([x, y, z, (hash(Math.round(x*3),Math.round(y*3),Math.round(z*3))*.65 + hash(Math.round(x*6),Math.round(y*6),Math.round(z*6))*.35) > .55]); }
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let a = 0;
+  function frame() {
+    g.clearRect(0, 0, W, W);
+    g.save(); g.translate(C, C);
+    g.strokeStyle = "rgba(157,255,92,.16)"; g.lineWidth = 1;
+    for (const f of [.35, .6, .85]) { g.beginPath(); g.arc(0, 0, R * f, 0, 6.283); g.stroke(); }
+    g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.moveTo(0, -R); g.lineTo(0, R); g.strokeStyle = "rgba(157,255,92,.08)"; g.stroke();
+    for (let d = 0; d < 360; d += 5) { const th = (d - 90) * Math.PI / 180, long = d % 30 === 0;
+      g.beginPath(); g.moveTo(Math.cos(th) * (R - (long ? 14 : 7)), Math.sin(th) * (R - (long ? 14 : 7))); g.lineTo(Math.cos(th) * R, Math.sin(th) * R);
+      g.strokeStyle = long ? "rgba(157,255,92,.55)" : "rgba(157,255,92,.25)"; g.stroke();
+      if (d % 90 === 0) { g.fillStyle = "rgba(157,255,92,.6)"; g.font = "800 15px Doto, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillText(String(d).padStart(3, "0"), Math.cos(th) * (R - 30), Math.sin(th) * (R - 30)); } }
+    const PR = R * .5, ca = Math.cos(a), sa = Math.sin(a), ct = Math.cos(.35), st = Math.sin(.35);
+    const halo = g.createRadialGradient(0, 0, PR * .5, 0, 0, PR * 1.5); halo.addColorStop(0, "rgba(157,255,92,.12)"); halo.addColorStop(1, "rgba(157,255,92,0)");
+    g.fillStyle = halo; g.beginPath(); g.arc(0, 0, PR * 1.5, 0, 6.283); g.fill();
+    for (const [x, y, z, land] of pts) { const x1 = x*ca + z*sa, z1 = -x*sa + z*ca, y1 = y*ct - z1*st, z2 = y*st + z1*ct;
+      if (z2 < -.15) continue; const k = .35 + .65 * Math.max(0, z2);
+      g.fillStyle = land ? `rgba(196,255,170,${.4 + .6*k})` : `rgba(157,255,92,${.12 + .3*k})`;
+      g.beginPath(); g.arc(x1 * PR, y1 * PR, (land ? 2.6 : 1.3) * (.7 + .5*k), 0, 6.283); g.fill(); }
+    g.restore();
+    if (!reduce) { a += .003; requestAnimationFrame(frame); }
+  }
+  document.fonts.ready.then(frame);
+</script>
+</body>
+</html>
