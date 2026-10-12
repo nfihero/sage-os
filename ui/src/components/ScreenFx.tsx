@@ -16,8 +16,8 @@ function noiseTile(size = 180) {
 }
 
 /**
- * Always-on screen texture: fine scanlines, a flickering film grain, and a faint refresh bar
- * rolling down the display. Pure CSS animation on the compositor (no per-frame JS), click-through,
+ * Always-on screen texture: fine scanlines and a flickering film grain (the rolling refresh bar was removed
+ * 11 Oct: it distracted). Pure CSS animation on the compositor (no per-frame JS), click-through,
  * and frozen when Motion is set to reduced.
  */
 export default function ScreenFx() {
@@ -26,7 +26,6 @@ export default function ScreenFx() {
     <div className="fx" aria-hidden>
       <div className="fx-grain" style={{ backgroundImage: `url(${tile})` }} />
       <div className="fx-lines" />
-      <div className="fx-roll" />
     </div>
   );
 }

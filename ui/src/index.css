@@ -46,7 +46,7 @@ body {
 .vignette { position: fixed; inset: 0; z-index: var(--z-vignette); pointer-events: none;
   background: radial-gradient(ellipse at center, transparent 55%, color-mix(in oklab, var(--color-void) 85%, transparent) 100%); }
 
-/* ---- constant screen texture: scanlines, film grain, rolling refresh bar ---- */
+/* ---- constant screen texture: scanlines, film grain ---- */
 .fx { position: fixed; inset: 0; z-index: var(--z-screen-fx); pointer-events: none; overflow: hidden; }
 .fx-lines { position: absolute; inset: 0;
   background: repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px); }
@@ -56,10 +56,6 @@ body {
   42% { transform: translate(-18px, 44px); } 57% { transform: translate(43px, 12px); } 71% { transform: translate(-44px, -24px); }
   85% { transform: translate(14px, 36px); } 100% { transform: translate(0, 0); }
 }
-.fx-roll { position: absolute; left: 0; right: 0; top: -30vh; height: 24vh;
-  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--a) 5%, transparent) 55%, color-mix(in oklab, var(--a) 8%, transparent) 62%, transparent);
-  animation: fx-roll 9s linear infinite; }
-@keyframes fx-roll { to { transform: translateY(160vh); } }
 html { background: #000; }
 
 /* ---- HUD panels: thin frame, corner brackets, notched title tabs (eDEX-style) ---- */
@@ -235,8 +231,7 @@ button:disabled, .chip[aria-disabled="true"] { opacity: .4; cursor: not-allowed;
 /* Reduced motion is an app setting (top bar); "auto" follows the OS. */
 :root.reduce-motion .pulse-amber, :root.reduce-motion .pulse-cyan, :root.reduce-motion .light.down,
 :root.reduce-motion .cycle, :root.reduce-motion .panel, :root.reduce-motion .chat-in,
-:root.reduce-motion .fx-grain, :root.reduce-motion .fx-roll { animation: none !important; }
-:root.reduce-motion .fx-roll { display: none; }
+:root.reduce-motion .fx-grain { animation: none !important; }
 
 /* ---- guide (D18): why page + spotlight tour ---- */
 .guide-copy { max-width: 68ch; text-wrap: pretty; }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { get, onChat, post } from "../api";
 import type { ChatItem, ChatSessionInfo, ProviderInfo } from "../types";
-import { ago, useNow } from "../util";
+import { shortModel, useNow } from "../util";
+import { Ago } from "./Readout";
 import ChatView from "./ChatView";
 
 /** Chats with any OpenAI-compatible model (D22.2): the local engine, ChatGPT, Gemini, Ollama. */
@@ -27,13 +28,13 @@ export default function ModelChat({ sessions, onModels, openId, onOpen }: {
         <p className="mt-2 text-[12.5px] text-mute">Chat with a model on this computer (the local engine) or a cloud AI. Your notes and documents ride along with each message.</p>
       )}
       {sessions.map((s) => (
-        <button key={s.id} onClick={() => setOpen(s.id)} className="card text-left">
-          <div className="flex items-center gap-2">
-            <span className={`light ${s.status === "running" ? "up" : "idle"}`} />
-            <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{s.title}</span>
-            <span className="text-[11px] text-mute">{ago(s.updated, now)}</span>
-          </div>
-          <div className="mt-0.5 pl-4 text-[11px] text-cyan/70">{s.provider} · {s.model}</div>
+        <button key={s.id} onClick={() => setOpen(s.id)}
+          className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 border-b border-dashed border-cyan/10 px-1 py-2 text-left hover:bg-cyan/5">
+          <span className={`light ${s.status === "running" ? "up" : "idle"}`} />
+          <span className="copy min-w-0 truncate text-[13.5px] text-ink">{s.title}</span>
+          <Ago ts={s.updated} now={now} />
+          <span />
+          <span className="col-span-2 truncate font-mono text-[11px] text-mute">{s.provider} · {shortModel(s.model)}</span>
         </button>
       ))}
     </div>

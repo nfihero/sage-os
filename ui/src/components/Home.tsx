@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { get, post } from "../api";
 import type { ClaudePanel, Panels, SearchResult, SourceHit } from "../types";
-import { ago, shortModel, useNow } from "../util";
+import { shortModel, useNow } from "../util";
 import Orb from "./LazyOrb";
 import { Snippet } from "./Bookshelf";
+import { Ago, Meter, Num, Row } from "./Readout";
 import { UsageBars } from "./Usage";
 
 /** W2 (D35): the library-first home. Left, the agent side panel (planet, model, where it runs, usage) and the
@@ -13,27 +14,6 @@ import { UsageBars } from "./Usage";
 export type AgentKey = "local" | "claude";
 
 const GB = 1024;
-
-function Row({ k, v, hot }: { k: string; v: string; hot?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-cyan/10 py-[3px]">
-      <span className="text-[11px] uppercase tracking-[.16em] text-mute">{k}</span>
-      <span className={`min-w-0 truncate text-right font-mono text-[12px] ${hot ? "glow-cyan" : "text-ink"}`} title={v}>{v}</span>
-    </div>
-  );
-}
-
-function Meter({ label, value, of, unit, pct }: { label: string; value: string; of?: string; unit?: string; pct: number }) {
-  return (
-    <div className="mb-2">
-      <div className="flex items-baseline justify-between text-[11px] text-mute">
-        <span>{label}</span>
-        <span><span className={`font-dot text-[16px] leading-none ${pct > 92 ? "text-amber" : "glow-cyan"}`}>{value}</span>{of && <> / {of}</>}{unit && <> {unit}</>}</span>
-      </div>
-      <div className="vram-bar mt-1"><div className={`vram-fill ${pct > 92 ? "hot" : ""}`} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} /></div>
-    </div>
-  );
-}
 
 /** Left: the agent answering you, as a planet with its facts, then the others to switch to or connect. */
 export function AgentPanel({ agent, setAgent, panels, lowPower, claudeReady, onConnectClaude, onModels }: {
@@ -159,8 +139,16 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
 
   return (
     <div className="relative flex-none" data-tour="search">
-      <label className="flex items-center gap-3 border border-cyan/45 bg-void/85 px-3.5 py-2.5 shadow-[0_0_22px_color-mix(in_oklab,var(--color-cyan)_12%,transparent)] focus-within:border-cyan">
-        <span aria-hidden className="glow-cyan text-[16px]">⌕</span>
+      <section className="panel" style={{ flex: "none" }}>
+      <div className="panel-head">
+        <span className="tab">Search</span>
+        <span className="ml-auto flex items-baseline gap-3 normal-case tracking-normal text-mute">
+          <span><Num className="text-[16px]">{count}</Num> notes</span>
+          {fileCount > 0 && <span><Num className="text-[16px]">{fileCount}</Num> files</span>}
+        </span>
+      </div>
+      <label className="flex items-center gap-3 px-3.5 py-2.5 focus-within:bg-cyan/5">
+        <span aria-hidden className="glow-cyan font-dot text-[16px]">&gt;</span>
         <input ref={box} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search your notes and files, or ask a question"
           onKeyDown={(e) => {
             if (e.key === "Escape") { e.stopPropagation(); close(); }
@@ -168,14 +156,12 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
           }}
           placeholder="Search your notes and files, or ask a question"
           className="copy min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-mute" />
-        <span className="chip mute hidden sm:inline-flex">Ctrl K</span>
+        <span className="chip mute hidden sm:inline-flex">CTRL K</span>
       </label>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 text-[11.5px] text-mute">
-        <span>{count} notes{fileCount ? ` · ${fileCount} files` : ""}</span>
-        <span>Enter asks the agent; results open in the Library</span>
-      </div>
+      <div className="border-t border-dashed border-cyan/10 px-3.5 py-1 text-[11px] uppercase tracking-[.16em] text-mute">Enter asks your agent · results open in the Library</div>
+      </section>
       {query && (
-        <div className="panel absolute inset-x-0 top-[calc(100%-18px)] z-20 max-h-[60vh] overflow-auto" style={{ flex: "none" }} role="listbox" aria-label="Search results">
+        <div className="panel absolute inset-x-0 top-[calc(100%+4px)] z-20 max-h-[60vh] overflow-auto" style={{ flex: "none" }} role="listbox" aria-label="Search results">
           <div className="panel-body flex flex-col gap-1">
             <button className="card text-left" onClick={() => { onAsk(query); close(); }}>
               <span className="text-cyan">Ask about it:</span> <span className="copy text-ink">"{query}"</span>
@@ -214,15 +200,22 @@ export function DigestStrip({ panels }: { panels: Panels }) {
           const drafted = Object.entries(j.counts).filter(([k]) => k !== "pending" && k !== "drafting").reduce((n, [, v]) => n + v, 0);
           return (
             <div key={j.id}>
-              <div className="copy truncate text-[13.5px] text-ink" title={j.title}>{j.title.replace(/_/g, " ").split(" -- ")[0]}</div>
-              <div className="vram-bar my-1.5"><div className="vram-fill" style={{ width: `${pct}%` }} /></div>
-              <div className="copy text-[12px] text-mute">{j.chapters_done} of {j.chapters_total} chapters out for review · {drafted} of {j.sections_total} sections drafted{j.status === "paused" ? " · paused" : ""}</div>
+              <Row k="Book" v={j.title.replace(/_/g, " ").split(" -- ")[0]} />
+              <Row k="Sections" v={`${drafted} / ${j.sections_total} drafted`} />
+              <div className="mt-2"><Meter label={j.status === "paused" ? "chapters out · paused" : "chapters out for review"} value={String(j.chapters_done)} of={String(j.chapters_total)} pct={pct} /></div>
             </div>
           );
         })}
       </div>
     </section>
   );
+}
+
+/** "Books/Intermediate_Accounting__18th_Edition_…/Chapter 7 Valuation of Inventories" -> "Books · Chapter 7 Valuation of Inventories" */
+function shelf(folder: string): string {
+  const parts = folder.split("/").filter(Boolean);
+  if (parts.length <= 1) return folder;
+  return `${parts[0]} · ${parts[parts.length - 1].replace(/_+/g, " ").trim()}`;
 }
 
 export function RecentNotes({ panels, onOpenNote, onLibrary }: { panels: Panels; onOpenNote: (ref: string) => void; onLibrary: () => void }) {
@@ -237,10 +230,10 @@ export function RecentNotes({ panels, onOpenNote, onLibrary }: { panels: Panels;
         {notes.map((n) => {
           const when = Date.parse(n.updated ?? n.created ?? "");
           return (
-            <button key={n.ref} onClick={() => onOpenNote(n.ref)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-cyan/10 px-0.5 py-1.5 text-left hover:bg-cyan/5">
+            <button key={n.ref} onClick={() => onOpenNote(n.ref)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-dashed border-cyan/10 px-0.5 py-1.5 text-left hover:bg-cyan/5">
               <span className="copy truncate text-[13.5px] text-ink">{n.title}</span>
-              <span className="row-span-2 self-center text-[11px] text-mute">{when ? ago(when / 1000, now) : ""}</span>
-              <span className="truncate text-[11px] text-mute">{n.folder}{n.origin === "agent" ? " · drafted by an agent" : ""}</span>
+              <span className="row-span-2 self-center">{when ? <Ago ts={when / 1000} now={now} /> : null}</span>
+              <span className="truncate text-[11px] uppercase tracking-[.12em] text-mute" title={n.folder}>{shelf(n.folder)}{n.origin === "agent" ? " · by an agent" : ""}</span>
             </button>
           );
         })}
@@ -257,14 +250,20 @@ export function SystemsStrip({ panels, onSystems }: { panels: Panels; onSystems:
   const lib = panels.vault;
   const hermes = panels.health?.gateway.state;
   const item = (k: string, v: React.ReactNode) => (
-    <span className="flex items-baseline gap-1.5"><span className="display text-[11px] tracking-[.18em] text-mute">{k}</span><span className="text-ink/90">{v}</span></span>
+    <span className="flex items-baseline gap-2"><span className="text-[11px] uppercase tracking-[.16em] text-mute">{k}</span><span className="font-mono text-[12px] text-ink/90">{v}</span></span>
   );
   return (
     <section className="panel flex-wrap items-center gap-x-6 gap-y-1 px-3.5 py-1.5 text-[12px]" style={{ flex: "none", flexDirection: "row" }} data-tour="systems-strip">
-      {g && item("GPU", `${(g.vram_used_mb / GB).toFixed(1)} / ${(g.vram_total_mb / GB).toFixed(1)} GB`)}
+      {g && (
+        <span className="flex items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[.16em] text-mute">GPU</span>
+          <span className="vram-bar w-20"><span className={`vram-fill ${g.vram_used_mb / g.vram_total_mb > .92 ? "hot" : ""}`} style={{ width: `${(g.vram_used_mb / g.vram_total_mb) * 100}%` }} /></span>
+          <span className="text-[12px] text-mute"><Num className="text-[15px]">{(g.vram_used_mb / GB).toFixed(1)}</Num> / {(g.vram_total_mb / GB).toFixed(1)} GB</span>
+        </span>
+      )}
       {item("Engine", e ? <><span className={`light ${e.ready ? "up" : "idle"} mr-1`} />{shortModel(e.id)}</> : <span className="text-mute">off</span>)}
       {game && item("Game mode", game.state === "aside" || game.state === "micro" ? <span className="text-amber">stepped aside</span> : game.mode === "never" ? "off" : "watching")}
-      {lib && item("Library", `${lib.count} notes`)}
+      {lib && item("Library", <><Num className="text-[15px]">{lib.count}</Num> notes</>)}
       {hermes && hermes !== "absent" && item("Hermes", hermes === "up" ? "running" : <span className={hermes === "down" ? "text-red" : "text-mute"}>{hermes === "down" ? "stopped" : "not running"}</span>)}
       <button className="chip mute ml-auto" onClick={onSystems}>SYSTEMS: BOARD, GPU, SAFETY</button>
     </section>

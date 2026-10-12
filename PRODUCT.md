@@ -39,8 +39,8 @@ Local-first and model-agnostic. Your library lives on your devices; any AI (a lo
 
 - Name: **Sage OS**.
 - Keep: the **agent planet card** (WebGL point-cloud planet, its State / Model / Where readouts and dot-matrix usage meters), which the owner likes most; **dot-matrix numerals** (Doto) for clocks and readouts; the **boot screen** at startup.
-- Visual direction requested by the owner (11 Oct 2026): futuristic, alien, inspired by the 1950s **SAGE** air-defense CRT consoles; remove the rolling CRT refresh line.
-- Not committed: the SAGE//OS wordmark styling and the Phosphor / Tron / Amber theme switch may be replaced.
+- **Keep the incumbent phosphor terminal world** (11 Oct 2026). A replacement "SAGE situation display" world was mocked up and rejected by the owner as too basic and for losing the planet card. Changes are refinements that make the rest of the interface match the planet card and the clock; the rolling CRT refresh line is removed.
+- Not committed: the SAGE//OS wordmark styling and the Phosphor / Tron / Amber theme switch may be refined.
 
 ## Evidence on Hand
 

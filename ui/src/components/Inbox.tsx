@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { post } from "../api";
 import type { HubEvent, InboxItem } from "../types";
-import { ago, useNow } from "../util";
+import { useNow } from "../util";
 import Scramble from "./Scramble";
+import { Ago } from "./Readout";
 import Review from "./Review";
 
 const LABEL: Record<string, string> = {
@@ -92,7 +93,7 @@ function Card({ it, now, onOpenTask, onReview }: { it: InboxItem; now: number; o
         {held && <span className="chip amber">🔒 held</span>}
         {it.context.task_id && <button className="text-cyan hover:underline" onClick={() => onOpenTask(it.context.task_id)}>{it.context.task_id}</button>}
         {it.context.session_title && <span className="truncate text-mute">{it.context.session_title}</span>}
-        <span className="ml-auto text-mute">{ago(it.created, now)}</span>
+        <Ago ts={it.created} now={now} className="ml-auto" />
       </div>
       <div className="mt-1 text-[13px] text-ink">{it.title}</div>
       {it.detail && (it.source === "gamemode" || it.source === "bookshelf"
