@@ -930,6 +930,10 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
      Hermes, no lead) and no model is downloaded; the chat space's first screen offers the models that fit this
      computer and the AIs the user may already have, and the first chat starts from there. What a user connects is
      saved in their own `config.local.toml` (app data), so updates keep it.
+  4. **Except the app's own helpers** (user: "besides the micromodels the app uses"): the search model (EmbeddingGemma,
+     K14) and the llama.cpp build that runs it download by themselves on first start, in the background and
+     checksum-verified, so the installer stays small; search works by words until they arrive. Models for chatting,
+     including the game-mode micro model, stay the user's choice.
 - **Revisit if:** Hermes becomes the only place a model exists (then point `model_dirs` at it again, read-only).
 
 ---
