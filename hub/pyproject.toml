@@ -1,6 +1,6 @@
 [project]
 name = "sage-os-hub"
-version = "0.22.1"
+version = "0.22.2"
 description = "Sage OS hub: one event stream over Hermes, Claude Code and the local GPU (Phase 1: read-only)"
 requires-python = ">=3.12"
 dependencies = [
@@ -24,6 +24,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["sage_os_hub*"]
+
+[tool.setuptools.package-data]
+sage_os_hub = ["engine/catalog.json"]     # the model catalog ships with the package (and the desktop app's bundle)
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

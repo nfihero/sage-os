@@ -67,3 +67,16 @@ def test_bundled_app_keeps_this_computers_settings_in_app_data(tmp_path, monkeyp
     assert config.local_config_path() == data / "config.local.toml"
     cfg = config.load()
     assert cfg.port == 8797 and cfg.local_config == data / "config.local.toml"
+
+
+def test_every_data_file_ships_with_the_package():
+    """The desktop app's hub is built from an installed package (D38): a data file that pyproject doesn't declare is
+    missing from the app (0.22.1 shipped without the model catalog)."""
+    import subprocess
+    import tomllib
+    from pathlib import Path
+    hub = Path(__file__).resolve().parents[1]
+    declared = tomllib.loads((hub / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["setuptools"]["package-data"]["sage_os_hub"]
+    tracked = subprocess.run(["git", "ls-files", "sage_os_hub"], cwd=hub, capture_output=True, text=True).stdout.split()
+    data = [f.removeprefix("sage_os_hub/") for f in tracked if not f.endswith(".py")]
+    assert data and all(f in declared for f in data), (data, declared)

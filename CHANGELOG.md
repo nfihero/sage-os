@@ -12,6 +12,14 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.22.2] — 2026-10-13
+
+The first update delivered through the app: a copy of 0.22.1 offers it in the top bar.
+
+### Fixed
+- MODELS failed in the installed app: the model catalog wasn't in the bundled hub (the package never declared it as a
+  data file). It is declared now, the bundle takes it from the source tree, and a test checks every data file ships.
+
 ## [0.22.1] — 2026-10-13
 
 ### Fixed
