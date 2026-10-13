@@ -12,6 +12,12 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.22.1] — 2026-10-13
+
+### Fixed
+- The app now carries the public key the releases are signed with. 0.22.0 was signed with a new key but carried the
+  previous one, so it would have refused later updates: install 0.22.1 instead (the 0.22.0 release is withdrawn).
+
 ## [0.22.0] — 2026-10-12
 
 The first self-contained release with updates (D38, the first part of F1). Install this one by hand from the Releases
