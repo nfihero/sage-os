@@ -925,6 +925,11 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
      any AI, in one view with one history. Team chat can later be one more kind of chat in the same list.
   2. **The engine is Sage OS's own on every computer:** the official llama.cpp build installed by MODELS and models in
      Sage OS's own folder. The owner's PC drops its `[engine] binary` and `model_dirs` that pointed into Hermes.
+  3. **A fresh install ships empty** (user, 13 Oct: "the app should ship with no models or agents installed, just a
+     canvas to install a model and begin talking"): the bundled `config.toml` connects no agent (no Claude Code, no
+     Hermes, no lead) and no model is downloaded; the chat space's first screen offers the models that fit this
+     computer and the AIs the user may already have, and the first chat starts from there. What a user connects is
+     saved in their own `config.local.toml` (app data), so updates keep it.
 - **Revisit if:** Hermes becomes the only place a model exists (then point `model_dirs` at it again, read-only).
 
 ---
