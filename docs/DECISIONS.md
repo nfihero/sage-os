@@ -913,6 +913,20 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Revisit if:** testers need an Intel Mac build, OS code-signing becomes worth paying for, or an early-builds
   channel is wanted (pushes to main to opted-in users).
 
+## D39 — One chat space before the rest of F1; the engine stops borrowing from Hermes
+
+- **Date / by:** 2026-10-13, user ("where in the roadmap was the unified chat space, so the user talks in one place and
+  can easily go through previous chats like AI apps usually do"; chose to build it next, before the rest of F1; "can we
+  just use llama.cpp ourselves?", chose fully separate)
+- **Status:** accepted; W3 planned, engine switch done on the owner's PC with 0.22.2.
+- **Decision:**
+  1. **W3, one chat space,** is its own step, built before the rest of F1 (testers will spend most of their time in
+     chat). It is not Phase 6's team chat (D8): that is agents working together; W3 is the user's conversations with
+     any AI, in one view with one history. Team chat can later be one more kind of chat in the same list.
+  2. **The engine is Sage OS's own on every computer:** the official llama.cpp build installed by MODELS and models in
+     Sage OS's own folder. The owner's PC drops its `[engine] binary` and `model_dirs` that pointed into Hermes.
+- **Revisit if:** Hermes becomes the only place a model exists (then point `model_dirs` at it again, read-only).
+
 ---
 
 ## Proposed, awaiting the user

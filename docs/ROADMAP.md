@@ -5,9 +5,9 @@ starts. No dates; the order is the plan. Source: the design doc
 ([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
 on 30 Sep 2026 with the Bookshelf track.
 
-## Build order (11 Oct 2026 — DECISIONS D30, D32)
+## Build order (13 Oct 2026 — DECISIONS D30, D32, D39)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1** (self-contained app + signed updates done, 0.22.0; the Mac first-run and *Report a problem* next) → A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space **→ F1 rest** (Mac first run, keys in the app, *Report a problem*) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -113,6 +113,7 @@ migration and resumes under its new ID with its progress. Links copied before 0.
 | Step | Scope | Gate |
 |---|---|---|
 | W1 | **Tauri desktop app**: a window and tray around the hub; starts or attaches to the hub; close to tray, Start at sign-in, Quit stops the hub cleanly; one copy; outside links to the browser; per-user Windows installer | The user installs it, closes and reopens the window from the tray, and quits it with nothing left running — **pass** (11 Oct, v0.18.0) |
+| W3 | **One chat space** (D39): every AI in one chat view (local model, Claude Code, ChatGPT, Gemini, Ollama, Hermes) with one history list like other AI apps: newest first, grouped by day, searchable by title and message, rename / pin / archive, reopen and continue any chat, the AI picked per chat | Any past chat, with any AI, is found and continued from one place in under 10 s; nothing from before is lost |
 | W2 | **Library-first home** (D35): agent planet panel left, search and chat centre, inbox / digest / recent notes right, systems strip; Systems view for board, GPU lane, Hermes; the planet card's readouts and Doto numerals used everywhere; rolling refresh bar removed | The owner approves it in the app — **pass** (11 Oct, v0.19.0: "I like it") |
 
 ## Friends and testers track (11 Oct 2026 — DECISIONS D32)

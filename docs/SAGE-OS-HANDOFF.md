@@ -18,7 +18,7 @@ system · **planned** = not built.
 ## 0. Start here (handoff of 9 Oct 2026, v0.15.1; patched 12 Oct, v0.22.0)
 
 Sections 1–9 below are the 30 Sep primer, patched since; where they conflict with this section or
-`DECISIONS.md` (D1–D38), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
+`DECISIONS.md` (D1–D39), those win. Read in this order: this §0, then **D22** (what the product is), **D25**
 (where data lives), **D27** (the sync architecture), then `STATUS.md` and the newest `CHANGELOG.md` entries.
 
 ### What Sage OS is now (D22)
