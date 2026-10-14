@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (13 Oct 2026 — DECISIONS D30, D32, D39)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ F1 rest** (Mac first run, keys in the app, *Report a problem*) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Mac first run, *Report a problem*) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.

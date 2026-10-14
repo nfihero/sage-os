@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { get, onChat, post } from "../api";
-import type { AI, ChatItem, EngineModel, EngineState, Panels, Thread, ThreadRow } from "../types";
+import type { AI, ChatItem, ChatUsage, EngineModel, EngineState, Panels, Thread, ThreadRow } from "../types";
+import type { ConnectSection } from "./Connect";
 import { shortModel, useNow } from "../util";
 import ChatView from "./ChatView";
 import { toItems } from "./LocalPane";
@@ -35,8 +36,9 @@ function group(rows: ThreadRow[], now: number): [string, ThreadRow[]][] {
   return Object.entries(g).filter(([, v]) => v.length);
 }
 
-export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModels }: {
+export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModels, onConnect, onUsage, aisVersion }: {
   panels: Panels; openId: string | null; onOpen: (id: string | null) => void; onAnswering: (a: Answering) => void; onModels: () => void;
+  onConnect: (s?: ConnectSection) => void; onUsage: () => void; aisVersion: number;
 }) {
   const now = useNow(30000);
   const [rows, setRows] = useState<ThreadRow[] | null>(null);
@@ -53,7 +55,7 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
   const loadAis = useCallback(() => { get<{ ais: AI[] }>("/api/ais").then((r) => setAis(r.ais)).catch(() => setAis([])); }, []);
   useEffect(() => { const t = setTimeout(loadList, q ? 200 : 0); return () => clearTimeout(t); },
     [loadList, panels.chat, panels.claude, panels.sessions]);
-  useEffect(loadAis, [loadAis, panels.engine?.serving?.ready, panels.engine?.serving?.id, panels.claude?.logged_in, panels.claude?.cli]);
+  useEffect(loadAis, [loadAis, aisVersion, panels.engine?.serving?.ready, panels.engine?.serving?.id, panels.claude?.logged_in, panels.claude?.cli]);
 
   // the newest chat opens by itself, so the home screen never shows an empty conversation
   useEffect(() => { if (!openId && rows && rows.length && !archived && !q) onOpen(rows[0].id); }, [rows]);
@@ -82,7 +84,7 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
   if (rows !== null && rows.length === 0 && ais === null && !q && !archived) {      // a fresh start: wait for the AI list
     return <section className="panel min-h-0 flex-1"><div className="m-auto text-mute">looking for AIs<span className="dots" /></div></section>;
   }
-  if (nothing) return <FirstRun panels={panels} onModels={onModels} onConnected={loadAis} />;
+  if (nothing) return <FirstRun panels={panels} onModels={onModels} onConnect={onConnect} onConnected={loadAis} />;
 
   return (
     <section className="panel min-h-0 flex-1" style={{ flexDirection: "row" }} data-testid="chat-space">
@@ -96,7 +98,7 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
             aria-haspopup="menu" aria-expanded={starting}>+ NEW CHAT</button>
           <button className={`chip h-7 ${archived ? "" : "mute"}`} onClick={() => { setArchived(!archived); onOpen(null); }}
             title={archived ? "Back to your chats" : "Archived chats"}>{archived ? "← CHATS" : "ARCHIVE"}</button>
-          {starting && <AiMenu ais={ais ?? []} title="New chat with" onPick={(a) => start(a)} onClose={() => setStarting(false)} onModels={onModels} />}
+          {starting && <AiMenu ais={ais ?? []} title="New chat with" onPick={(a) => start(a)} onClose={() => setStarting(false)} onConnect={onConnect} />}
           {folderFor && (
             <div role="menu" className="absolute left-2.5 top-[calc(100%+2px)] z-30 w-[300px] border border-orange/50 bg-[#020f07] p-1.5">
               <div className="kicker mx-1 mb-1"><span>Claude Code works in</span><button onClick={() => setFolderFor(null)}>✕</button></div>
@@ -137,7 +139,7 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
       <div className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${rail || !openId ? "max-md:hidden" : ""}`}>
         {err && <div className="mx-3 mt-2 border border-amber/50 px-2 py-1 text-[12px] text-amber">{err}</div>}
         {openId
-          ? <Conversation key={openId} id={openId} ais={ais ?? []} onChanged={loadList} onAnswering={onAnswering} onModels={onModels} onRail={() => setRail(true)}
+          ? <Conversation key={openId} id={openId} ais={ais ?? []} onChanged={loadList} onAnswering={onAnswering} onConnect={onConnect} onUsage={onUsage} onRail={() => setRail(true)}
               onGone={() => onOpen(null)} />
           : <div className="m-auto max-w-[420px] p-6 text-center">
               <p className="copy text-[14px] text-ink/80">Pick a chat on the left, or start a new one with any AI you have.</p>
@@ -149,8 +151,8 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
 }
 
 /** Every AI there is to talk to, for a new chat or the next reply. */
-function AiMenu({ ais, title, current, onPick, onClose, onModels }: {
-  ais: AI[]; title: string; current?: string; onPick: (ai: AI) => void; onClose: () => void; onModels: () => void;
+function AiMenu({ ais, title, current, onPick, onClose, onConnect }: {
+  ais: AI[]; title: string; current?: string; onPick: (ai: AI) => void; onClose: () => void; onConnect: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -175,15 +177,15 @@ function AiMenu({ ais, title, current, onPick, onClose, onModels }: {
         );
       })}
       <div className="my-1 border-t border-dashed border-cyan/20" />
-      <button role="menuitem" className="w-full px-2 py-1.5 text-left text-[12px] text-mute hover:bg-cyan/10" onClick={() => { onClose(); onModels(); }}>
-        Install or connect another… <span className="float-right">MODELS</span>
+      <button role="menuitem" className="w-full px-2 py-1.5 text-left text-[12px] text-mute hover:bg-cyan/10" onClick={() => { onClose(); onConnect(); }}>
+        Install or connect another… <span className="float-right">CONNECT</span>
       </button>
     </div>
   );
 }
 
-function Conversation({ id, ais, onChanged, onAnswering, onModels, onGone, onRail }: {
-  id: string; ais: AI[]; onChanged: () => void; onAnswering: (a: Answering) => void; onModels: () => void; onGone: () => void;
+function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, onGone, onRail }: {
+  id: string; ais: AI[]; onChanged: () => void; onAnswering: (a: Answering) => void; onConnect: () => void; onUsage: () => void; onGone: () => void;
   onRail: () => void;
 }) {
   const [t, setT] = useState<Thread | null>(null);
@@ -256,13 +258,14 @@ function Conversation({ id, ais, onChanged, onAnswering, onModels, onGone, onRai
             className="copy min-w-0 flex-1 border border-cyan/40 bg-void/80 px-2 py-0.5 text-[13px] text-ink outline-none" />
         : <span className="copy min-w-0 flex-1 truncate text-[13px] text-mute" title={t.title}>{t.title}</span>}
       <span className="flex gap-1.5">
+        <Spend u={t.usage} onClick={onUsage} />
         <button className="chip mute" onClick={() => setRenaming(t.title)}>RENAME</button>
         <button className={`chip ${t.pinned ? "amber" : "mute"}`} onClick={() => edit({ pinned: !t.pinned })}>{t.pinned ? "★ PINNED" : "☆ PIN"}</button>
         <button className="chip mute" onClick={() => edit({ archived: !t.archived })}>{t.archived ? "UNARCHIVE" : "ARCHIVE"}</button>
       </span>
       {picking && (
         <AiMenu ais={ais.filter((a) => a.switch_into !== false || aiKey(a) === aiKey(cur))} title="Answer with" current={aiKey(showAi)}
-          onPick={(a) => { setPicking(false); setNext(aiKey(a) === aiKey(cur) ? null : a); }} onClose={() => setPicking(false)} onModels={onModels} />
+          onPick={(a) => { setPicking(false); setNext(aiKey(a) === aiKey(cur) ? null : a); }} onClose={() => setPicking(false)} onConnect={onConnect} />
       )}
       {err && <span className="w-full text-[11.5px] text-red">{err}</span>}
     </div>
@@ -283,8 +286,8 @@ function Conversation({ id, ais, onChanged, onAnswering, onModels, onGone, onRai
 
 /** A fresh install (D39): nothing to talk to yet. Install the model that fits this computer best and start, or connect
  *  an AI the user already has. The app's own helpers (llama.cpp, the search model) arrive by themselves underneath. */
-function FirstRun({ panels, onModels, onConnected }: {
-  panels: Panels; onModels: () => void; onConnected: () => void;
+function FirstRun({ panels, onModels, onConnect, onConnected }: {
+  panels: Panels; onModels: () => void; onConnect: (s: ConnectSection) => void; onConnected: () => void;
 }) {
   const [eng, setEng] = useState<EngineState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -307,15 +310,6 @@ function FirstRun({ panels, onModels, onConnected }: {
   const go = async (m: EngineModel) => {
     setErr(null); setBusy(m.id);
     try { await post("/api/engine/setup", { model: m.id }); } catch (e) { setErr(String((e as Error).message)); setBusy(null); }
-  };
-  const claude = async () => {
-    setErr(null); setNote(null);
-    try {
-      const r = await post<{ cli: string | null; logged_in: boolean | null }>("/api/agents/claude/connect");
-      setNote(!r.cli ? "Claude Code isn't installed on this computer. Install it from claude.com/code, then come back."
-        : r.logged_in === false ? "Almost: sign Claude Code in once. In a terminal, run  claude auth login  and it appears here." : null);
-      onConnected();
-    } catch (e) { setErr(String((e as Error).message)); }
   };
   const ollama = async () => {
     setErr(null);
@@ -384,9 +378,9 @@ function FirstRun({ panels, onModels, onConnected }: {
         <div>
           <div className="kicker"><span>Or connect an AI you already use</span><span>bring your own</span></div>
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(190px,1fr))]">
-            <Connect dot="bg-orange" name="Claude Code" detail="sign in with your Claude plan" onClick={claude} />
-            <Connect dot="bg-[#7cc8ff]" name="ChatGPT" detail="add an OpenAI API key (MODELS)" onClick={onModels} />
-            <Connect dot="bg-[#c79bff]" name="Gemini" detail="add a Google AI key (MODELS)" onClick={onModels} />
+            <Connect dot="bg-orange" name="Claude Code" detail="sign in with your Claude plan" onClick={() => onConnect("claude")} />
+            <Connect dot="bg-[#7cc8ff]" name="ChatGPT" detail="paste an OpenAI API key" onClick={() => onConnect("openai")} />
+            <Connect dot="bg-[#c79bff]" name="Gemini" detail="paste a Google AI key (free tier)" onClick={() => onConnect("gemini")} />
             <Connect dot="bg-cyan" name="Ollama" detail="running here? found automatically" onClick={ollama} />
           </div>
           {note && <p className="copy mt-2 text-[12.5px] text-amber">{note}</p>}
@@ -411,4 +405,17 @@ function Connect({ dot: d, name, detail, onClick }: { dot: string; name: string;
         <span className="copy block truncate text-[11.5px] text-mute">{detail}</span></span>
     </button>
   );
+}
+
+/** What this chat has used (D40): tokens, and what they cost (API keys), were worth (Claude plan) or nothing (this computer). */
+function Spend({ u, onClick }: { u?: ChatUsage; onClick: () => void }) {
+  if (!u || u.tokens_in + u.tokens_out === 0) return null;
+  const k = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
+  const money = (n: number) => n < 0.01 ? (n > 0 ? "<$0.01" : "$0") : `$${n.toFixed(2)}`;
+  const parts = [`${k(u.tokens_in + u.tokens_out)} tokens${u.estimated ? " (some estimated)" : ""}`];
+  if (u.billing.includes("api")) parts.push(u.priced ? money(u.cost) : `${money(u.cost)}+ (a model has no price)`);
+  if (u.billing.includes("plan")) parts.push(`plan · API value ${money(u.plan_value ?? 0)}`);
+  if (u.billing.length === 1 && u.billing[0] === "free") parts.push("free");
+  return <button className="chip mute" onClick={onClick} data-testid="chat-spend"
+    title={`${u.tokens_in.toLocaleString()} in · ${u.tokens_out.toLocaleString()} out. Click for usage and costs.`}>{parts.join(" · ")}</button>;
 }

@@ -17,6 +17,8 @@ import { SafetyDrawer, SafetyToast, useSafety } from "./components/Safety";
 import Bookshelf from "./components/Bookshelf";
 import Models from "./components/Models";
 import Guide, { guideSeen } from "./components/Guide";
+import Connect, { type ConnectSection } from "./components/Connect";
+import UsageScreen from "./components/UsageScreen";
 import { AgentPanel, DigestStrip, LibrarySearch, RecentNotes, SystemsStrip, askLocal, type AgentKey } from "./components/Home";
 
 type Tab = "home" | "agent" | "inbox" | "systems";
@@ -53,6 +55,9 @@ export default function App() {
   const [shelfAt, setShelfAt] = useState<{ ref?: string; source?: { source: string; path: string } } | null>(null);
   const [shelf, setShelf] = useState(false);
   const [models, setModels] = useState(false);
+  const [connect, setConnect] = useState<ConnectSection | "any" | null>(null);   // D40: connect guides
+  const [usage, setUsage] = useState(false);
+  const [aisVersion, setAisVersion] = useState(0);
   const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
@@ -111,7 +116,8 @@ export default function App() {
   const conversation = (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       {askErr && <div className="border border-amber/50 px-2 py-1 text-[12px] text-amber">{askErr} <button className="chip ml-1" onClick={() => setModels(true)}>MODELS</button></div>}
-      <ChatSpace panels={panels} openId={chatOpen} onOpen={setChatOpen} onAnswering={setAnswering} onModels={() => setModels(true)} />
+      <ChatSpace panels={panels} openId={chatOpen} onOpen={setChatOpen} onAnswering={setAnswering} onModels={() => setModels(true)}
+        onConnect={(s) => setConnect(s ?? "any")} onUsage={() => setUsage(true)} aisVersion={aisVersion} />
     </div>
   );
   const agentPanel = <AgentPanel agent={shown} answering={answering} panels={panels} lowPower={lowPower} onModels={() => setModels(true)} />;
@@ -137,7 +143,7 @@ export default function App() {
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={cards} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} />
+        <TopBar hub={hub} inboxCount={cards} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} onUsage={() => setUsage(true)} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col gap-2 p-2">
@@ -193,6 +199,9 @@ export default function App() {
       <SafetyToast unseen={safety.unseen} open={safety.open} onOpen={safety.toggle} />
       {shelf && <Bookshelf panel={panels.vault} sources={panels.sources} digests={panels.digests} proposals={inbox.filter((i) => i.source === "bookshelf").length}
         initialRef={shelfAt?.ref} initialSource={shelfAt?.source} onClose={() => { setShelf(false); setShelfAt(null); }} />}
+      {connect && <Connect focus={connect === "any" ? null : connect} onClose={() => { setConnect(null); setAisVersion((v) => v + 1); }}
+        onModels={() => { setConnect(null); setModels(true); }} onUsage={() => { setConnect(null); setUsage(true); }} />}
+      {usage && <UsageScreen onClose={() => setUsage(false)} onConnect={() => { setUsage(false); setConnect("any"); }} />}
       {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} />}
       {agentsOpen && <Agents panel={panels.agents_trust} librarian={panels.librarian} onClose={() => setAgentsOpen(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />

@@ -23,6 +23,8 @@ TABLES: dict[str, dict[str, str]] = {
         "chat_items": SYNCED,           # messages of those chats and of Claude sessions
         "claude_sessions": SYNCED,      # the session record; resuming it still needs the CLI on the computer that ran it
         "threads": SYNCED,              # the one chat space's conversations, each one or more AI sessions (W3, D39)
+        "usage": SYNCED,                # tokens and cost per reply, so spend adds up across devices (D40)
+        "price_overrides": SYNCED,      # the user's corrections to the price list (D40)
         "events": LOCAL,                # the live dashboard's catch-up feed, trimmed to the newest 5,000
         "panels": LOCAL,                # latest panel snapshots (GPU, board, health)
     },
@@ -49,7 +51,8 @@ TABLES: dict[str, dict[str, str]] = {
 
 # each synced table's key: the columns that name one record across devices
 KEYS: dict[str, tuple[str, ...]] = {
-    "chat_sessions": ("id",), "chat_items": ("id",), "claude_sessions": ("id",), "threads": ("id",),
+    "chat_sessions": ("id",), "chat_items": ("id",), "claude_sessions": ("id",), "threads": ("id",), "usage": ("id",),
+    "price_overrides": ("provider", "model"),
     "proposals": ("id",), "batches": ("id",), "entries": ("batch_id", "seq"),
     "trust": ("key",), "agent_log": ("id",),
     "jobs": ("id",), "chapters": ("job", "chapter"), "secs": ("job", "idx"),

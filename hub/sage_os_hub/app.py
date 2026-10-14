@@ -42,6 +42,8 @@ from .engine import EmbedEngine, EngineError, LocalEngine
 from .gamemode import GameMode
 from .inbox import Inbox
 from .threads import Threads, ai_label
+from .keys import CLOUD, Keys
+from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
 from .knowledge.briefing import Briefings
@@ -126,6 +128,8 @@ class Hub:
                                      cfg.data_dir / "backups", self.device.id)
         self.store = Store(cfg.store, cfg.keep_events)
         self.threads = Threads(self, self.store.db, self.store.lock)     # W3: the one chat space (D39)
+        self.usage = Usage(self.store.db, self.store.lock)                 # D40: tokens, prices, spend
+        self.keys = Keys()                                                 # D40: API keys in the OS keychain
         self.panels: dict = {}
         self.subscribers: set[asyncio.Queue] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -185,6 +189,9 @@ class Hub:
                     for a in self.agents.values() if a.vendor not in ("claude-code", "openai-compatible")}
         self.claude = self.agents.get("claude")
         self.providers = build_providers(cfg, self.engine)
+        for sid in CLOUD:                             # services connected in the app (D40); config.toml's own entries win
+            if sid not in self.providers and self.keys.get(sid):
+                self.providers[sid] = self.cloud_provider(sid)
         self.smoke_results: list[dict] = []
         self.started = time.time()
         usage = self.store.load_panels().get("claude_usage")
@@ -643,6 +650,45 @@ class Hub:
         if self.loop:
             self.loop.call_soon_threadsafe(lambda: self.semantic.publish(force=True))
 
+    def cloud_provider(self, sid: str):
+        from .connectors.models import ModelProvider
+        meta = CLOUD[sid]
+        return ModelProvider(sid, meta["label"], meta["base_url"], "cloud", "keychain", lambda s=sid: self.keys.get(s))
+
+    async def connect_cloud(self, sid: str, key: str) -> dict:
+        """Test a pasted API key against the service, then keep it in the OS keychain (D40)."""
+        meta = CLOUD[sid]
+        p = self.providers.get(sid)
+        if p is not None and p.key_source != "keychain":
+            raise ValueError(f"{meta['label']} is already set up in this computer's config.local.toml, which wins over a pasted key")
+        key = key.strip()
+        if len(key) < 20 or len(key) > 400 or any(c.isspace() for c in key) or not key.startswith(meta["prefix"]):
+            raise ValueError(f"that doesn't look like a {meta['label']} key" + (f" (they start with {meta['prefix']})" if meta["prefix"] else ""))
+        try:
+            async with httpx.AsyncClient(timeout=15) as c:
+                r = await c.get(f"{meta['base_url']}/models", headers={"Authorization": f"Bearer {key}"})
+        except httpx.HTTPError as exc:
+            raise ValueError(f"couldn't reach {meta['label']}: {exc}") from exc
+        if r.status_code in (401, 403):
+            raise ValueError(f"{meta['label']} didn't accept that key (HTTP {r.status_code}); check you copied all of it")
+        if r.status_code >= 400:
+            raise ValueError(f"{meta['label']} answered HTTP {r.status_code}: {r.text[:200]}")
+        await asyncio.to_thread(self.keys.set, sid, key)
+        self.providers[sid] = self.cloud_provider(sid)
+        self.event("system", sid, "connection.added", {"service": sid})
+        try:
+            models = len((r.json() or {}).get("data") or [])
+        except ValueError:
+            models = 0
+        return {"connected": True, "models": models}
+
+    async def disconnect_cloud(self, sid: str) -> None:
+        await asyncio.to_thread(self.keys.delete, sid)
+        p = self.providers.get(sid)
+        if p is not None and p.key_source == "keychain":
+            del self.providers[sid]
+        self.event("system", sid, "connection.removed", {"service": sid})
+
     async def connect_claude(self) -> dict:
         from .connectors.claude import ClaudeConnector
         if "claude" not in self.agents:
@@ -937,6 +983,17 @@ class Decision(BaseModel):
     note: str = Field(default="", max_length=20_000)
     # Bookshelf proposals reviewed note by note: {"keep": [indexes], "edits": {index: {title, body, tags}}}
     review: dict | None = None
+
+
+class KeyBody(BaseModel):
+    key: str = Field(min_length=1, max_length=500)
+
+
+class PriceBody(BaseModel):
+    provider: str = Field(max_length=60)
+    model: str = Field(min_length=1, max_length=200)
+    in_price: float = 0.0
+    out_price: float = 0.0
 
 
 class NewThread(BaseModel):
@@ -1629,6 +1686,61 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         config.local.toml; signing in stays with the user (claude auth login)."""
         return await hub.connect_claude()
 
+    # -- connections and usage (D40) ------------------------------------------------------------------------
+    @app.get("/api/connections")
+    async def connections():
+        """Every way to connect an AI, with whether it's connected here (keys are never returned)."""
+        c = hub.agents.get("claude")
+        e = hub.engine.status() if hub.engine else None
+        out = {"engine": {"installed": bool(e and e.get("binary")), "serving": (e or {}).get("serving")},
+               "claude": {"connected": c is not None, "cli": bool(c and c.cli), "logged_in": c.logged_in if c else None},
+               "ollama": {"connected": "ollama" in hub.providers},
+               "hermes": {"connected": any(a.vendor == "hermes" for a in hub.agents.values())},
+               "cloud": []}
+        for sid, meta in CLOUD.items():
+            p = hub.providers.get(sid)
+            out["cloud"].append({"id": sid, "label": meta["label"], "key_url": meta["key_url"], "billing": meta["billing"],
+                                 "connected": p is not None, "key_source": p.key_source if p else None})
+        return out
+
+    @app.post("/api/connections/{sid}", dependencies=W)
+    async def connection_add(body: KeyBody, sid: str = FPath(max_length=40)):
+        if sid not in CLOUD:
+            raise HTTPException(404, "no such service")
+        try:
+            return await hub.connect_cloud(sid, body.key)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+
+    @app.post("/api/connections/{sid}/remove", dependencies=W)
+    async def connection_remove(sid: str = FPath(max_length=40)):
+        if sid not in CLOUD:
+            raise HTTPException(404, "no such service")
+        await hub.disconnect_cloud(sid)
+        return {"connected": False}
+
+    @app.get("/api/usage")
+    async def usage_summary():
+        s = await asyncio.to_thread(hub.usage.summary)
+        return s | {"claude_plan": hub.panels.get("claude_usage") or {}}
+
+    @app.get("/api/pricing")
+    async def pricing():
+        return await asyncio.to_thread(hub.usage.price_list)
+
+    @app.post("/api/pricing", dependencies=W)
+    async def pricing_set(body: PriceBody):
+        try:
+            await asyncio.to_thread(hub.usage.set_price, body.provider, body.model, body.in_price, body.out_price)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return await asyncio.to_thread(hub.usage.price_list)
+
+    @app.post("/api/pricing/reset", dependencies=W)
+    async def pricing_reset(body: PriceBody):
+        await asyncio.to_thread(hub.usage.reset_price, body.provider, body.model)
+        return await asyncio.to_thread(hub.usage.price_list)
+
     @app.post("/api/providers/find-ollama", dependencies=W)
     async def providers_find_ollama():
         """Look again for Ollama on this computer (the first screen's "connect Ollama")."""
@@ -1713,7 +1825,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
                     err = str(exc)
             parts.append(p | {"items": items, "error": err, "pane": c.pane(p["sid"]) if c else None,
                               "busy": hub.threads._busy(p), "context": None})
-        return t | {"parts": parts}
+        spend = await asyncio.to_thread(hub.usage.for_chats, [p["pane"] for p in parts if p["pane"]])
+        return t | {"parts": parts, "usage": spend}
 
     @app.post("/api/threads/{tid}/edit", dependencies=W)
     async def thread_edit(body: ThreadEdit, tid: str = FPath(max_length=40)):

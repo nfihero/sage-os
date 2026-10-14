@@ -972,3 +972,38 @@ Kept for the wording of each idea; see D7 for which were adopted.
 Suggested order: K1 vault + Bookshelf tab → K2 search → briefing packs → K3–K4 propose/approve/undo
 with screening → agents connected + task records → K6 imports + Drive index → K7 roles and batch
 review.
+
+## D40 — Connect guides, keys in the OS keychain, and what each AI costs
+
+- **Date / by:** 2026-10-14, user ("make sure there's guides for users on how to connect their agents, and how we can
+  see their usage limits, token spend, model pricing, etc."; chose the OS keychain for keys, a built-in price list
+  with the user's corrections, and to build it now, before the rest of F1)
+- **Status:** accepted; built in 0.24.0. Takes F1's "keys in the app" item.
+- **Decision:**
+  1. **One CONNECT screen** lists every way to get an AI (a model here, Claude Code, ChatGPT, Gemini, Ollama, Hermes),
+     each with numbered steps, its state on this computer, and the button that finishes it. The first-run canvas and
+     the AI picker open it. `docs/CONNECT.md` has the same steps for reading outside the app.
+  2. **API keys live in the operating system's keychain** (Windows Credential Manager, the macOS Keychain; service
+     *Sage OS*, through `keyring`), never in a file and never returned to the page. A key is format-checked and tested
+     against the provider's `/models` before it's kept; one the provider refuses is not saved. A provider set in
+     `config.local.toml` wins over a keychain key of the same name. Claude is connected through Claude Code only (the
+     user's plan); there is no Anthropic API-key connector.
+  3. **Every reply records its tokens** (hub.db `usage`, synced): the model chat asks for usage in the stream
+     (`stream_options.include_usage`); Claude Code reports tokens and its own cost per turn. A provider that reports
+     nothing is estimated at four characters a token and marked as estimated.
+  4. **Three kinds of billing:** an API key is spend (tokens × the price that day); Claude Code is the user's plan,
+     shown as its API value (what the same work would cost), never as spend; a model on this computer, Ollama and
+     Hermes are free.
+  5. **Prices come from a dated list in the app** (`pricing.json`, each provider's own price page; a model id matches
+     the longest listed prefix; announced changes apply from their date) **plus the user's corrections** (hub.db
+     `price_overrides`, synced, a reset is a tombstone). A correction prices new replies; earlier replies keep their
+     cost. Each release refreshes the list.
+  6. **Limits are shown as each provider reports them:** Claude's 5-hour and weekly use (from Claude Code), OpenAI's
+     per-minute token and request limits (response headers, kept for the running session). Google doesn't report
+     Gemini's, so the screen points to AI Studio.
+  7. **USAGE & COSTS** (the top-bar $ USAGE chip, or a chat's token count) shows spend for today, 7 and 30 days,
+     the plan's API value, tokens per day, limits, a per-AI table and the editable price list. Each chat's header
+     shows its own tokens and cost.
+- **Revisit if:** a provider starts reporting limits or cost in its responses (use theirs), or a user needs a key that
+  is shared between devices (the keychain is per device by design).
+

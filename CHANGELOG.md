@@ -12,6 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.24.0] — 2026-10-14
+
+Connect guides and what each AI costs (D40). **Gate: pass.** pytest 352.
+
+### Added
+- CONNECT: step-by-step guides for every AI (a model on this computer, Claude Code, ChatGPT, Gemini, Ollama, Hermes),
+  each with its state on this computer and the button that finishes it. Opened from the first-run screen and from
+  *Install or connect another…* in the AI picker. The same guide is in `docs/CONNECT.md`.
+- ChatGPT (OpenAI) and Gemini (Google) connect by pasting an API key: tested with the provider first, then kept in the
+  operating system's keychain (Windows Credential Manager, macOS Keychain), never in a file. DISCONNECT removes it.
+- Every reply records its tokens; a chat's header shows its tokens and cost.
+- USAGE & COSTS (the $ USAGE chip in the top bar): spend today, 7 and 30 days; what Claude plan work would cost on the
+  API; tokens per day; Claude plan limits and OpenAI rate limits; tokens and cost per AI; and a dated price list from
+  each provider's own price page, where any price can be corrected or added (your prices follow you to your devices).
+
+
 ## [0.23.0] — 2026-10-14
 
 W3, one chat space (D39). **Gate: pass.** pytest 343.

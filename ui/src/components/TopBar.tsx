@@ -15,9 +15,9 @@ const SERVICES = [
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels, onUsage }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
-  onBookshelf: () => void; onGuide: () => void; onModels: () => void;
+  onBookshelf: () => void; onGuide: () => void; onModels: () => void; onUsage: () => void;
 }) {
   const vault = hub.panels.vault;
   const now = useNow(1000);
@@ -58,7 +58,10 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
       </div>
 
       <div className="ml-auto flex flex-wrap items-center gap-3">
-        {!compact && <UsageBars usage={hub.panels.claude_usage} compact />}
+        <button onClick={onUsage} data-testid="usage-open" title="Usage & costs: tokens, spend, limits and prices for every AI"
+          className="flex items-center gap-2 hover:opacity-90">
+          {!compact && <UsageBars usage={hub.panels.claude_usage} compact />}<span className="chip mute">$ USAGE</span>
+        </button>
         {failed.length > 0 && (
           <span className="chip red" title={failed.map((f) => `${f.adapter}: ${f.check} — ${f.detail}`).join("\n")}>⚠ {failed.length} smoke</span>
         )}

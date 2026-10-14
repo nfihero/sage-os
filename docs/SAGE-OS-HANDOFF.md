@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.23.0** (tags through 0.23.0, not pushed; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.24.0** (tags through 0.24.0; the user pushes; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -77,8 +77,10 @@ lead or reviewer (D26).
    gate still to run: Librarian on `Books`, 20 notes, with the engine on, approved in one decision. ~~K14~~ done
    (0.21.0, D37): meaning-based search on the CPU, gate passed on the owner's notes. F1 part one done (0.22.0, D38):
    self-contained app + signed updates from `vX.Y.Z` tags via GitHub Actions (Windows + Mac). **To release:** bump the
-   eight version strings, add the CHANGELOG section, commit, tag, push the tag. ~~W3~~ one chat space done (0.23.0, D39). **Next:** the rest of F1
-   (the Mac first run end to end, API keys entered in the app, *Report a problem* to roundederror@gmail.com).
+   eight version strings, add the CHANGELOG section, commit, tag, push the tag. ~~W3~~ one chat space done (0.23.0, D39). ~~D40~~ connect guides, keys in the
+   OS keychain, tokens / cost / limits / price list done (0.24.0; user guide `docs/CONNECT.md`; refresh
+   `hub/sage_os_hub/pricing.json` from the providers' price pages each release). **Next:** the rest of F1 (the Mac
+   first run end to end, *Report a problem* to roundederror@gmail.com).
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's
    laptop is F1 (D32): her own empty install, not a sync of the user's data.

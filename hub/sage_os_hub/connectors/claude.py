@@ -270,6 +270,13 @@ class ClaudeSession:
                 self.mgr.item(sid, "error", {"text": str(msg.result or msg.subtype)})
             self._last_text = None
             usage = msg.usage or {}
+            tin = sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+            try:
+                cost = getattr(msg, "total_cost_usd", None)   # the CLI's own figure (it knows cache prices)
+                self.mgr.hub.usage.record("claude", None, self.row.get("model"), self.mgr.pane(sid), tin,
+                                          int(usage.get("output_tokens") or 0), cost=float(cost) if cost is not None else None)
+            except Exception as exc:                  # noqa: BLE001 -- bookkeeping never breaks a chat
+                log.warning("usage: %s", exc)
             self.mgr.item(sid, "note", {"text": "turn complete", "turn_end": True,
                                         "ms": msg.duration_ms, "in": usage.get("input_tokens"),
                                         "out": usage.get("output_tokens")})

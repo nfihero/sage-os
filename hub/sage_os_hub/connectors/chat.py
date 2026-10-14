@@ -137,15 +137,16 @@ class ChatConnector(AgentConnector):
         sid, started = s["id"], time.time()
         provider = self.hub.providers.get(s["provider"])
         tools = TOOLS
+        spent = {"in": 0, "out": 0, "estimated": False}                 # this turn's tokens, over every round (D40)
         try:
             if provider is None:
                 raise AgentError(f"model provider {s['provider']!r} is no longer configured")
             for _ in range(MAX_ROUNDS):
                 try:
-                    text, calls = await self._complete(provider, s["model"], msgs, tools)
+                    text, calls = await self._complete(provider, s["model"], msgs, tools, spent)
                 except _ToolsUnsupported:
                     tools = None                     # some models/servers can't do function calls: answer without
-                    text, calls = await self._complete(provider, s["model"], msgs, None)
+                    text, calls = await self._complete(provider, s["model"], msgs, None, spent)
                 if text.strip():
                     self._item(sid, "text", {"text": text})
                 if not calls:
@@ -169,23 +170,37 @@ class ChatConnector(AgentConnector):
             log.warning("chat %s failed: %s", sid, exc)
             self._item(sid, "error", {"text": str(exc)})
         finally:
-            self._item(sid, "note", {"text": "turn complete", "turn_end": True, "ms": int((time.time() - started) * 1000)})
+            if spent["in"] or spent["out"]:
+                try:
+                    self.hub.usage.record("chat", s["provider"], s["model"], self.pane(sid), spent["in"], spent["out"], spent["estimated"])
+                except Exception as exc:              # noqa: BLE001 -- bookkeeping never breaks a chat
+                    log.warning("usage: %s", exc)
+            self._item(sid, "note", {"text": "turn complete", "turn_end": True, "ms": int((time.time() - started) * 1000),
+                                     "in": spent["in"], "out": spent["out"]})
             self.tasks.pop(sid, None)
             self.publish()
 
-    async def _complete(self, provider, model: str, msgs: list[dict], tools) -> tuple[str, list[dict]]:
-        """One streamed completion. -> (assistant text, tool calls). Text deltas stream to the pane."""
+    async def _complete(self, provider, model: str, msgs: list[dict], tools, spent: dict | None = None) -> tuple[str, list[dict]]:
+        """One streamed completion. -> (assistant text, tool calls). Text deltas stream to the pane; the tokens the
+        provider reports (or an estimate) are added to `spent`."""
         key = provider.key()
         body = {"model": model, "messages": msgs, "stream": True}
+        if provider.id not in NO_USAGE:
+            body["stream_options"] = {"include_usage": True}
         if tools:
             body["tools"] = tools
-        text, calls = "", {}
+        text, calls, reported = "", {}, None
         sid = next((k for k, t in self.tasks.items() if t is asyncio.current_task()), None)
         async with httpx.AsyncClient(timeout=httpx.Timeout(30, read=600)) as c:
             async with c.stream("POST", f"{provider.base_url.rstrip('/')}/chat/completions", json=body,
                                 headers={"Authorization": f"Bearer {key}"} if key else {}) as r:
+                if self.hub and hasattr(self.hub, "usage"):
+                    self.hub.usage.note_limits(provider.id, r.headers)
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:400]
+                    if "stream_options" in body and r.status_code in (400, 422) and "stream_options" in detail.lower():
+                        NO_USAGE.add(provider.id)            # an older server that refuses the usage option: ask without it
+                        return await self._complete(provider, model, msgs, tools, spent)
                     if tools and r.status_code in (400, 422, 500) and "tool" in detail.lower():
                         raise _ToolsUnsupported()
                     raise AgentError(f"{provider.label}: HTTP {r.status_code}: {detail}")
@@ -199,6 +214,8 @@ class ChatConnector(AgentConnector):
                         chunk = json.loads(data)
                     except ValueError:
                         continue
+                    if chunk.get("usage"):
+                        reported = chunk["usage"]
                     for ch in chunk.get("choices") or []:
                         d = ch.get("delta") or {}
                         if d.get("content"):
@@ -213,6 +230,14 @@ class ChatConnector(AgentConnector):
                             fn = tc.get("function") or {}
                             slot["function"]["name"] += fn.get("name") or ""
                             slot["function"]["arguments"] += fn.get("arguments") or ""
+        if spent is not None:
+            if reported and (reported.get("prompt_tokens") or reported.get("completion_tokens")):
+                spent["in"] += int(reported.get("prompt_tokens") or 0)
+                spent["out"] += int(reported.get("completion_tokens") or 0)
+            else:                                    # the provider didn't say: estimate from the text (D40)
+                spent["in"] += sum(len(str(m.get("content") or "")) for m in msgs) // 4
+                spent["out"] += (len(text) + sum(len(c["function"]["arguments"]) for c in calls.values())) // 4
+                spent["estimated"] = True
         return text, [calls[i] for i in sorted(calls)]
 
     async def _tool(self, sid: str, name: str, a: dict) -> str:
@@ -239,6 +264,9 @@ class ChatConnector(AgentConnector):
         except (TypeError, ValueError) as exc:
             r = {"error": f"bad arguments: {exc}"}
         return as_text(r)
+
+
+NO_USAGE: set[str] = set()      # providers that refused stream_options this run (their tokens are estimated)
 
 
 class _ToolsUnsupported(Exception):

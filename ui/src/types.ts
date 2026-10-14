@@ -123,7 +123,8 @@ export type ThreadRow = { id: string; title: string; pinned: boolean; archived: 
   ais: string[]; current: { agent: string; label: string; model: string | null; provider?: string | null }; busy: boolean; snippet: string | null };
 export type ThreadPart = { agent: string; sid: string; label: string; model: string | null; provider?: string | null; started: number; items: any[];
   error: string | null; pane: string | null; busy: boolean };
-export type Thread = { id: string; title: string; pinned: boolean; archived: boolean; created: number; updated: number; parts: ThreadPart[] };
+export type ChatUsage = { tokens_in: number; tokens_out: number; cost: number; plan_value?: number; billing: string[]; estimated: boolean; priced: boolean };
+export type Thread = { id: string; title: string; pinned: boolean; archived: boolean; created: number; updated: number; parts: ThreadPart[]; usage?: ChatUsage };
 export type ProviderInfo = { id: string; label: string; base_url: string; kind: "local" | "cloud"; key_source: string | null;
   key_present: boolean | null; models: { id: string; state: string | null }[]; error: string | null };
 export type ChatSessionInfo = { id: string; title: string; provider: string; model: string; created: number; updated: number; status: "idle" | "running" };

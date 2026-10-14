@@ -33,11 +33,13 @@ under *Assets*. No Python, Node or code needed; the app carries everything it ru
 
 **First run:** Sage OS starts empty, with a screen that recommends the model that fits your computer: **INSTALL AND
 START** downloads it and opens your first chat. Or connect an AI you already use (Claude Code, ChatGPT, Gemini,
-Ollama). A short guide explains the rest (**? GUIDE**). Then:
+Ollama): **[how to connect each one](docs/CONNECT.md)**. A short guide explains the rest (**? GUIDE**). Then:
 
 - **Add your notes and files:** Library → STORAGE and Sources (or drop documents in the Library's `Files` folder).
 - **Every chat in one place:** the history on the left of the chat lists every conversation with every AI; the picker
   above a chat hands the next reply to another AI, which reads the conversation so far.
+- **What each AI costs:** **$ USAGE** in the top bar shows tokens, spend, plan limits and the price list
+  ([details](docs/CONNECT.md#usage-limits-and-costs)).
 - **Search by meaning** sets itself up on first start (a small model, 334 MB, downloaded once).
 
 **Updates:** when a new version is out, an amber **UPDATE** chip appears in the top bar. Click it to see what's new,
@@ -52,6 +54,9 @@ data stays (see *Where your data lives* below) until you delete that folder your
 
 ## What it does
 
+- **Connect and costs (v0.24.0):** step-by-step guides to connect each AI; OpenAI and Gemini keys are tested and kept
+  in the OS keychain; every reply's tokens and cost, Claude plan limits, API rate limits, and a dated price list you
+  can correct.
 - **One chat space (v0.23.0):** every AI in one chat with one history: by day, searchable, pinned, archived; switch
   AI mid-chat and the new one carries on.
 - **Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using

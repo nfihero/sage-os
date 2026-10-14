@@ -20,14 +20,14 @@ const TEAM: [string, string, string][] = [
   ["A manager who signs off", "Inbox", "Agents propose; nothing reaches your notes or runs unchecked until you approve it."],
   ["A shared wiki", "Bookshelf", "Plain markdown notes on your disk that every agent can search, read and cite."],
   ["A task board", "Board", "Work handed to agents, by stage. A blocked task asks its question in the inbox."],
-  ["Teammates", "Claude + Hermes", "Claude leads and answers by default; Hermes runs a model on your own GPU. Any OpenAI-compatible model can plug in."],
+  ["Teammates", "Connect", "A model on this computer, Claude Code, ChatGPT or Gemini (an API key), Ollama, Hermes. Any of them can pick up a chat; USAGE shows what each one costs."],
   ["Office rules", "Safety", "Proposals are screened for secrets, every change can be undone, the guard log shows what was blocked."],
 ];
 
 const RULES: [string, string][] = [
   ["Agents propose, you decide.", "An agent can't write a note. It sends a proposal with a diff to your inbox (D11)."],
   ["Your files stay on this machine.", "Notes, copies of your documents and history live in sage-os/data. Google Drive is only read (D6, D15)."],
-  ["Bring your own AI.", "Claude Code and Hermes today, any OpenAI-compatible endpoint as a model. Hermes is optional (D4)."],
+  ["Bring your own AI.", "Models run on this computer for free, or connect Claude Code, an OpenAI or Gemini key (kept in the OS keychain), Ollama or Hermes (D39, D40)."],
   ["Everything is undoable.", "Each approved batch is journalled byte for byte; undo restores the files exactly (D11)."],
 ];
 
