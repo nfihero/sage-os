@@ -120,7 +120,9 @@ class ChatConnector(AgentConnector):
         self._item(session_id, "user", {"text": shown if shown is not None else text})
         if stand_in:
             self._item(session_id, "note", {"text": f"Answered by {stand_in}: game mode unloaded the main model."})
-        msgs = [{"role": "system", "content": SYSTEM}]
+        ctx = self.hub.threads.context_for("chat", session_id) if hasattr(self.hub, "threads") else None
+        msgs = [{"role": "system", "content": SYSTEM + (f"\n\nThe user started this conversation with another AI. "
+                                                        f"Carry on from it. The conversation so far:\n\n{ctx}" if ctx else "")}]
         msgs += [{"role": "user" if i["kind"] == "user" else "assistant", "content": i["data"].get("text", "")} for i in past]
         msgs.append({"role": "user", "content": text})
         self.tasks[session_id] = asyncio.create_task(self._run(s, msgs))

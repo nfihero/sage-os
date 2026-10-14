@@ -112,12 +112,17 @@ def merge_into(src: Path, dst: Path) -> dict:
     return {"copied": copied, "same": same, "kept_both": kept_both}
 
 
-def set_local_setting(config_local: Path, section: str, key: str, value: str) -> None:
-    """Write `key = 'value'` under [section] in config.local.toml (per computer, untracked), keeping the rest."""
+def set_local_setting(config_local: Path, section: str, key: str, value: str | bool) -> None:
+    """Write `key = 'value'` (or `key = true`) under [section] in config.local.toml (per computer, untracked), keeping
+    the rest."""
     text = config_local.read_text(encoding="utf-8-sig") if config_local.exists() else ""
-    line = f"{key} = '{value}'"                     # literal string: Windows backslashes stay as they are
-    if "'" in value:
-        raise ValueError("folder paths with ' aren't supported")
+    if isinstance(value, bool):
+        line = f"{key} = {'true' if value else 'false'}"
+    else:
+        if "'" in value:
+            raise ValueError("folder paths with ' aren't supported")
+        line = f"{key} = '{value}'"                 # literal string: Windows backslashes stay as they are
+    config_local.parent.mkdir(parents=True, exist_ok=True)
     head = re.search(rf"(?m)^\[{re.escape(section)}\]\s*$", text)
     if not head:
         text = text.rstrip("\n") + f"\n\n[{section}]\n{line}\n"

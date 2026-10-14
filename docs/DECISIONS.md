@@ -918,7 +918,15 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
 - **Date / by:** 2026-10-13, user ("where in the roadmap was the unified chat space, so the user talks in one place and
   can easily go through previous chats like AI apps usually do"; chose to build it next, before the rest of F1; "can we
   just use llama.cpp ourselves?", chose fully separate)
-- **Status:** accepted; W3 planned, engine switch done on the owner's PC with 0.22.2.
+- **Status:** accepted; built in 0.23.0 (W3); engine switch done on the owner's PC with 0.22.2.
+- **How (0.23.0):** a *thread* (hub.db `threads`, synced) is one chat in the history, made of one or more parts, each a
+  session with one AI through its connector. Picking another AI starts a new part and hands it the conversation so
+  far (the last 30 turns, at most 16,000 characters): the model chat re-sends it every turn, Claude and Hermes get it
+  once and remember. Every session made before W3 gets a thread the first time the list is read. Search covers titles
+  and messages. Hermes chats are listed and continued, but Hermes can't join a chat part-way. Claude chats pick their
+  folder. The first-run canvas recommends the largest model that fits and downloads in under ~8 GB; INSTALL AND
+  START installs llama.cpp if needed, downloads, starts, and opens the first chat. Ollama running on the computer is
+  found by itself.
 - **Decision:**
   1. **W3, one chat space,** is its own step, built before the rest of F1 (testers will spend most of their time in
      chat). It is not Phase 6's team chat (D8): that is agents working together; W3 is the user's conversations with

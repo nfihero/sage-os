@@ -13,6 +13,7 @@ H = {"x-sage-os": "1"}
 
 
 def make(tmp_path, **kw):
+    kw = {"claude_enabled": True, "hermes_profiles": ["default"], **kw}     # these tests exercise both connectors
     cfg = Config(hermes_home=tmp_path, store=tmp_path / "hub.db", vault=tmp_path / "vault", vault_index=tmp_path / "i.db",
                  vault_journal=tmp_path / "j.db", sources_root=tmp_path / "sources", sources_index=tmp_path / "sources.db", claude_workspaces=[str(tmp_path)], **kw)
     return create_app(cfg, start_adapters=False)

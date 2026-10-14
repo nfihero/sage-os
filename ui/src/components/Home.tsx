@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { get, post } from "../api";
 import type { ClaudePanel, Panels, SearchResult, SemanticPanel, SourceHit } from "../types";
+import type { Answering } from "./ChatSpace";
 import { shortModel, useNow } from "../util";
 import Orb from "./LazyOrb";
 import { Snippet } from "./Bookshelf";
@@ -16,9 +17,8 @@ export type AgentKey = "local" | "claude";
 const GB = 1024;
 
 /** Left: the agent answering you, as a planet with its facts, then the others to switch to or connect. */
-export function AgentPanel({ agent, setAgent, panels, lowPower, claudeReady, onConnectClaude, onModels }: {
-  agent: AgentKey; setAgent: (a: AgentKey) => void; panels: Panels; lowPower?: boolean; claudeReady: boolean;
-  onConnectClaude: () => void; onModels: () => void;
+export function AgentPanel({ agent, answering, panels, lowPower, onModels }: {
+  agent: AgentKey; answering: Answering; panels: Panels; lowPower?: boolean; onModels: () => void;
 }) {
   const engine = panels.engine?.serving;
   const chats = panels.chat?.sessions ?? [];
@@ -27,81 +27,65 @@ export function AgentPanel({ agent, setAgent, panels, lowPower, claudeReady, onC
   const latest = [...(claude?.sessions ?? [])].sort((a, b) => b.updated - a.updated)[0];
   const game = panels.gamemode;
   const aside = game?.state === "aside" || game?.state === "micro";
+  const waiting = answering === null && !engine;                       // a fresh install: no AI yet (D39)
+  const cloud = !!answering && answering.agent !== "claude" && !answering.local;
 
   const state = agent === "claude"
     ? (claude?.sessions.some((s) => s.status === "waiting") ? "waiting" : claude?.sessions.some((s) => s.status === "running") ? "streaming" : "idle")
     : (chats.some((s) => s.status === "running") ? "streaming" : engine && !engine.ready ? "thinking" : "idle");
-  const label = agent === "claude"
+  const label = waiting ? "NO MODEL YET" : agent === "claude"
     ? (state === "waiting" ? "WAITING ON YOU" : state === "streaming" ? "WORKING" : "IDLE")
+    : cloud ? (state === "streaming" ? "ANSWERING" : "IDLE")
     : (aside ? "PAUSED FOR A GAME" : !engine ? "NOT LOADED" : state === "thinking" ? "LOADING" : state === "streaming" ? "ANSWERING" : "IDLE");
+  const title = waiting ? "Waiting" : agent === "claude" ? "Claude Code" : cloud ? answering!.label.split(" · ")[0] : "Local model";
 
   return (
     <div className="flex min-h-0 flex-col gap-3" data-tour="agent">
       <section className={`panel min-h-0 ${agent === "claude" ? "claude" : ""}`} style={{ flex: "none" }}>
-        <div className="panel-head"><span className="tab">{agent === "claude" ? "Claude Code" : "Local model"}</span></div>
-        <div className="panel-body flex flex-col items-center gap-3 [--orb:min(200px,22vh)]">
-          <Orb id={agent === "claude" ? "claude" : "local"} state={state} tone={agent === "claude" ? "claude" : "accent"} size="var(--orb)" lowPower={lowPower} />
+        <div className="panel-head"><span className={`tab ${waiting ? "!bg-mute" : ""}`}>{title}</span></div>
+        <div className={`panel-body flex flex-col items-center gap-3 [--orb:min(200px,22vh)] ${waiting ? "opacity-40" : ""}`}>
+          <Orb id={agent === "claude" ? "claude" : "local"} state={waiting ? "idle" : state} tone={agent === "claude" ? "claude" : "accent"} size="var(--orb)" lowPower={lowPower || waiting} />
           <div className="readout w-full text-[12px]">
-            <Row k="State" v={label} hot={label !== "IDLE" && label !== "NOT LOADED"} />
-            {agent === "claude" ? <>
+            <Row k="State" v={label} hot={!["IDLE", "NOT LOADED", "NO MODEL YET"].includes(label)} />
+            {waiting ? <>
+              <Row k="Model" v="—" />
+              <Row k="Where" v="—" />
+            </> : agent === "claude" ? <>
               <Row k="Model" v={latest?.model ?? "default"} />
               <Row k="Folder" v={latest ? latest.cwd.split(/[\\/]/).slice(-2).join("/") : "none yet"} />
               <Row k="Turns" v={String(latest?.turns ?? 0)} />
+            </> : cloud ? <>
+              <Row k="Model" v={shortModel(answering!.model ?? "")} />
+              <Row k="Where" v="cloud" />
             </> : <>
               <Row k="Model" v={engine ? shortModel(engine.id) : game?.previous ? shortModel(game.previous) : "none loaded"} />
               <Row k="Where" v={g ? "this PC, on the GPU" : "this PC"} />
               <Row k="Chats" v={String(chats.length)} />
             </>}
           </div>
-          {agent === "local" && (
+          {!waiting && !cloud && agent === "local" && (
             <div className="flex w-full flex-wrap gap-1">
               {["search notes", "read sources", "propose notes"].map((t) => <span key={t} className="chip mute">{t}</span>)}
             </div>
           )}
-          <div className="w-full border-t border-cyan/15 pt-2">
+          {!waiting && <div className="w-full border-t border-cyan/15 pt-2">
             {agent === "claude" ? <>
               <div className="kicker"><span>Subscription</span><span>usage</span></div>
               <UsageBars usage={panels.claude_usage} />
-            </> : g ? <>
+            </> : cloud ? <p className="copy text-[12px] text-mute">Answers come from {answering!.label.split(" · ")[0]}; your reading pack goes with each message.</p>
+            : g ? <>
               <div className="kicker"><span className="truncate" title={g.name}>{g.name.replace(/^NVIDIA GeForce |^AMD Radeon\(TM\) /, "")}</span><span>usage</span></div>
               <Meter label="memory" value={(g.vram_used_mb / GB).toFixed(1)} of={`${(g.vram_total_mb / GB).toFixed(1)} GB`} pct={(g.vram_used_mb / g.vram_total_mb) * 100} />
               <Meter label="busy" value={String(Math.round(g.util_pct ?? 0))} unit="%" pct={g.util_pct ?? 0} />
             </> : <p className="text-mute">No graphics card reading yet; models run on the processor.</p>}
-          </div>
-          {agent === "local" && !engine && !aside && (
+          </div>}
+          {waiting && <p className="copy m-0 text-center text-[12px] text-mute">The planet lights up when an AI is ready to talk.</p>}
+          {!waiting && !cloud && agent === "local" && !engine && !aside && (
             <button className="chip w-full justify-center" onClick={onModels}>START A MODEL (MODELS)</button>
           )}
         </div>
       </section>
-
-      <div className="flex min-h-0 flex-col gap-1.5">
-        <div className="kicker"><span>Agents</span><span>switch</span></div>
-        <AgentSlot active={agent === "local"} name="Local model" detail="private, works offline" onClick={() => setAgent("local")} />
-        {claudeReady
-          ? <AgentSlot active={agent === "claude"} name="Claude Code" detail="plans and edits files" tone="claude" onClick={() => setAgent("claude")} />
-          : <AgentSlot empty name="Connect Claude" detail="sign in once" onClick={onConnectClaude} />}
-        <AgentSlot empty name="Connect ChatGPT or Gemini" detail="an API key, in MODELS" onClick={onModels} />
-      </div>
     </div>
-  );
-}
-
-function AgentSlot({ name, detail, active, empty, tone, onClick }: {
-  name: string; detail: string; active?: boolean; empty?: boolean; tone?: "claude"; onClick: () => void;
-}) {
-  const look = empty ? "border-dashed border-mute/45 hover:border-mute"
-    : tone === "claude" ? (active ? "border-orange/60 bg-orange/10" : "border-orange/25 hover:bg-orange/5")
-    : (active ? "border-cyan/60 bg-cyan/10" : "border-cyan/25 hover:bg-cyan/5");
-  return (
-    <button onClick={onClick} aria-pressed={active} className={`flex items-center gap-2.5 border px-2 py-1.5 text-left transition-colors ${look}`}>
-      <span aria-hidden className={`grid h-6 w-6 flex-none place-items-center rounded-full ${empty
-        ? "border border-dashed border-mute/60 text-mute"
-        : tone === "claude" ? "bg-orange/70 shadow-[0_0_12px_var(--color-orange)]" : "bg-cyan/70 shadow-[0_0_12px_var(--color-cyan)]"}`}>{empty ? "+" : ""}</span>
-      <span className="min-w-0">
-        <span className={`display block text-[13px] ${empty ? "text-mute" : tone === "claude" ? "text-orange" : "text-cyan"}`}>{name}</span>
-        <span className="copy block truncate text-[11.5px] text-mute">{detail}</span>
-      </span>
-    </button>
   );
 }
 
@@ -306,13 +290,14 @@ export function SystemsStrip({ panels, onSystems }: { panels: Panels; onSystems:
 }
 
 /** Start a chat with the local model on a question (search's "ask"). -> the new chat's id, or an error to show. */
+/** Enter in the search box: a new chat with the local model, asking it. -> the new chat's (thread's) id */
 export async function askLocal(panels: Panels, text: string): Promise<{ id?: string; error?: string }> {
   const e = panels.engine?.serving;
   if (!e?.ready) return { error: "Load a model first (MODELS), or connect a cloud AI." };
   try {
-    const s = await post<{ id: string }>("/api/agents/chat/sessions", { provider: "engine", model: e.id });
-    await post(`/api/agents/chat/sessions/${s.id}/send`, { text });
-    return { id: s.id };
+    const th = await post<{ id: string }>("/api/threads", { agent: "chat", provider: "engine", model: e.id });
+    await post(`/api/threads/${th.id}/send`, { text });
+    return { id: th.id };
   } catch (err) {
     return { error: String((err as Error).message ?? err) };
   }

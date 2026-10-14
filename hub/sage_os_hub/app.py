@@ -21,6 +21,7 @@ from pathlib import Path
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from urllib.parse import urlparse
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi import Path as FPath
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -40,6 +41,7 @@ from .connectors.base import AgentBusy, AgentConnector, AgentError, InvalidReque
 from .engine import EmbedEngine, EngineError, LocalEngine
 from .gamemode import GameMode
 from .inbox import Inbox
+from .threads import Threads, ai_label
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
 from .knowledge.briefing import Briefings
@@ -123,6 +125,7 @@ class Hub:
                                       "briefings.db": cfg.store.with_name("briefings.db")},
                                      cfg.data_dir / "backups", self.device.id)
         self.store = Store(cfg.store, cfg.keep_events)
+        self.threads = Threads(self, self.store.db, self.store.lock)     # W3: the one chat space (D39)
         self.panels: dict = {}
         self.subscribers: set[asyncio.Queue] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -173,6 +176,8 @@ class Hub:
                             on_change=self.publish_semantic_soon) if cfg.engine_enabled else None
         self.semantic = Semantic(self, cfg.store.with_name("semantic.db"), embed)
         self.gamemode = GameMode(self, cfg.data_dir / "gamemode.json")      # G1: step aside for games (D29)
+        self.setup_task: asyncio.Task | None = None                         # W3: first-run "install and start"
+        self.setup_state: dict | None = None
         self.agents: dict[str, AgentConnector] = build_agents(self, cfg)
         # Bookshelf over MCP (K5): Claude gets an in-process server per session, the model chat calls the
         # tools itself; every other agent gets a Streamable HTTP endpoint whose path fixes the agent id.
@@ -631,12 +636,71 @@ class Hub:
     # -- local engine (D22.3) --------------------------------------------------------------------------
     def engine_state(self) -> dict:
         e = self.engine
-        return e.status() | {"catalog": e.catalog(), "local": e.local_models()} if e else {"disabled": True}
+        return e.status() | {"catalog": e.catalog(), "local": e.local_models(), "setup": self.setup_state} if e else {"disabled": True}
 
     def publish_semantic_soon(self):
         """The search model's download reports from a worker thread; publish from the event loop."""
         if self.loop:
             self.loop.call_soon_threadsafe(lambda: self.semantic.publish(force=True))
+
+    async def connect_claude(self) -> dict:
+        from .connectors.claude import ClaudeConnector
+        if "claude" not in self.agents:
+            await asyncio.to_thread(storage.set_local_setting, self.cfg.local_config, "agents", "claude", True)
+            c = ClaudeConnector(self, self.inbox, self.cfg.claude_workspaces)
+            self.agents["claude"] = self.claude = c
+            for coro in c.background():
+                asyncio.create_task(coro)
+            c.publish_sessions()
+            self.event("system", "claude", "agent.connected", {"agent": "claude"})
+        c = self.agents["claude"]
+        await c.check_auth()
+        return {"connected": True, "cli": c.cli, "logged_in": c.logged_in}
+
+    async def setup_model(self, model_id: str):
+        """Install llama.cpp (if needed), download the model (if needed), start it. Progress is the engine's jobs."""
+        e = self.engine
+        self.setup_state = {"model": model_id, "step": "engine", "error": None}
+        self.publish_engine_soon()
+        try:
+            if not e.binary():
+                await asyncio.to_thread(e.install_binary)
+                if not e.binary():
+                    raise EngineError((e.jobs.get("binary") and e.jobs["binary"].error) or "llama.cpp didn't install")
+            m = next(x for x in e.catalog() if x["id"] == model_id)
+            if not m["installed"]:
+                self.setup_state["step"] = "model"
+                await asyncio.to_thread(e.download_model, model_id)
+                if not next(x for x in e.catalog() if x["id"] == model_id)["installed"]:
+                    raise EngineError((e.jobs.get(f"model:{model_id}") and e.jobs[f"model:{model_id}"].error) or "the download didn't finish")
+            self.setup_state["step"] = "start"
+            await asyncio.to_thread(e.start, model_id)
+            self.setup_state["step"] = "loading"
+            self.publish_engine_soon()
+            for _ in range(240):
+                if await asyncio.to_thread(e.check_ready):
+                    break
+                await asyncio.sleep(1)
+            self.setup_state["step"] = "ready"
+        except Exception as exc:                  # noqa: BLE001 -- shown on the first-run canvas
+            log.warning("model setup: %s", exc)
+            self.setup_state["error"] = str(exc)[:300]
+        self.publish_engine_soon()
+        self.semantic.wake.set()
+
+    async def find_ollama(self):
+        """Ollama already running on this computer becomes a chat provider by itself (D39)."""
+        if "ollama" in self.providers:
+            return
+        try:
+            async with httpx.AsyncClient(timeout=1.5) as c:
+                r = await c.get("http://127.0.0.1:11434/v1/models")
+            if r.status_code == 200:
+                from .connectors.models import ModelProvider
+                self.providers["ollama"] = ModelProvider("ollama", "Ollama", "http://127.0.0.1:11434/v1", "local", "found running", lambda: None)
+                log.info("Ollama found on 127.0.0.1:11434")
+        except httpx.HTTPError:
+            pass
 
     def publish_engine_soon(self):
         """Engine changes come from worker threads (downloads); publish from the event loop."""
@@ -661,13 +725,17 @@ class Hub:
                 await asyncio.sleep(3)
 
     # -- briefing packs (K8, D20) ---------------------------------------------------------------------
-    async def send_message(self, agent_id: str, sid: str, text: str) -> dict:
-        """Send a user message with its briefing pack. -> the briefing shown in the Reading strip."""
+    async def send_message(self, agent_id: str, sid: str, text: str, context: str | None = None) -> dict:
+        """Send a user message with its briefing pack. -> the briefing shown in the Reading strip.
+        `context`: the conversation so far, for an AI that joins a chat part-way (W3); sent with this message only."""
         connector = self.agents[agent_id]
         if connector.busy(sid):
             raise AgentBusy(f"{connector.label} is still working on the previous message")
         chat = connector.pane(sid)
         full, rec = await asyncio.to_thread(self.briefings.prepare, chat, agent_id, sid, text)
+        if context and agent_id != "chat":           # the model chat re-sends its context with every turn itself
+            full = ("You are joining a conversation the user started with another AI. Carry on from it. "
+                    f"The conversation so far:\n\n{context}\n\n---\n\nThe user's new message:\n\n{full}")
         try:
             await connector.send(sid, full, shown=text)
         except Exception:
@@ -759,8 +827,9 @@ class Hub:
                 if not r["ok"] and (r["adapter"] in HERMES_ADAPTERS or r["adapter"].startswith("hermes:")):
                     r.update(ok=True, optional=True, detail=f"Hermes isn't set up on this computer (optional) · {r['detail']}")
         lead = self.cfg.lead_agent
-        results.append({"adapter": "agents", "check": "lead agent connected", "ok": lead in self.agents,
-                        "detail": lead if lead in self.agents else f"{lead!r} is not among {sorted(self.agents)}"})
+        results.append({"adapter": "agents", "check": "lead agent connected", "ok": not lead or lead in self.agents,
+                        "detail": "none chosen yet" if not lead else lead if lead in self.agents
+                        else f"{lead!r} is not among {sorted(self.agents)}"})
         self.smoke_results = results
         for r in results:
             if not r["ok"]:
@@ -870,6 +939,24 @@ class Decision(BaseModel):
     review: dict | None = None
 
 
+class NewThread(BaseModel):
+    agent: str = Field(max_length=100)               # "chat", "claude", "hermes:<profile>"
+    provider: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=300)
+    cwd: str | None = Field(default=None, max_length=1000)
+
+
+class ThreadSend(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+    ai: NewThread | None = None                      # a different AI for this reply: a new part of the thread
+
+
+class ThreadEdit(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
 class BatchDecision(BaseModel):
     """Several Bookshelf cards decided as one (K7): a chapter's parts or a selection."""
     ids: list[str] = Field(min_length=1, max_length=200)
@@ -932,6 +1019,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             tasks.append(asyncio.create_task(hub.digests.run(), name="digest"))
             tasks.append(asyncio.create_task(hub.reviewer.run(), name="reviewer"))
             tasks.append(asyncio.create_task(hub.semantic.run(), name="semantic"))
+            tasks.append(asyncio.create_task(hub.find_ollama(), name="ollama"))
             if hub.engine:
                 tasks.append(asyncio.create_task(hub.gamemode.run(), name="gamemode"))
             tasks += [asyncio.create_task(c, name=f"{a.id}-bg") for a in hub.agents.values() for c in a.background()]
@@ -1533,6 +1621,145 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             return await hub.drop_reading(body.chat, body.key)
         except KeyError:
             raise HTTPException(404, "that item isn't in this chat's reading")
+
+    # -- one chat space (W3, D39) -----------------------------------------------------------------------------
+    @app.post("/api/agents/claude/connect", dependencies=W)
+    async def claude_connect():
+        """Switch Claude Code on from the chat space (the shipped config connects nothing, D39). Saved in this computer's
+        config.local.toml; signing in stays with the user (claude auth login)."""
+        return await hub.connect_claude()
+
+    @app.post("/api/providers/find-ollama", dependencies=W)
+    async def providers_find_ollama():
+        """Look again for Ollama on this computer (the first screen's "connect Ollama")."""
+        await hub.find_ollama()
+        return {"found": "ollama" in hub.providers}
+
+    @app.post("/api/engine/setup", dependencies=W)
+    async def engine_setup(body: EngineModel):
+        """First run in one click: install llama.cpp if it isn't here, download the model, start it."""
+        e = engine()
+        m = next((m for m in e.catalog() if m["id"] == body.model), None)
+        if not m:
+            raise HTTPException(404, "no such model in the catalog")
+        if hub.setup_task and not hub.setup_task.done():
+            raise HTTPException(409, "already setting up a model")
+        hub.setup_task = asyncio.create_task(hub.setup_model(body.model))
+        return e.status()
+
+    async def provider_models():
+        async def one(p):
+            try:
+                return p.info() | {"models": await p.models(), "error": None}
+            except Exception as exc:                 # noqa: BLE001 -- a provider that's down offers nothing
+                return p.info() | {"models": [], "error": f"{type(exc).__name__}: {exc}"}
+        return await asyncio.gather(*(one(p) for p in hub.providers.values()))
+
+    @app.get("/api/ais")
+    async def ais():
+        """Every AI a chat can talk to right now: running models on any provider, Claude Code, Hermes profiles."""
+        out = []
+        for p in await provider_models():
+            if p["id"] == "hermes-router":           # Hermes' own router serves Hermes, not Sage's chats
+                continue
+            for m in p["models"]:
+                out.append({"agent": "chat", "provider": p["id"], "model": m["id"], "label": ai_label("chat", m["id"], p["label"]),
+                            "kind": p.get("kind", "local"), "where": "this computer" if p["id"] == "engine" else p["label"]})
+        c = hub.agents.get("claude")
+        if c is not None:
+            out.append({"agent": "claude", "provider": None, "model": None, "label": "Claude Code", "kind": "cloud",
+                        "where": "your Claude plan", "ready": bool(c.cli) and c.logged_in is not False})
+        for a in hub.agents.values():
+            if a.vendor == "hermes":
+                out.append({"agent": a.id, "provider": None, "model": None, "label": a.label, "kind": "local",
+                            "where": "Hermes", "switch_into": False})
+        return {"ais": out}
+
+    async def open_part(ai: NewThread, title: str | None = None) -> tuple[str, str, str | None]:
+        """A new session with this AI. -> (sid, label, model)"""
+        if ai.agent not in hub.agents:
+            raise HTTPException(400, f"{ai.agent} isn't connected")
+        with agent_errors():
+            s = await hub.agents[ai.agent].create_session(title, cwd=ai.cwd, model=ai.model, provider=ai.provider)
+        label = "Claude Code" if ai.agent == "claude" else hub.agents[ai.agent].label if ai.agent.startswith("hermes:") \
+            else ai_label("chat", ai.model, hub.providers[ai.provider].label if ai.provider in hub.providers else None)
+        return str(s["id"]), label, ai.model
+
+    @app.get("/api/threads")
+    async def threads_list(q: str = Query(default="", max_length=200), archived: bool = False):
+        return await asyncio.to_thread(hub.threads.listing, q, archived)
+
+    @app.post("/api/threads", dependencies=W)
+    async def threads_new(body: NewThread):
+        sid, label, model = await open_part(body)
+        return await asyncio.to_thread(lambda: hub.threads.create(body.agent, sid, label, model, provider=body.provider))
+
+    @app.get("/api/threads/{tid}")
+    async def thread_get(tid: str = FPath(max_length=40)):
+        """The thread with every part's messages, oldest part first."""
+        t = await asyncio.to_thread(hub.threads.get, tid)
+        if t is None:
+            raise HTTPException(404, "no such chat")
+        parts = []
+        for p in t["parts"]:
+            c = hub.agents.get(p["agent"])
+            items, err = [], None
+            if c is None:
+                err = f"{p['label']} isn't connected on this computer"
+            else:
+                try:
+                    items = await c.history(p["sid"])
+                except Exception as exc:              # noqa: BLE001 -- one missing part doesn't hide the rest
+                    err = str(exc)
+            parts.append(p | {"items": items, "error": err, "pane": c.pane(p["sid"]) if c else None,
+                              "busy": hub.threads._busy(p), "context": None})
+        return t | {"parts": parts}
+
+    @app.post("/api/threads/{tid}/edit", dependencies=W)
+    async def thread_edit(body: ThreadEdit, tid: str = FPath(max_length=40)):
+        try:
+            return await asyncio.to_thread(hub.threads.edit, tid, body.title, body.pinned, body.archived)
+        except KeyError:
+            raise HTTPException(404, "no such chat")
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+
+    @app.post("/api/threads/{tid}/send", dependencies=W)
+    async def thread_send(body: ThreadSend, tid: str = FPath(max_length=40)):
+        """Send to the thread's AI; with `ai`, that AI takes over from here, given the conversation so far."""
+        t = await asyncio.to_thread(hub.threads.get, tid)
+        if t is None:
+            raise HTTPException(404, "no such chat")
+        cur, context = t["parts"][-1], None
+        same = body.ai is None or (body.ai.agent == cur["agent"] and (body.ai.agent != "chat" or (
+            body.ai.model == cur.get("model") and body.ai.provider == (cur.get("provider") or body.ai.provider))))
+        if not same:
+            if body.ai.agent.startswith("hermes:"):
+                raise HTTPException(400, "Hermes can't join a chat part-way; start a new chat with it")
+            so_far = []
+            for p in t["parts"]:
+                c = hub.agents.get(p["agent"])
+                if c is not None:
+                    try:
+                        so_far.append((p["label"], await c.history(p["sid"])))
+                    except Exception:                 # noqa: BLE001
+                        pass
+            if any(p["agent"].startswith("hermes:") for p in t["parts"]):     # Hermes keeps its own message format
+                so_far = [(lbl, [it if "kind" in it else {"kind": "user" if it.get("role") == "user" else "text",
+                                                          "data": {"text": str(it.get("content") or "")}}
+                                 for it in items if "kind" in it or it.get("role") in ("user", "assistant")])
+                          for lbl, items in so_far]
+            context = hub.threads.transcript(so_far)
+            sid, label, model = await open_part(body.ai, t["title"])
+            t = await asyncio.to_thread(lambda: hub.threads.add_part(tid, body.ai.agent, sid, label, model, context,
+                                                                    provider=body.ai.provider))
+            cur = t["parts"][-1]
+        if cur["agent"] not in hub.agents:
+            raise HTTPException(409, f"{cur['label']} isn't connected on this computer; pick another AI to carry on")
+        with agent_errors():
+            rec = await hub.send_message(cur["agent"], cur["sid"], body.text, context)
+        await asyncio.to_thread(hub.threads.touch, tid, body.text)
+        return {"ok": True, "thread": tid, "part": cur, "briefing": rec}
 
     @app.post("/api/inbox/batch", dependencies=W)
     async def inbox_decide_many(body: BatchDecision):

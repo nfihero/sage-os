@@ -178,6 +178,7 @@ class Semantic:
         self.state: dict = {"state": "off"}
         self._last_publish = 0.0
         self._seen: dict[str, tuple] = {}            # note ref -> (path, mtime, size, archived) when last hashed
+        self._fetched = 0.0                          # when the helpers were last asked for
 
     # -- status ---------------------------------------------------------------------------------------
     @property
@@ -338,6 +339,25 @@ class Semantic:
                          [DOC.format(title, p) for _, p in parts]))
         return todo, [r for r in have if r not in live], waiting
 
+    async def fetch_helpers(self):
+        """First start (D39): llama.cpp (if this computer has none yet) and the search model download by themselves,
+        in the background and checksum-verified; search works by words meanwhile."""
+        main, e = getattr(self.hub, "engine", None), self.engine
+        jobs = []
+        if main is not None and not e.binary():
+            try:
+                main.claim("binary", "binary", "llama-server")
+                jobs.append(asyncio.to_thread(main.install_binary))
+            except Exception:                         # noqa: BLE001 -- already installing
+                pass
+        try:
+            e.claim("model:embed", "model", "EmbeddingGemma 300M")
+            jobs.append(asyncio.to_thread(e.download))
+        except Exception:                             # noqa: BLE001 -- already downloading
+            pass
+        await asyncio.gather(*jobs, return_exceptions=True)
+        self.wake.set()
+
     def _paused(self) -> str | None:
         gm = getattr(self.hub, "gamemode", None)
         return gm.reason() if gm and gm.paused else None
@@ -383,7 +403,13 @@ class Semantic:
         while True:
             try:
                 if not self.engine.installed():
-                    self._set(state="off", reason="download the search model to search by meaning")
+                    job = self.engine.jobs.get("model:embed")
+                    if time.time() - self._fetched > 600 and not (job and job.state in ("queued", "running")):
+                        self._fetched = time.time()       # the app's own helper fetches itself (D39); retried every 10 min
+                        asyncio.create_task(self.fetch_helpers())
+                    failed = job.error if job and job.state == "failed" else None
+                    self._set(state="off", reason=f"couldn't download the search model ({failed}); trying again soon"
+                              if failed else "getting the search model ready")
                 elif (why := self._paused()):
                     self._set(state="paused", reason=why)
                     if self.engine.serving:

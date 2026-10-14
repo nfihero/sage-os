@@ -31,12 +31,14 @@ under *Assets*. No Python, Node or code needed; the app carries everything it ru
    xattr -dr com.apple.quarantine "/Applications/Sage OS.app"
    ```
 
-**First run:** Sage OS opens with a short guide (**? GUIDE** brings it back). To get going:
+**First run:** Sage OS starts empty, with a screen that recommends the model that fits your computer: **INSTALL AND
+START** downloads it and opens your first chat. Or connect an AI you already use (Claude Code, ChatGPT, Gemini,
+Ollama). A short guide explains the rest (**? GUIDE**). Then:
 
 - **Add your notes and files:** Library → STORAGE and Sources (or drop documents in the Library's `Files` folder).
-- **Connect an AI:** start a local model from **MODELS** (Sage OS downloads it and rates which models fit your
-  computer), or connect Claude Code, ChatGPT, Gemini or Ollama.
-- **Search by meaning:** under the search box, *search by meaning too* downloads a small model once (334 MB).
+- **Every chat in one place:** the history on the left of the chat lists every conversation with every AI; the picker
+  above a chat hands the next reply to another AI, which reads the conversation so far.
+- **Search by meaning** sets itself up on first start (a small model, 334 MB, downloaded once).
 
 **Updates:** when a new version is out, an amber **UPDATE** chip appears in the top bar. Click it to see what's new,
 then **Update and restart**. Updates are signed; anything not signed by this project is refused. Your notes and
@@ -50,6 +52,8 @@ data stays (see *Where your data lives* below) until you delete that folder your
 
 ## What it does
 
+- **One chat space (v0.23.0):** every AI in one chat with one history: by day, searchable, pinned, archived; switch
+  AI mid-chat and the new one carries on.
 - **Search by meaning (v0.21.0):** search finds notes and documents by what they mean, not only by their words, using
   a small model on your processor; briefing packs leave out notes that only share words with your question.
 - **Review at scale (v0.20.0):** a digested chapter is one inbox card and one decision; tick cards to decide several

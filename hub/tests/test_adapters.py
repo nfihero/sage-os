@@ -168,7 +168,7 @@ def test_health_says_off_or_not_set_up_until_a_service_was_seen_running(tmp_path
 def test_hermes_checks_are_optional_when_hermes_isnt_installed(tmp_path):
     from sage_os_hub.app import create_app
     from sage_os_hub.config import Config
-    hub = create_app(Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "none", engine_enabled=False),
+    hub = create_app(Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "none", engine_enabled=False, hermes_profiles=["default"]),
                      start_adapters=False).state.hub
     results = hub.run_smoke()
     assert all(r["ok"] for r in results) and any(r.get("optional") for r in results)

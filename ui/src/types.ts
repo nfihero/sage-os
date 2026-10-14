@@ -114,7 +114,16 @@ export type EngineModel = { id: string; label: string; note?: string; repo?: str
   size: number; fit: "fits" | "tight" | "too big"; need_gb: number; installed?: boolean };
 export type EnginePanel = { hardware: Hardware; binary: string | null; port: number; base_url: string;
   serving: { id: string; path: string; started: number; ready: boolean } | null; jobs: Record<string, EngineJob> };
-export type EngineState = EnginePanel & { catalog: EngineModel[]; local: EngineModel[]; disabled?: boolean };
+export type EngineState = EnginePanel & { catalog: EngineModel[]; local: EngineModel[]; disabled?: boolean;
+  setup?: { model: string; step: "engine" | "model" | "start" | "loading" | "ready"; error: string | null } | null };
+/** W3 (D39): the one chat space. */
+export type AI = { agent: string; provider: string | null; model: string | null; label: string; kind: string; where: string;
+  ready?: boolean; switch_into?: boolean };
+export type ThreadRow = { id: string; title: string; pinned: boolean; archived: boolean; updated: number; created: number;
+  ais: string[]; current: { agent: string; label: string; model: string | null; provider?: string | null }; busy: boolean; snippet: string | null };
+export type ThreadPart = { agent: string; sid: string; label: string; model: string | null; provider?: string | null; started: number; items: any[];
+  error: string | null; pane: string | null; busy: boolean };
+export type Thread = { id: string; title: string; pinned: boolean; archived: boolean; created: number; updated: number; parts: ThreadPart[] };
 export type ProviderInfo = { id: string; label: string; base_url: string; kind: "local" | "cloud"; key_source: string | null;
   key_present: boolean | null; models: { id: string; state: string | null }[]; error: string | null };
 export type ChatSessionInfo = { id: string; title: string; provider: string; model: string; created: number; updated: number; status: "idle" | "running" };

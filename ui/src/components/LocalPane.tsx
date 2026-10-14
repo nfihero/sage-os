@@ -12,7 +12,7 @@ const ACTIVE_S = 90;
 const PACK_MARK = "\n\n⟦Sage OS reading pack⟧";   // K8: Hermes stores the pack with the message; the strip shows it instead
 
 /** Hermes' message rows -> chat items. tool_calls arrive as a Python repr string, so names are regexed out. */
-function toItems(rows: any[]): ChatItem[] {
+export function toItems(rows: any[]): ChatItem[] {
   const out: ChatItem[] = [];
   for (const m of rows) {
     const ts = Number(m.timestamp) || 0;

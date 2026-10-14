@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useHub } from "./useHub";
 import { useTheme } from "./theme";
 import TopBar from "./components/TopBar";
-import ClaudePane from "./components/ClaudePane";
-import ConnectAgent from "./components/ConnectAgent";
+import ChatSpace, { type Answering } from "./components/ChatSpace";
 import LocalPane from "./components/LocalPane";
 import Inbox from "./components/Inbox";
 import Agents from "./components/Agents";
@@ -18,7 +17,6 @@ import { SafetyDrawer, SafetyToast, useSafety } from "./components/Safety";
 import Bookshelf from "./components/Bookshelf";
 import Models from "./components/Models";
 import Guide, { guideSeen } from "./components/Guide";
-import ModelChat from "./components/ModelChat";
 import { AgentPanel, DigestStrip, LibrarySearch, RecentNotes, SystemsStrip, askLocal, type AgentKey } from "./components/Home";
 
 type Tab = "home" | "agent" | "inbox" | "systems";
@@ -49,16 +47,13 @@ export default function App() {
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("home");                     // phone
   const [view, setView] = useState<"home" | "systems">("home");    // desktop (W2)
-  const [agent, setAgent] = useState<AgentKey>(() => (localStorage.getItem("sageos.agent") as AgentKey) ?? "local");
-  useEffect(() => { try { localStorage.setItem("sageos.agent", agent); } catch { /* private mode */ } }, [agent]);
+  const [answering, setAnswering] = useState<Answering>(null);   // the AI answering the open chat (W3)
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const [askErr, setAskErr] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
   const [shelfAt, setShelfAt] = useState<{ ref?: string; source?: { source: string; path: string } } | null>(null);
   const [shelf, setShelf] = useState(false);
   const [models, setModels] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
-  const [peekClaude, setPeekClaude] = useState(false);
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
   const { panels } = hub;
@@ -103,36 +98,23 @@ export default function App() {
     ripples.current.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, t: performance.now(), color });
   }, [hub.events]);
 
-  // an agent that isn't connected shows an empty card until it is (D22.1); logged_in null = not checked yet
-  const claudeReady = !!panels.claude?.cli && panels.claude.logged_in !== false;
   const openNote = (ref: string) => { setShelfAt({ ref }); setShelf(true); };
   const openSource = (source: { source: string; path: string }) => { setShelfAt({ source }); setShelf(true); };
   const ask = async (q: string) => {
     setAskErr(null);
     // asking from search goes to the local model (Claude has its own message box); switch to show the answer
     const r = await askLocal(panels, q);
-    if (r.id) { setAgent("local"); setChatOpen(r.id); setTab("home"); } else setAskErr(r.error ?? "couldn't start the chat");
+    if (r.id) { setChatOpen(r.id); setTab("home"); } else setAskErr(r.error ?? "couldn't start the chat");
   };
-  // Centre of the home screen: the conversation with whichever agent is selected
-  const showClaude = agent === "claude" && (claudeReady || peekClaude);
-  const shown: AgentKey = showClaude ? "claude" : "local";   // a saved "claude" falls back while Claude isn't connected
-  const conversation = connecting && !claudeReady
-    ? <ConnectAgent panel={panels.claude} onModels={() => setModels(true)} onPeek={() => { setPeekClaude(true); setAgent("claude"); setConnecting(false); }} />
-    : showClaude
-      ? <ClaudePane panel={panels.claude} usage={panels.claude_usage} inboxCount={cards} lowPower={lowPower} bare={!phone} />
-      : (
-        <section className="panel min-h-0" data-testid="local-chat">
-          <div className="panel-head">
-            <span className="tab">Chat</span>
-            <span className="normal-case tracking-normal text-mute">with your notes, on this PC or a cloud AI</span>
-            <button className="chip ml-auto normal-case tracking-normal" onClick={() => setModels(true)}>MODELS</button>
-          </div>
-          {askErr && <div className="mx-3 mt-2 border border-amber/50 px-2 py-1 text-[12px] text-amber">{askErr} <button className="chip ml-1" onClick={() => setModels(true)}>MODELS</button></div>}
-          <ModelChat sessions={panels.chat?.sessions ?? []} onModels={() => setModels(true)} openId={chatOpen} onOpen={setChatOpen} />
-        </section>
-      );
-  const agentPanel = <AgentPanel agent={shown} setAgent={(a) => { setAgent(a); setConnecting(false); }} panels={panels} lowPower={lowPower}
-    claudeReady={claudeReady} onConnectClaude={() => setConnecting(true)} onModels={() => setModels(true)} />;
+  // W3 (D39): one chat space for every AI; the left panel follows whichever AI answers the open chat
+  const shown: AgentKey = answering?.agent === "claude" ? "claude" : "local";
+  const conversation = (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {askErr && <div className="border border-amber/50 px-2 py-1 text-[12px] text-amber">{askErr} <button className="chip ml-1" onClick={() => setModels(true)}>MODELS</button></div>}
+      <ChatSpace panels={panels} openId={chatOpen} onOpen={setChatOpen} onAnswering={setAnswering} onModels={() => setModels(true)} />
+    </div>
+  );
+  const agentPanel = <AgentPanel agent={shown} answering={answering} panels={panels} lowPower={lowPower} onModels={() => setModels(true)} />;
   const search = <LibrarySearch panels={panels} onOpenNote={openNote} onOpenSource={openSource} onAsk={ask} />;
   const hermesRan = panels.health?.gateway.state === "up" || panels.health?.gateway.state === "down";
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}
@@ -142,7 +124,7 @@ export default function App() {
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;
   const cell = (a: Area, node: React.ReactNode) => (
     <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }} data-tour={a}>
-      <div className={`kicker ${a === "agent" && agent === "claude" ? "text-orange/70" : ""}`}><span>{KICKERS[a][0]}</span><span>{KICKERS[a][1]}</span></div>
+      <div className={`kicker ${a === "agent" && shown === "claude" ? "text-orange/70" : ""}`}><span>{KICKERS[a][0]}</span><span>{KICKERS[a][1]}</span></div>
       {node}
     </div>
   );

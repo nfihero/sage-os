@@ -144,7 +144,7 @@ class Store:
 
     def chat_sessions(self) -> list[dict]:
         with self._lock:
-            cur = self._db.execute("SELECT * FROM chat_sessions WHERE deleted IS NULL ORDER BY updated DESC LIMIT 200")
+            cur = self._db.execute("SELECT * FROM chat_sessions WHERE deleted IS NULL ORDER BY updated DESC LIMIT 5000")
             names = [d[0] for d in cur.description]
             return [dict(zip(names, r)) for r in cur.fetchall()]
 

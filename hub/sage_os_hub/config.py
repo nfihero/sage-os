@@ -54,9 +54,9 @@ class Config:
     safety_feed_size: int = 200
     claude_workspaces: list[str] = field(default_factory=lambda: [str(Path.home() / "hermes-workspace")])
     # [agents]: which connectors run (D4) and who answers team chat by default (D8)
-    lead_agent: str = "claude"
-    claude_enabled: bool = True
-    hermes_profiles: list[str] = field(default_factory=lambda: ["default"])
+    lead_agent: str = ""                                    # none until the user picks one (D39: ships empty)
+    claude_enabled: bool = False
+    hermes_profiles: list[str] = field(default_factory=list)
     # [[models]]: extra OpenAI-compatible endpoints ({id, label, base_url, kind, api_key_env})
     model_providers: list[dict] = field(default_factory=list)
     chat_enabled: bool = True                                  # [agents] chat: the OpenAI-compatible chat (D22.2)

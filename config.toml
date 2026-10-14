@@ -29,9 +29,11 @@ safety = 1
 sessions = 30
 
 [agents]                    # connectors (DECISIONS D4): agents plug in, none is required
-lead = "claude"             # answers team chat by default (D8; used from Phase 6)
-claude = true               # Claude Code via the Agent SDK
-hermes = ["default"]        # Hermes profiles to connect; [] runs Sage OS without Hermes chat
+# A fresh install connects nothing (D39): the user connects what they have from the chat space's first screen,
+# which saves it in their own config.local.toml. Examples:
+# claude = true             # Claude Code via the Agent SDK
+# hermes = ["default"]      # Hermes profiles to connect
+# lead = "claude"           # answers team chat by default (D8; used from Phase 6)
 
 # Extra OpenAI-compatible model servers (the Hermes llama.cpp router is added automatically while
 # Hermes is connected). Keys come from an environment variable named by api_key_env, never this file.

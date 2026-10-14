@@ -12,6 +12,27 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.23.0] — 2026-10-14
+
+W3, one chat space (D39). **Gate: pass.** pytest 343.
+
+### Added
+- One chat space for every AI: a history rail of every conversation (local model, ChatGPT, Gemini, Ollama, Claude Code,
+  Hermes), newest first and grouped by day, pinned chats on top, search over titles and messages, rename, pin, archive.
+- An AI picker above each chat: the next reply comes from the AI you pick, which is given the conversation so far.
+- A fresh install's first screen: the model that fits this computer best with INSTALL AND START (llama.cpp, the model
+  and a first chat in one click), other models rated for this computer, and connecting Claude Code, ChatGPT, Gemini or
+  Ollama (found by itself when it runs here).
+- The app's own helpers (llama.cpp and the search model) download by themselves on first start, and try again if that
+  fails.
+- Phone: a CHATS button switches between the history and the conversation.
+
+### Changed
+- A fresh install connects no agents and downloads no chat model; what you connect is saved in your own settings
+  (`config.local.toml`, in app data inside the app), so updates keep it.
+- The left panel follows whichever AI is answering the open chat; the agent switch list under it is gone (the picker
+  replaces it). The separate Claude pane is replaced by the chat space.
+
 ## [0.22.2] — 2026-10-13
 
 The first update delivered through the app: a copy of 0.22.1 offers it in the top bar.
