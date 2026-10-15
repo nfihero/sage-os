@@ -1036,5 +1036,8 @@ review.
   5. **A note-taker in the app (M2):** Sage OS listens to a meeting (with everyone's knowledge), transcribes it on
      this computer, and proposes meeting notes and follow-ups to the inbox, filed under the people and companies
      involved, which is what M1 reads next time.
+- **How (O0 part one, 0.26.0):** the notes have one name on screen, **Library** (the code keeps `bookshelf`/`vault`);
+  "AI" replaces "agent" in what people read; Hermes appears only once connected in Sage OS. A fresh install was walked
+  as a first-time user and the findings ranked in `docs/O0-AUDIT.md`, which tracks what's fixed.
 - **Revisit if:** testers show a different first need than these.
 

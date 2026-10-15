@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.25.0** (tags through 0.25.0; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.26.0** (tags through 0.26.0; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -81,7 +81,8 @@ lead or reviewer (D26).
    OS keychain, tokens / cost / limits / price list done (0.24.0; user guide `docs/CONNECT.md`; refresh
    `hub/sage_os_hub/pricing.json` from the providers' price pages each release). ~~F1~~ built (0.25.0): Report a problem, and a first-run self-check
    (`--self-check`) in the release workflow on macOS and Windows; the owner's Mac run follows docs/MAC-FIRST-RUN.md.
-   **Next:** O0, the onboarding pass for people who have never used an agent (D41). D41 (first demo, 14 Oct): assume users have
+   O0 part one done (0.26.0); **Next:** the rest of O0 per docs/O0-AUDIT.md (items 5–12; adding documents
+   from the app first). D41 (first demo, 14 Oct): assume users have
    never used an agent; proposed O0, J1, M1, M2, O1 (ROADMAP track *From the first demo*), order to be decided with the user.
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's

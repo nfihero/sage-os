@@ -169,7 +169,7 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
     setMsg(null);
     try {
       const r = await post<{ agent: string; title: string }>(`/api/sources/${encodeURIComponent(name)}/draft`, { folder: c.dir });
-      setMsg({ tone: "ok", text: `${r.agent} is drafting concept notes for ${r.title} in the chat "Bookshelf: draft notes for ${r.title}". Its proposals arrive in the inbox.` });
+      setMsg({ tone: "ok", text: `${r.agent} is writing notes from ${r.title} in the chat "Notes from ${r.title}". Each one arrives in the Inbox for your OK.` });
     } catch (e) { setMsg({ tone: "err", text: String((e as Error).message ?? e) }); }
   };
   const fresh = cols?.filter((c) => c.status === "new").length ?? 0;

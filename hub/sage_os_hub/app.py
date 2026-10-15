@@ -593,7 +593,7 @@ class Hub:
             f"details or secrets.\n"
             f"4. Reply with the proposal id and the note titles. The user approves or rejects them in the Sage OS inbox.")
         connector = self.agents[agent_id]
-        session = await connector.create_session(f"Bookshelf: draft notes for {c.title}")
+        session = await connector.create_session(f"Notes from {c.title}")
         await connector.send(session["id"], prompt)
         self.event("knowledge", "bookshelf", "notes.draft_started", {"source": name, "collection": c.dir, "agent": agent_id})
         return {"agent": agent_id, "session": session["id"], "collection": c.dir, "title": c.title}

@@ -156,6 +156,9 @@ def test_health_says_off_or_not_set_up_until_a_service_was_seen_running(tmp_path
     (tmp_path / "hermes").mkdir()
     a = system.HealthAdapter(e, Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "hermes"))
     a.poll()
+    assert e.panels["health"]["router"]["state"] == "absent"          # installed but never connected (O0)
+    a = system.HealthAdapter(e, Config(data_dir=tmp_path / "d", hermes_home=tmp_path / "hermes", hermes_profiles=["default"]))
+    a.poll()
     assert e.panels["health"]["router"]["state"] == "off"
     up["router"] = True
     a.poll()

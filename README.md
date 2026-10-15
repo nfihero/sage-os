@@ -57,6 +57,10 @@ data stays (see *Where your data lives* below) until you delete that folder your
 
 ## What it does
 
+- **For first-time users (v0.26.0, O0 part one):** a guide in plain words (pick an AI, add your documents, approve what
+  it saves), one name for your notes (Library), "AI" instead of "agent" on screen, Hermes lights only once it's
+  connected.
+- **Report a problem (v0.25.0):** a report you read in full, saved and attached to an email.
 - **Connect and costs (v0.24.0):** step-by-step guides to connect each AI; OpenAI and Gemini keys are tested and kept
   in the OS keychain; every reply's tokens and cost, Claude plan limits, API rate limits, and a dated price list you
   can correct.
@@ -112,7 +116,7 @@ update from (D38).
 **Where your data lives** (D25): app data in `%APPDATA%\Sage OS` (Windows) or `~/Library/Application Support/Sage OS`
 (Mac): databases, indexes, source copies, models, sign-ins, per computer. Your notes and files are in its
 `Library` folder (`Notes/`, `Files/`); point the Library at a OneDrive / iCloud / Dropbox / Syncthing folder in
-Bookshelf → **STORAGE** to have them on every device. An install from before 0.15 keeps `sage-os\data` until you
+Library → **STORAGE** to have them on every device. An install from before 0.15 keeps `sage-os\data` until you
 stop it and run `hub\.venv\Scripts\python -m sage_os_hub move-data`. Each install has its own device ID and name
 (STORAGE → *This device*). The first start of 0.16 moved every record to new IDs once (Y1, D28), after backing up
 the databases to `backups\pre-ulid-<time>` in app data.
@@ -124,7 +128,7 @@ variables (`[[models]]` in `config.toml`), Hermes Agent at `%LOCALAPPDATA%\herme
 
 **Google Docs, Sheets and Slides** (optional): create an OAuth client of type *Desktop app* in Google
 Cloud (Drive API enabled, consent screen in testing mode with yourself as a test user), save its JSON as
-`data/google-oauth-client.json`, then **Connect Google Drive** in Bookshelf → Sources and press Sync now.
+`data/google-oauth-client.json`, then **Connect Google Drive** in Library → Sources and press Sync now.
 
 **On a Mac** (D21; for development, the PC stays home base): `./start.sh`. Copy
 `config.local.example.toml` to `config.local.toml` (untracked) and set this machine's paths: it overrides
@@ -149,13 +153,13 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 | Chat pane | the **Chat** connector: any OpenAI-compatible endpoint (local engine, ChatGPT, Gemini, Ollama) | pick where and which model; the AI uses your notes and documents through Bookshelf tools; **Hermes** tab when Hermes is installed |
 | Reading strip | briefing packs (K8, D20) | under each message: what was attached (◆ notes, ▤ documents) and what the AI opened itself (·read); ✕ = wrong or not relevant; 📖 toggles packs per chat |
 | Review | an inbox card's **REVIEW** (K13, D24) | each proposed note rendered; keep / drop; edit title, body, tags with a live preview; approve only what you kept |
-| Digests | `data/digest.db` (K12, D23) | Bookshelf → Sources → *Digest into notes* on a long document; Bookshelf → **DIGESTS**: a coverage map with one square per section, concepts covered, pause / resume / cancel; one inbox card per chapter |
+| Digests | `data/digest.db` (K12, D23) | Library → Sources → *Digest into notes* on a long document; Library → **DIGESTS**: a coverage map with one square per section, concepts covered, pause / resume / cancel; one inbox card per chapter |
 | Models | `data/engine` | this computer's memory and GPU, the local engine (install, start, stop), a model catalog rated *fits / tight / too big*, models already on disk, connected cloud AIs |
-| Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals, trust suggestions | allow once / session / deny + note; reply + unblock; a chapter is one card (approve all / reject all / review every part); tick cards to decide them together (one batch); held (secret-looking) proposals: reject / save anyway; *Filed for you*; **AGENTS**: trust levels, roles, Librarian, Reviewer, every agent's activity log |
+| Inbox | Claude permissions, Hermes approvals, kanban `needs_input`, Bookshelf proposals, trust suggestions | allow once / session / deny + note; reply + unblock; a chapter is one card (approve all / reject all / review every part); tick cards to decide them together (one batch); held (secret-looking) proposals: reject / save anyway; *Filed for you*; **AI ACTIVITY**: trust levels, roles, Librarian, Reviewer, every AI's activity log |
 | Board | `kanban.db` (read-only) | click a task for runs, comments, history |
 | GPU lane | Windows GPU counters (any vendor), router `/models`, `psutil` | the Sage OS engine and any router model, VRAM/RAM, guardian sidecar |
-| Top bar | health checks, guard logs | service lights (Hermes, Models, Guard), safety chip (red only on new blocks), **? GUIDE** (why + tour), Bookshelf, theme, Motion |
-| Bookshelf | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; **Build notes**: propose starter notes, ask an agent to draft concept notes; Open vault in Explorer |
+| Top bar | health checks, guard logs | service lights (Hermes, Models, Guard; only once Hermes is connected), safety chip (red only on new blocks), $ USAGE, **REPORT A PROBLEM**, **? GUIDE** (how to start + tour), Library, theme, Motion |
+| Library (Bookshelf in the code) | `data/vault` (plain markdown), `data/sources/` (read-only copies) | search notes as you type (ranked, highlighted), read by folder, links by uid, format problems named, 🔒 sensitive notes kept out of search; History with exact undo; **Sources**: search and read your Drive copy, Sync now, see what was left out and why; **Build notes**: propose starter notes, ask an agent to draft concept notes; Open folder |
 
 New here? **? GUIDE** explains why Sage OS exists and tours the screen (it opens by itself on a first visit;
 `?guide` in the URL forces it). Click the `SAGE//OS` logo to replay the boot sequence.

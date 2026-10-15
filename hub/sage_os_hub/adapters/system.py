@@ -161,7 +161,8 @@ class HealthAdapter(Adapter):
         if pid:
             self._router_pid = pid
         services["router"]["pid"] = pid
-        installed = hermes_installed(self.cfg)
+        # O0: Hermes counts only once it's connected in Sage OS; an install the user never connected stays out of sight
+        installed = bool(getattr(self.cfg, "hermes_profiles", None)) and hermes_installed(self.cfg)
         for name, svc in services.items():
             if svc["up"]:
                 self._seen.add(name)

@@ -16,35 +16,34 @@ function markSeen() {
   try { localStorage.setItem(SEEN, "1"); } catch { /* private mode */ }
 }
 
-const TEAM: [string, string, string][] = [
-  ["A manager who signs off", "Inbox", "Agents propose; nothing reaches your notes or runs unchecked until you approve it."],
-  ["A shared wiki", "Bookshelf", "Plain markdown notes on your disk that every agent can search, read and cite."],
-  ["A task board", "Board", "Work handed to agents, by stage. A blocked task asks its question in the inbox."],
-  ["Teammates", "Connect", "A model on this computer, Claude Code, ChatGPT or Gemini (an API key), Ollama, Hermes. Any of them can pick up a chat; USAGE shows what each one costs."],
-  ["Office rules", "Safety", "Proposals are screened for secrets, every change can be undone, the guard log shows what was blocked."],
+// Written for someone who has never used an AI agent (D41.1): what you do, in plain words, not how it's built.
+const START: [string, string][] = [
+  ["Pick an AI", "Use a free one that runs on this computer, or connect one you already use: ChatGPT, Claude or Gemini."],
+  ["Add your documents", "Sage reads them, so answers come from your own work. Your files stay on this computer."],
+  ["Ask, and approve what it saves", "When an AI wants to save a note, it asks in your Inbox first. You say yes or no."],
 ];
 
 const RULES: [string, string][] = [
-  ["Agents propose, you decide.", "An agent can't write a note. It sends a proposal with a diff to your inbox (D11)."],
-  ["Your files stay on this machine.", "Notes, copies of your documents and history live in sage-os/data. Google Drive is only read (D6, D15)."],
-  ["Bring your own AI.", "Models run on this computer for free, or connect Claude Code, an OpenAI or Gemini key (kept in the OS keychain), Ollama or Hermes (D39, D40)."],
-  ["Everything is undoable.", "Each approved batch is journalled byte for byte; undo restores the files exactly (D11)."],
+  ["It asks before it acts.", "Nothing is saved or changed until you approve it in the Inbox."],
+  ["Your files stay here.", "Your documents and notes live on this computer. Google Drive is only read, never changed."],
+  ["Use any AI.", "A free one on this computer, or ChatGPT, Claude or Gemini. $ USAGE shows what each one costs."],
+  ["Everything can be undone.", "Library → History puts your notes back exactly as they were."],
 ];
 
 type Step = { target: string; title: string; body: string };
 const STEPS: Step[] = [
-  { target: '[data-tour="agent"]', title: "Your agent",
-    body: "The AI answering you: a model on this PC, or Claude and other cloud AIs once you connect them. Its planet shows what it's doing; below are the others you can switch to." },
+  { target: '[data-tour="agent"]', title: "Your AI",
+    body: "The AI you're talking to. Its planet lights up when it's ready and moves while it answers." },
   { target: '[data-tour="search"]', title: "Search and ask",
-    body: "Type to search your notes and files; press Enter to ask your agent instead. Answers come from your notes, and the strip under each one shows what it read." },
-  { target: '[data-tour="inbox"]', title: "Inbox: everything that needs you",
-    body: "Permission requests, questions from agents, and note proposals with the exact change shown. Approve, reject, or answer. Proposals that look like they contain a secret are held back until you decide." },
-  { target: '[data-tour="systems-tab"]', title: "Systems: the machine underneath",
-    body: "The task board, what's on the graphics card, and Hermes if you use it. The strip at the bottom of Home sums it up in one line." },
-  { target: '[data-testid="bookshelf-open"]', title: "Bookshelf: your notes",
-    body: "Start here if your notes are empty. Sources holds read-only copies of folders you chose; Build notes turns them into starter notes and asks an agent to draft more. All of it arrives as proposals." },
-  { target: '[data-tour="guide"]', title: "That's the tour",
-    body: "The status lights at the top show which services are up. Open GUIDE any time to see this again." },
+    body: "Type to find something in your notes and documents. Press Enter to ask your AI instead; under its answer you'll see which notes it used." },
+  { target: '[data-tour="inbox"]', title: "Inbox: things that need your OK",
+    body: "When an AI wants to save a note or run something, it asks here. Approve it or say no. Nothing happens without you." },
+  { target: '[data-tour="systems-tab"]', title: "Systems",
+    body: "What's running behind the scenes, like the graphics card. You can ignore it." },
+  { target: '[data-testid="bookshelf-open"]', title: "Library: your notes and documents",
+    body: "Add your documents here. Sage turns them into notes, and each one waits for your OK in the Inbox first." },
+  { target: '[data-tour="guide"]', title: "That's it",
+    body: "Open GUIDE any time to see this again. If something isn't working, REPORT A PROBLEM is right next to it." },
 ];
 
 export default function Guide({ open, panels, onClose, onBookshelf }: {
@@ -74,59 +73,58 @@ export default function Guide({ open, panels, onClose, onBookshelf }: {
         role="dialog" aria-modal="true" aria-labelledby="guide-title" data-testid="guide">
         <div className="panel-head">
           <span className="tab">GUIDE</span>
-          <span className="text-mute normal-case tracking-normal">why Sage OS exists · how to use it</span>
+          <span className="text-mute normal-case tracking-normal">what Sage OS does · how to start</span>
           <button onClick={close} className="ml-auto text-mute hover:text-cyan" aria-label="close guide">✕</button>
         </div>
         <div className="flex flex-col gap-6 p-5 sm:p-8">
           <header className="flex flex-col gap-3">
             <h1 id="guide-title" className="display glow-cyan text-[clamp(26px,4vw,40px)] leading-[1.05] tracking-[.06em]">
-              Your own small agent team
+              An AI that knows your work
             </h1>
             <p className="guide-copy text-[14px] leading-relaxed text-ink/90">
-              Companies now run several AI agents as one team: a shared wiki they all read, a task board, and a person
-              who signs off on what they produce. Sage OS gives one person that setup on their own PC, with the AI they
-              already use.
+              Sage OS is a place to talk to AI about your own work. Give it your documents and it answers from them, and
+              it keeps what it learns as notes you can read. It never changes anything without asking you first.
             </p>
           </header>
 
-          <section aria-labelledby="guide-team">
-            <h2 id="guide-team" className="display mb-2 text-[11px] text-mute">What a team needs, and where it is here</h2>
-            <div className="guide-grid">
-              {TEAM.map(([need, here, what]) => (
-                <div key={here} className="contents">
-                  <div className="text-[12px] text-mute">{need}</div>
-                  <div className="display text-[13px] text-cyan">{here}</div>
-                  <div className="text-[12.5px] leading-snug text-ink/85">{what}</div>
-                </div>
+          <section aria-labelledby="guide-start">
+            <h2 id="guide-start" className="display mb-3 text-[11px] text-mute">How to start</h2>
+            <ol className="m-0 grid list-none gap-4 p-0 sm:grid-cols-3">
+              {START.map(([step, what], i) => (
+                <li key={step} className="flex gap-3">
+                  <span className="font-dot glow-cyan text-[22px] leading-none">{i + 1}</span>
+                  <span><span className="copy block text-[14px] text-ink">{step}</span>
+                    <span className="copy mt-1 block text-[12.5px] leading-snug text-ink/75">{what}</span></span>
+                </li>
               ))}
-            </div>
+            </ol>
           </section>
 
           <section aria-labelledby="guide-rules">
-            <h2 id="guide-rules" className="display mb-2 text-[11px] text-mute">The rules it runs on</h2>
+            <h2 id="guide-rules" className="display mb-2 text-[11px] text-mute">What you can count on</h2>
             <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
               {RULES.map(([rule, why]) => (
                 <li key={rule} className="border-l-2 border-cyan/40 pl-3">
-                  <div className="text-[13px] text-ink">{rule}</div>
-                  <div className="text-[12px] leading-snug text-mute">{why}</div>
+                  <div className="copy text-[13px] text-ink">{rule}</div>
+                  <div className="copy text-[12px] leading-snug text-mute">{why}</div>
                 </li>
               ))}
             </ul>
             <p className="guide-copy mt-3 text-[12px] leading-snug text-mute">
-              The limit: Sage OS controls only what passes through it. A shell command an agent runs on its own is up to
-              that agent's own safeguards (Claude Code's permissions, Hermes' guardian).
+              One exception: Claude Code, if you connect it, can run programs in a folder you give it. It asks you in the
+              Inbox before each one.
             </p>
           </section>
 
           <section className="flex flex-col gap-3 border-t border-cyan/20 pt-4 sm:flex-row sm:items-center">
             <div className="readout flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink/85" data-testid="guide-now">
               <span><span className="font-dot text-[16px] text-cyan">{notes}</span> notes</span>
-              <span><span className="font-dot text-[16px] text-cyan">{docs}</span> source documents</span>
-              <span><span className="font-dot text-[16px] text-amber">{waiting}</span> waiting for you{proposals ? ` (${proposals} note proposals)` : ""}</span>
+              <span><span className="font-dot text-[16px] text-cyan">{docs}</span> documents</span>
+              <span><span className="font-dot text-[16px] text-amber">{waiting}</span> waiting for your OK{proposals ? ` (${proposals} notes to approve)` : ""}</span>
             </div>
             <div className="flex gap-2 sm:ml-auto">
               <button className="chip" onClick={() => { markSeen(); onClose(); onBookshelf(); }}
-                title="Open the Bookshelf on your notes and sources">OPEN BOOKSHELF</button>
+                title="Your notes and documents">OPEN LIBRARY</button>
               <button className="chip amber" onClick={() => setMode("tour")} data-testid="guide-tour" autoFocus>TAKE THE TOUR →</button>
             </div>
           </section>

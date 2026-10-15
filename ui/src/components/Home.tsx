@@ -143,7 +143,7 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
         <span className="chip mute hidden sm:inline-flex">CTRL K</span>
       </label>
       <div className="flex flex-wrap items-center gap-x-3 border-t border-dashed border-cyan/10 px-3.5 py-1 text-[11px] uppercase tracking-[.16em] text-mute">
-        <span>Enter asks your agent · results open in the Library</span>
+        <span>Enter asks your AI · results open in the Library</span>
         <SearchMode s={panels.semantic} />
       </div>
       </section>
@@ -156,7 +156,7 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
             </button>
             {err && <div className="text-red">{err}</div>}
             {loading && <div className="text-mute">searching<span className="dots" /></div>}
-            {notes && notes.results.length === 0 && (files?.length ?? 0) === 0 && <div className="py-2 text-mute">Nothing in your notes or files matches. Enter asks the agent anyway.</div>}
+            {notes && notes.results.length === 0 && (files?.length ?? 0) === 0 && <div className="py-2 text-mute">Nothing in your notes or documents matches. Press Enter to ask your AI anyway.</div>}
             {notes && notes.results.slice(0, 8).map((h) => (
               <button key={h.ref} className="card text-left" onClick={() => { onOpenNote(h.ref); close(); }}>
                 <div className="flex items-baseline gap-2"><span className="copy min-w-0 flex-1 truncate text-[13.5px] text-ink">{h.title}</span>
@@ -245,14 +245,14 @@ export function RecentNotes({ panels, onOpenNote, onLibrary }: { panels: Panels;
     <section className="panel min-h-0">
       <div className="panel-head"><span className="tab">Recent notes</span><button className="chip mute ml-auto normal-case tracking-normal" onClick={onLibrary}>library</button></div>
       <div className="panel-body">
-        {notes.length === 0 && <p className="text-mute">No notes yet. Add documents in Library, or approve a proposal from the inbox.</p>}
+        {notes.length === 0 && <p className="text-mute">No notes yet. Add your documents in the Library; notes made from them show up here once you approve them.</p>}
         {notes.map((n) => {
           const when = Date.parse(n.updated ?? n.created ?? "");
           return (
             <button key={n.ref} onClick={() => onOpenNote(n.ref)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-dashed border-cyan/10 px-0.5 py-1.5 text-left hover:bg-cyan/5">
               <span className="copy truncate text-[13.5px] text-ink">{n.title}</span>
               <span className="row-span-2 self-center">{when ? <Ago ts={when / 1000} now={now} /> : null}</span>
-              <span className="truncate text-[11px] uppercase tracking-[.12em] text-mute" title={n.folder}>{shelf(n.folder)}{n.origin === "agent" ? " · by an agent" : ""}</span>
+              <span className="truncate text-[11px] uppercase tracking-[.12em] text-mute" title={n.folder}>{shelf(n.folder)}{n.origin === "agent" ? " · written by an AI" : ""}</span>
             </button>
           );
         })}

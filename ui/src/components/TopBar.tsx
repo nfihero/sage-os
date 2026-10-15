@@ -84,8 +84,8 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
           );
         })()}
         <button className="chip" onClick={onBookshelf} data-testid="bookshelf-open"
-          title={vault ? `Bookshelf: ${vault.count} notes${vault.problems ? `, ${vault.problems} with problems` : ""}` : "Bookshelf"}>
-          BOOKSHELF <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>
+          title={vault ? `Library: ${vault.count} notes${vault.problems ? `, ${vault.problems} with problems` : ""}` : "Library"}>
+          LIBRARY <span className="font-dot text-[15px] leading-none">{vault?.count ?? "–"}</span>
         </button>
         <select value={theme.theme} onChange={(e) => theme.setTheme(e.target.value as Theme)} title="Theme"
           className="border border-cyan/35 bg-void px-1 py-0.5 text-[11px] uppercase text-cyan">

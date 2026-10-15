@@ -12,6 +12,26 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.26.0] — 2026-10-14
+
+O0 part one: the screens a first-time user meets, in plain words (D41.1). **Gate: not yet** (it needs a person who
+has never used an agent; 7 of the 12 audit items are still open, docs/O0-AUDIT.md). pytest 355.
+
+### Changed
+- The guide that opens first is rewritten for someone who has never used an AI agent: what Sage OS does in two
+  sentences, three steps to start (pick an AI, add your documents, approve what it saves) and four promises, with no
+  jargon or decision numbers. The tour says the same in plain words.
+- One name for your notes: **Library** everywhere on screen (it was Library, Bookshelf and "vault"). OPEN VAULT is
+  OPEN FOLDER.
+- "AI" instead of "agent" on the main screens: Your AI, Enter asks your AI, AI ACTIVITY in the inbox; the inbox's
+  empty state says what will arrive in plain words.
+- The Hermes, Models and Guard lights, and Hermes in the systems strip, appear only once Hermes is connected in
+  Sage OS, not merely installed.
+- The chat an AI writes notes in is called "Notes from <document>".
+
+### Added
+- `docs/O0-AUDIT.md`: a fresh install walked through as a first-time user, 12 findings ranked, which are fixed.
+
 ## [0.25.0] — 2026-10-14
 
 F1 completed in the app: Report a problem, and every release's first run checked on a fresh Mac and Windows (D32).

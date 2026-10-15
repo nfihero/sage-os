@@ -27,7 +27,7 @@ type Area = "agent" | "centre" | "inbox" | "board" | "gpu" | "local";
 
 // What each panel is, in plain words (left) and its role (right).
 const KICKERS: Record<Area, [string, string]> = {
-  agent: ["Answering", "Your agent"], centre: ["Ask", "Your library"], inbox: ["Inbox", "Needs you"],
+  agent: ["Answering", "Your AI"], centre: ["Ask", "Your library"], inbox: ["Inbox", "Needs you"],
   board: ["Task board", "Work in flight"], gpu: ["System", "GPU · memory"], local: ["Hermes", "Local agent"],
 };
 const LOW_POWER_MB = 14.5 * 1024;   // orbs drop to ~12 fps when a model nearly fills VRAM
@@ -155,7 +155,7 @@ export default function App() {
               {tab === "systems" && <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto"><div className="flex min-h-[60%] flex-col">{board}</div>{gpu}</div>}
             </main>
             <nav className="grid grid-cols-4 border-t border-cyan/30 bg-void/90 pb-[env(safe-area-inset-bottom)]">
-              {([["home", "Home", 0], ["agent", "Agent", 0], ["inbox", "Inbox", cards], ["systems", "Systems", 0]] as const)
+              {([["home", "Home", 0], ["agent", "AI", 0], ["inbox", "Inbox", cards], ["systems", "Systems", 0]] as const)
                 .map(([k, label, badge]) => (
                   <button key={k} onClick={() => setTab(k)}
                     className={`display relative py-3 text-[11px] ${tab === k ? "glow-cyan" : "text-mute"}`}>

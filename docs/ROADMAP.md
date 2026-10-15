@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (13 Oct 2026 — DECISIONS D30, D32, D39)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Report a problem, first-run self-check on every release, 0.25.0; the Mac tester run is the owner's) **→ O0** onboarding pass (D41) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Report a problem, first-run self-check on every release, 0.25.0; the Mac tester run is the owner's) **→ O0** onboarding pass (D41; part one 0.26.0, audit in docs/O0-AUDIT.md) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -139,7 +139,7 @@ Rule for everything: **assume the user has never used an agent before** (D41.1).
 
 | Step | Scope | Gate |
 |---|---|---|
-| O0 | **Onboarding pass for first-time users**: every screen, guide and message reviewed for someone who has never used an agent; plain words, one obvious next step, no terminal on the main path | A person who has only used a chat app installs Sage OS, connects an AI and gets an answer from their own notes without help |
+| O0 | **Onboarding pass for first-time users**: every screen, guide and message reviewed for someone who has never used an agent; plain words, one obvious next step, no terminal on the main path | A person who has only used a chat app installs Sage OS, connects an AI and gets an answer from their own notes without help — **part one** (14 Oct, v0.26.0: guide and tour in plain words, one name (Library), "AI" on screen, Hermes out of sight until connected; 7 of 12 audit items open, docs/O0-AUDIT.md) |
 | J1 | **Recurring jobs**: schedules set in plain words (morning brief, weekly summary, re-read a source); results to the inbox; every run in the activity log | A weekday 7:00 brief arrives three days running, each in the log; pausing the job stops it |
 | M1 | **Before a meeting**: a brief on the person or company and what was said last time, ahead of each calendar meeting, from notes, meeting notes and sources (needs a calendar connection) | 15 minutes before a meeting with someone met before, the brief names the last meeting's points and cites them |
 | M2 | **Note-taker in the app**: listens to a meeting (with consent), transcribes on this computer, proposes notes and follow-ups filed under the people and companies involved | A 30-minute call becomes an inbox card of notes and follow-ups that M1 then uses for the next meeting with them |

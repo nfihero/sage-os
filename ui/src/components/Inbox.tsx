@@ -54,17 +54,17 @@ export default function Inbox({ items, onOpenTask, events = [], auto = [], onAge
       <div className="panel-head">
         <span className="tab"><Scramble text="Inbox" /></span>
         {entries.length > 0 && <span className="font-dot pulse-amber bg-amber px-2 text-[16px] leading-[22px] text-void" title={`${items.length} items`}>{entries.length}</span>}
-        {onAgents && <button className="chip mute ml-auto" onClick={onAgents} title="Trust levels, roles and what every agent did">AGENTS</button>}
+        {onAgents && <button className="chip mute ml-auto" onClick={onAgents} title="How much each AI may do on its own, and everything each one did">AI ACTIVITY</button>}
       </div>
       <div className="panel-body flex flex-col gap-2">
         {filed && files.length > 0 && (
           <div className="chat-in border border-cyan/40 px-2 py-1 text-[12px] text-ink/90" role="status">
-            ✓ Filed {files.length} note{files.length === 1 ? "" : "s"}{folder && <> in <span className="font-mono text-cyan">{folder}</span></>}. Undo in Bookshelf → History.
+            ✓ Filed {files.length} note{files.length === 1 ? "" : "s"}{folder && <> in <span className="font-mono text-cyan">{folder}</span></>}. Undo in Library → History.
           </div>
         )}
         {sel.length > 0 && <Selection ids={sel} items={items} onDone={() => setPicked(new Set())} />}
         {recentAuto.length > 0 && <FiledForYou batches={recentAuto} now={now} onAgents={onAgents} />}
-        {items.length === 0 && <div className="m-auto text-center text-[12.5px] text-mute">Nothing needs you.<br />Claude permission requests, Hermes approvals, worker questions and Bookshelf proposals land here.</div>}
+        {items.length === 0 && <div className="m-auto text-center text-[12.5px] text-mute">Nothing needs you.<br />When an AI wants to save a note or run something, it asks here first.</div>}
         {entries.map((e) => e.items[0].context.group && isProposal(e.items[0])
           ? <GroupCard key={e.key} items={e.items} now={now} picked={picked.has(e.key)}
               onPick={(on) => toggle(e.key, on)} onReview={setReviewing} />
@@ -135,7 +135,7 @@ function FiledForYou({ batches, now, onAgents }: { batches: Batch[]; now: number
               <button className="chip mute" onClick={() => undo(b.id)} title="Put these notes back exactly as they were">UNDO</button>
             </div>
           ))}
-          {onAgents && <button className="text-left text-[11px] text-cyan hover:underline" onClick={onAgents}>Trust levels and every agent's activity →</button>}
+          {onAgents && <button className="text-left text-[11px] text-cyan hover:underline" onClick={onAgents}>What each AI may do, and everything it did →</button>}
           {err && <div className="text-[11.5px] text-red">{err}</div>}
         </div>
       )}
@@ -306,7 +306,7 @@ function Card({ it, now, onOpenTask, onReview, picked, onPick }: {
           Show content (it may display the secret on screen)
         </button>
       )}
-      {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your vault and the undo journal (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
+      {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your Library and its undo history (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
       {it.context.problem && <div className="mt-1 text-[11.5px] text-amber">{String(it.context.problem)}</div>}
       {it.context.cwd && <div className="mt-0.5 text-[11px] text-mute">in {it.context.cwd}</div>}
       {it.context.reason && <div className="mt-0.5 text-[11px] text-amber/90">{String(it.context.reason)}</div>}
