@@ -133,6 +133,18 @@ model steps aside and comes back when the card is free. Built right after Y1 (D3
 |---|---|---|
 | G1 | **Game mode**: detect another program using the GPU on any vendor (Windows per-program GPU counters + full-screen state; macOS memory pressure); pause local jobs and unload the model; offer a micro model (Gemma 4 E2B class) for light background work if it fits, with the user's OK; resume when the program closes; *always / ask / never* setting and a *Pause for a game* button; the hardware check no longer needs `nvidia-smi` | With a game running on this PC, Sage OS frees the GPU within 10 s, asks about the micro model only when it fits, does one light job on it, and the digest resumes on the main model within 5 min of the game closing; detection also checked on a non-Nvidia GPU or a Mac — **built and partly checked (11 Oct): a GPU-heavy stand-in program made game mode step aside 35 s after it got busy (13.3 → 5.0 GB in use), offer the micro model with the right sizes, and reload the main model 3 min after it closed; the probe reads the AMD integrated GPU here as well as the RTX. Still to do: a real game, the micro model's light job, and a Mac (with F1)** |
 
+## From the first demo (14 Oct 2026 — DECISIONS D41; order not yet decided)
+
+Rule for everything: **assume the user has never used an agent before** (D41.1).
+
+| Step | Scope | Gate |
+|---|---|---|
+| O0 | **Onboarding pass for first-time users**: every screen, guide and message reviewed for someone who has never used an agent; plain words, one obvious next step, no terminal on the main path | A person who has only used a chat app installs Sage OS, connects an AI and gets an answer from their own notes without help |
+| J1 | **Recurring jobs**: schedules set in plain words (morning brief, weekly summary, re-read a source); results to the inbox; every run in the activity log | A weekday 7:00 brief arrives three days running, each in the log; pausing the job stops it |
+| M1 | **Before a meeting**: a brief on the person or company and what was said last time, ahead of each calendar meeting, from notes, meeting notes and sources (needs a calendar connection) | 15 minutes before a meeting with someone met before, the brief names the last meeting's points and cites them |
+| M2 | **Note-taker in the app**: listens to a meeting (with consent), transcribes on this computer, proposes notes and follow-ups filed under the people and companies involved | A 30-minute call becomes an inbox card of notes and follow-ups that M1 then uses for the next meeting with them |
+| O1 | **Organization bookshelves**: connect to a library an organization publishes, read and cited by your AIs, kept apart from your own notes; a private one opens only with the organization's credential (builds on Y3, Y4) | A member reads and cites the organization's notes; a non-member can't open it |
+
 ## Hub breadth track (from the 30 Sep 2026 product framing; order not yet decided)
 
 | Item | Scope | Starting point |

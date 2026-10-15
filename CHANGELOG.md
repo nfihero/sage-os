@@ -12,6 +12,11 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Added (docs, 14 Oct)
+- D41, from the first demo: assume users have never used an agent before; proposed steps O0 (onboarding pass), J1
+  (recurring jobs), M1 (a brief before each meeting), M2 (a note-taker in the app), O1 (organization bookshelves),
+  in a new ROADMAP track.
+
 ## [0.24.0] — 2026-10-14
 
 Connect guides and what each AI costs (D40). **Gate: pass.** pytest 352.

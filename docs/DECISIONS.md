@@ -1007,3 +1007,28 @@ review.
 - **Revisit if:** a provider starts reporting limits or cost in its responses (use theirs), or a user needs a key that
   is shared between devices (the keychain is per device by design).
 
+## D41 — What a first demo asked for: assume no agent experience; shared bookshelves, recurring jobs, meetings
+
+- **Date / by:** 2026-10-14, user, after demoing Sage OS to an investment professional (notes from the meeting)
+- **Status:** 1 accepted as a rule now; 2–5 proposed as roadmap items (track *From the first demo*), order not decided.
+- **Decision:**
+  1. **Assume users have never used an agent before.** Every screen, guide and message is written for someone who
+     has only used a chat app, if that: plain words ("an AI that can do tasks for you", not "agent", "MCP",
+     "provider"), one obvious next step on every screen, and nothing that needs a terminal on the main path. Where
+     a step still needs one (signing Claude Code in), the app says exactly what to type. This applies to everything
+     already built, so an onboarding pass (O0) reviews the existing screens against it.
+  2. **Organization bookshelves (O1):** a library an organization publishes that a user connects to alongside their
+     own, read by their AIs and cited like their own notes, never mixed into it. A private organization's bookshelf
+     is locked: only members who sign in with the organization's credential can open it. Builds on accounts and
+     encrypted sync (Y3, Y4).
+  3. **Recurring jobs (J1):** jobs that run on a schedule the user sets in plain words ("every weekday at 7",
+     "every Monday"): a morning brief, a weekly summary of new notes, re-reading a source folder. Results arrive in
+     the inbox like any other proposal, and each run is in the activity log (D36).
+  4. **Before a meeting (M1):** for someone with many meetings (the example was a managing director), a brief before
+     each meeting about the person or company and what was said last time, drawn from their notes, earlier meeting
+     notes and connected sources. Needs a calendar connection and notes about people.
+  5. **A note-taker in the app (M2):** Sage OS listens to a meeting (with everyone's knowledge), transcribes it on
+     this computer, and proposes meeting notes and follow-ups to the inbox, filed under the people and companies
+     involved, which is what M1 reads next time.
+- **Revisit if:** testers show a different first need than these.
+
