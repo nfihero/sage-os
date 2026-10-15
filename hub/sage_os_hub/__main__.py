@@ -1,6 +1,7 @@
 """python -m sage_os_hub            -- starts the hub on the configured localhost port.
 python -m sage_os_hub --log FILE   -- the same, logging to FILE (the desktop app runs it this way, W1).
-python -m sage_os_hub move-data  -- moves an install from before D25 (data/ next to the code) into app data."""
+python -m sage_os_hub move-data  -- moves an install from before D25 (data/ next to the code) into app data.
+python -m sage_os_hub --self-check OUT [--with-engine]  -- a fresh install's first run, checked (F1); see selfcheck.py."""
 import faulthandler
 import logging
 import socket
@@ -27,6 +28,12 @@ def move_data():
 def main():
     if sys.argv[1:] == ["move-data"]:
         return move_data()
+    if "--self-check" in sys.argv:
+        from .selfcheck import run
+        i = sys.argv.index("--self-check")
+        if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
+            raise SystemExit("usage: --self-check OUT.json [--with-engine]")
+        raise SystemExit(run(Path(sys.argv[i + 1]), "--with-engine" in sys.argv))
     cfg = load()
     if cfg.host not in ("127.0.0.1", "localhost", "::1"):
         raise SystemExit(f"refusing to bind {cfg.host}: the hub listens on localhost only "

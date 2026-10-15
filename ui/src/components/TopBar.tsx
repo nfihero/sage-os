@@ -15,9 +15,9 @@ const SERVICES = [
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels, onUsage }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels, onUsage, onReport }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
-  onBookshelf: () => void; onGuide: () => void; onModels: () => void; onUsage: () => void;
+  onBookshelf: () => void; onGuide: () => void; onModels: () => void; onUsage: () => void; onReport: () => void;
 }) {
   const vault = hub.panels.vault;
   const now = useNow(1000);
@@ -68,6 +68,8 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         <SafetyChip safety={hub.panels.safety ?? []} unseen={unseen} onClick={onSafety} />
         <span className={`chip ${inboxCount ? "amber pulse-amber" : "mute"}`} title="Items waiting for you in the inbox">INBOX <span className="font-dot text-[15px] leading-none">{inboxCount}</span></span>
         <UpdateChip />
+        <button className="chip mute" onClick={onReport} data-testid="report-open" title="Something not working? Tell us; you see everything before it's sent">
+          {compact ? "REPORT" : "REPORT A PROBLEM"}</button>
         <button className="chip" onClick={onGuide} data-tour="guide" title="Why Sage OS exists, and a tour of the screen">? GUIDE</button>
         {(() => {          // game mode (G1): always visible, opens its settings in MODELS
           const g = hub.panels.gamemode;

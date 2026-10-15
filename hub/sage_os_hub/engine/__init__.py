@@ -255,7 +255,10 @@ class LocalEngine:
         job = self._job("binary", "binary", "llama-server")
         try:
             hw = self.hardware()
-            rels = httpx.get(RELEASES, headers={"User-Agent": "sage-os"}, timeout=30).json()
+            head = {"User-Agent": "sage-os"}
+            if os.environ.get("GITHUB_TOKEN"):           # the build machines' self-check (shared IPs hit GitHub's limit)
+                head["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
+            rels = httpx.get(RELEASES, headers=head, timeout=30).json()
             for rel in rels:
                 assets = pick_asset(rel.get("assets", []), rel["tag_name"], hw)
                 if assets:

@@ -752,6 +752,12 @@ Older reversals made before this log existed are in `SAGE-OS-HANDOFF.md` §7.
      **roundederror@gmail.com** (the owner, 11 Oct 2026: reports go to this address, not a personal one); she
      attaches the file. She sees everything the report contains before sending.
   7. **Updates:** a new .dmg replaces the app; her data stays in app data (D25).
+- **How (0.25.0):** Report a problem builds a plain-text report in the hub (`report.py`): her words, versions, the
+  system, what's connected and the last warnings and errors kept in memory this run, with the home folder, user name,
+  email addresses and key-like strings removed. She reads it all, then it's saved to Downloads and her mail app opens a
+  message to the address (a `mailto:` link); she attaches the file. Because no Mac is at hand, every release's build
+  machines run the packaged app's first run (`--self-check --with-engine`) on macOS and Windows and stop the release
+  if it fails; a person's run on a real Mac follows `docs/MAC-FIRST-RUN.md`.
 - **Costs / limits:** unsigned apps scare non-technical users and macOS may tighten this further; PyInstaller
   bundles are large (hundreds of MB) and need a build per CPU type; GitHub Actions macOS minutes count ten times
   against the free allowance; email reports depend on her sending them.

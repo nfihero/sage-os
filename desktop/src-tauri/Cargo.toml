@@ -1,6 +1,6 @@
 [package]
 name = "sage-os"
-version = "0.24.0"
+version = "0.25.0"
 description = "Sage OS desktop app (W1)"
 edition = "2021"
 

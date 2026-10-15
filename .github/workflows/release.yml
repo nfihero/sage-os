@@ -51,6 +51,18 @@ jobs:
           python -m pip install ./hub pyinstaller
           python -m PyInstaller hub/packaging/sage-os-hub.spec --noconfirm --distpath build --workpath build/work
 
+      # a new user's first run, on the packaged hub (F1): empty data, nothing connected, keychain, price list,
+      # Report a problem, and llama.cpp downloaded for this machine and run. A failure stops the release.
+      - name: First-run self-check
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exe=build/sage-os-hub/sage-os-hub; [ -f "$exe.exe" ] && exe="$exe.exe"
+          "$exe" --self-check selfcheck.json --with-engine || status=$?
+          cat selfcheck.json
+          exit ${status:-0}
+
       - name: Desktop app tools
         working-directory: desktop
         run: npm ci

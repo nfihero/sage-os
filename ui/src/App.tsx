@@ -19,6 +19,7 @@ import Models from "./components/Models";
 import Guide, { guideSeen } from "./components/Guide";
 import Connect, { type ConnectSection } from "./components/Connect";
 import UsageScreen from "./components/UsageScreen";
+import Report from "./components/Report";
 import { AgentPanel, DigestStrip, LibrarySearch, RecentNotes, SystemsStrip, askLocal, type AgentKey } from "./components/Home";
 
 type Tab = "home" | "agent" | "inbox" | "systems";
@@ -57,6 +58,7 @@ export default function App() {
   const [models, setModels] = useState(false);
   const [connect, setConnect] = useState<ConnectSection | "any" | null>(null);   // D40: connect guides
   const [usage, setUsage] = useState(false);
+  const [reporting, setReporting] = useState(false);     // F1: Report a problem
   const [aisVersion, setAisVersion] = useState(0);
   const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
@@ -143,7 +145,7 @@ export default function App() {
       <ScreenFx />
       <Handoffs />
       <div className="relative z-10 flex h-full flex-col">
-        <TopBar hub={hub} inboxCount={cards} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} onUsage={() => setUsage(true)} />
+        <TopBar hub={hub} inboxCount={cards} compact={phone} unseen={safety.unseen} onSafety={safety.toggle} theme={theme} onLogo={() => setBoot((b) => b + 1)} onBookshelf={() => setShelf(true)} onGuide={() => setGuide("why")} onModels={() => setModels(true)} onUsage={() => setUsage(true)} onReport={() => setReporting(true)} />
         {phone ? (
           <>
             <main className="flex min-h-0 flex-1 flex-col gap-2 p-2">
@@ -201,6 +203,7 @@ export default function App() {
         initialRef={shelfAt?.ref} initialSource={shelfAt?.source} onClose={() => { setShelf(false); setShelfAt(null); }} />}
       {connect && <Connect focus={connect === "any" ? null : connect} onClose={() => { setConnect(null); setAisVersion((v) => v + 1); }}
         onModels={() => { setConnect(null); setModels(true); }} onUsage={() => { setConnect(null); setUsage(true); }} />}
+      {reporting && <Report onClose={() => setReporting(false)} />}
       {usage && <UsageScreen onClose={() => setUsage(false)} onConnect={() => { setUsage(false); setConnect("any"); }} />}
       {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} />}
       {agentsOpen && <Agents panel={panels.agents_trust} librarian={panels.librarian} onClose={() => setAgentsOpen(false)} />}

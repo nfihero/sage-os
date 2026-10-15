@@ -12,7 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
-### Added (docs, 14 Oct)
+## [0.25.0] — 2026-10-14
+
+F1 completed in the app: Report a problem, and every release's first run checked on a fresh Mac and Windows (D32).
+**Gate: built; the person-on-a-Mac run is the owner's (docs/MAC-FIRST-RUN.md).** pytest 355.
+
+### Added
+- **REPORT A PROBLEM** in the top bar: write what went wrong, read the whole report, then Sage OS saves it to
+  Downloads and opens an email to roundederror@gmail.com to attach it to. The report has the app version, this
+  computer's system and memory, what's connected and recent errors, with the home folder, user name, email addresses
+  and anything key-like taken out. It never includes notes, documents, chats or keys.
+- A first-run self-check (`--self-check OUT --with-engine`) that each release's build machines run on the packaged
+  app for macOS and Windows: empty start, nothing connected, bundled screen, catalog and price list, the OS keychain,
+  a problem report, and llama.cpp downloaded and run. A failure stops the release.
+- `docs/MAC-FIRST-RUN.md`: the tester's checklist for a Mac that has never had Sage OS.
+
+### Docs
 - D41, from the first demo: assume users have never used an agent before; proposed steps O0 (onboarding pass), J1
   (recurring jobs), M1 (a brief before each meeting), M2 (a note-taker in the app), O1 (organization bookshelves),
   in a new ROADMAP track.

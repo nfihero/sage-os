@@ -7,7 +7,7 @@ on 30 Sep 2026 with the Bookshelf track.
 
 ## Build order (13 Oct 2026 — DECISIONS D30, D32, D39)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Mac first run, *Report a problem*) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Report a problem, first-run self-check on every release, 0.25.0; the Mac tester run is the owner's) **→ O0** onboarding pass (D41) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
 born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
 the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
 starts with ULIDs and the change log.
@@ -122,7 +122,7 @@ Goal: someone who isn't the developer installs Sage OS on their own Mac, starts 
 
 | Step | Scope | Gate |
 |---|---|---|
-| F1 | **Friend's Mac build**: `.app` with the hub (PyInstaller), UI and model catalog; `.dmg` built on GitHub Actions; unsigned with a first-open sheet; empty first run with the guide; API keys entered in the app (Keychain); *Report a problem* (report file + email to roundederror@gmail.com, no notes or chat text); updates by new .dmg, data kept | On a Mac with nothing installed, a tester opens the .dmg, starts Sage OS, adds a note and a document, chats with an AI they connected in the app, and sends a problem report that arrives by email; a second .dmg updates the app with their data intact |
+| F1 | **Friend's Mac build**: `.app` with the hub (PyInstaller), UI and model catalog; `.dmg` built on GitHub Actions; unsigned with a first-open sheet; empty first run with the guide; API keys entered in the app (Keychain); *Report a problem* (report file + email to roundederror@gmail.com, no notes or chat text); updates by new .dmg, data kept | On a Mac with nothing installed, a tester opens the .dmg, starts Sage OS, adds a note and a document, chats with an AI they connected in the app, and sends a problem report that arrives by email; a second .dmg updates the app with their data intact — **built** (14 Oct, v0.25.0: self-contained app and signed updates 0.22, keys in the app 0.24, Report a problem and a first-run self-check run by the macOS and Windows build machines on every release 0.25; the tester's run on a real Mac follows docs/MAC-FIRST-RUN.md) |
 
 ## Shared hardware track (10 Oct 2026 — DECISIONS D29)
 

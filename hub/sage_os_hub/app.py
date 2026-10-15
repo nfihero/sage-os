@@ -43,6 +43,7 @@ from .gamemode import GameMode
 from .inbox import Inbox
 from .threads import Threads, ai_label
 from .keys import CLOUD, Keys
+from . import report
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -989,6 +990,11 @@ class KeyBody(BaseModel):
     key: str = Field(min_length=1, max_length=500)
 
 
+class ReportBody(BaseModel):
+    description: str = Field(default="", max_length=4000)
+    doing: str = Field(default="", max_length=2000)
+
+
 class PriceBody(BaseModel):
     provider: str = Field(max_length=60)
     model: str = Field(min_length=1, max_length=200)
@@ -1046,6 +1052,7 @@ class LibrarianRun(BaseModel):
 
 def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAPI:
     cfg = cfg or load()
+    report.install()                      # recent warnings and errors, for Report a problem (after logging is set up)
     hub = Hub(cfg)
 
     @asynccontextmanager
@@ -1740,6 +1747,26 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     async def pricing_reset(body: PriceBody):
         await asyncio.to_thread(hub.usage.reset_price, body.provider, body.model)
         return await asyncio.to_thread(hub.usage.price_list)
+
+    # -- report a problem (F1, D32.6) ------------------------------------------------------------------------
+    @app.post("/api/report/preview", dependencies=W)
+    async def report_preview(body: ReportBody):
+        """The whole report, as it will be saved; the user reads it before anything leaves the computer."""
+        return {"text": await asyncio.to_thread(report.build, hub, body.description, body.doing), "to": report.ADDRESS}
+
+    @app.post("/api/report/send", dependencies=W)
+    async def report_send(body: ReportBody):
+        """Save the report file, open an email to the project with it to attach, and show the file's folder."""
+        text = await asyncio.to_thread(report.build, hub, body.description, body.doing)
+        path = await asyncio.to_thread(report.save, text)
+        opened = True
+        try:
+            report.open_email(report.mailto(path, body.description))
+            open_folder(path.parent)
+        except Exception as exc:                          # noqa: BLE001 -- no mail app: the file and address still work
+            log.warning("report: couldn't open the mail app or folder: %s", exc)
+            opened = False
+        return {"path": str(path), "name": path.name, "folder": str(path.parent), "to": report.ADDRESS, "opened": opened}
 
     @app.post("/api/providers/find-ollama", dependencies=W)
     async def providers_find_ollama():
