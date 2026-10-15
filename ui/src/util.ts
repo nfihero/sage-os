@@ -40,3 +40,15 @@ export function useNow(intervalMs = 1000): number {
   }, [intervalMs]);
   return now;
 }
+
+/** A model in plain words (O0): what it's good for, from its catalog size class ("small · laptops"). */
+export function goodFor(note?: string | null): string {
+  const size = (note ?? "").split("·")[0].trim().toLowerCase();
+  return ({ micro: "Very light work, even beside a game", small: "Quick everyday answers", medium: "Good all-round answers",
+    large: "The best answers; slower to start" } as Record<string, string>)[size] ?? "";
+}
+
+/** How a model will run on this computer, in plain words (catalog fit: fits / tight / too big). */
+export function fitWords(fit: string): string {
+  return ({ fits: "runs well here", tight: "runs, but slowly", "too big": "too big for this computer" } as Record<string, string>)[fit] ?? fit;
+}

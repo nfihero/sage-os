@@ -1036,8 +1036,14 @@ review.
   5. **A note-taker in the app (M2):** Sage OS listens to a meeting (with everyone's knowledge), transcribes it on
      this computer, and proposes meeting notes and follow-ups to the inbox, filed under the people and companies
      involved, which is what M1 reads next time.
-- **How (O0 part one, 0.26.0):** the notes have one name on screen, **Library** (the code keeps `bookshelf`/`vault`);
+- **How (O0 part one, 0.26.0):** the notes have one name on screen, **Bookshelf** (0.26.0 said Library; the owner chose
+  Bookshelf on 15 Oct, 0.27.0; the folder on disk keeps its name, Library, and the code keeps `bookshelf`/`vault`);
   "AI" replaces "agent" in what people read; Hermes appears only once connected in Sage OS. A fresh install was walked
   as a first-time user and the findings ranked in `docs/O0-AUDIT.md`, which tracks what's fixed.
+- **How (O0, 0.27.0):** documents are added from the app: files picked or dropped are saved into the Bookshelf's
+  Files folder (never overwriting; names made safe), and ADD A FOLDER opens the computer's own folder picker
+  (PowerShell's on Windows, `osascript` on a Mac) and remembers the folder as a source in config.local.toml. The top
+  bar keeps what a newcomer needs (Bookshelf, Inbox, $ Usage, Guide, Report a problem) and moves theme, animations,
+  game mode and the safety log into SETTINGS; game mode and safety come forward only when they have news.
 - **Revisit if:** testers show a different first need than these.
 

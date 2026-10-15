@@ -27,7 +27,7 @@ type Area = "agent" | "centre" | "inbox" | "board" | "gpu" | "local";
 
 // What each panel is, in plain words (left) and its role (right).
 const KICKERS: Record<Area, [string, string]> = {
-  agent: ["Answering", "Your AI"], centre: ["Ask", "Your library"], inbox: ["Inbox", "Needs you"],
+  agent: ["Answering", "Your AI"], centre: ["Ask", "Your bookshelf"], inbox: ["Inbox", "Needs you"],
   board: ["Task board", "Work in flight"], gpu: ["System", "GPU · memory"], local: ["Hermes", "Local agent"],
 };
 const LOW_POWER_MB = 14.5 * 1024;   // orbs drop to ~12 fps when a model nearly fills VRAM
@@ -169,7 +169,7 @@ export default function App() {
           <>
             <div className="flex items-end px-4 pt-2" role="tablist" aria-label="Views">
               <button role="tab" aria-selected={view === "home"} className={`htab !ml-0 [clip-path:polygon(0_0,100%_0,calc(100%-14px)_100%,0_100%)] ${view === "home" ? "on" : ""}`} onClick={() => setView("home")}>Home</button>
-              <button className="htab" onClick={() => { setShelfAt(null); setShelf(true); }}>Library</button>
+              <button className="htab" onClick={() => { setShelfAt(null); setShelf(true); }}>Bookshelf</button>
               <button role="tab" aria-selected={view === "systems"} data-tour="systems-tab" className={`htab ${view === "systems" ? "on" : ""}`} onClick={() => setView("systems")}>Systems</button>
             </div>
             {view === "home" ? (

@@ -34,7 +34,7 @@ export function DigestStart({ source, path, onStarted }: { source: string; path:
     catch (e) { setErr(String((e as Error).message)); }
     setBusy(false);
   };
-  if (started) return <div className="text-[11.5px] text-ink/80">Digest started. Follow it in Library → DIGESTS; each chapter's notes arrive in the Inbox for your OK.</div>;
+  if (started) return <div className="text-[11.5px] text-ink/80">Digest started. Follow it in Bookshelf → DIGESTS; each chapter's notes arrive in the Inbox for your OK.</div>;
   return (
     <div className="text-[11.5px]">
       {!pv ? (

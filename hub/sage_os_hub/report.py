@@ -117,7 +117,7 @@ def build(hub, description: str, doing: str) -> str:
         f"  AIs: {', '.join(agents) or 'none'} · model services: {', '.join(providers) or 'none'}",
         f"  Model on this computer: {serving['id'] + (' (ready)' if serving.get('ready') else ' (loading)') if serving else 'none running'}"
         + f" · llama.cpp {'installed' if (e or {}).get('binary') else 'not installed'}",
-        f"  Search by meaning: {'ready' if sem.get('installed') else 'not ready'} · notes in the library: {vault.get('count', '?')}",
+        f"  Search by meaning: {'ready' if sem.get('installed') else 'not ready'} · notes in the Bookshelf: {vault.get('count', '?')}",
     ]
     if failed:
         lines += ["", "Downloads that failed", *[f"  {f}" for f in failed]]

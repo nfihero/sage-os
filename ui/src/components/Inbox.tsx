@@ -59,7 +59,7 @@ export default function Inbox({ items, onOpenTask, events = [], auto = [], onAge
       <div className="panel-body flex flex-col gap-2">
         {filed && files.length > 0 && (
           <div className="chat-in border border-cyan/40 px-2 py-1 text-[12px] text-ink/90" role="status">
-            ✓ Filed {files.length} note{files.length === 1 ? "" : "s"}{folder && <> in <span className="font-mono text-cyan">{folder}</span></>}. Undo in Library → History.
+            ✓ Filed {files.length} note{files.length === 1 ? "" : "s"}{folder && <> in <span className="font-mono text-cyan">{folder}</span></>}. Undo in Bookshelf → History.
           </div>
         )}
         {sel.length > 0 && <Selection ids={sel} items={items} onDone={() => setPicked(new Set())} />}
@@ -306,7 +306,7 @@ function Card({ it, now, onOpenTask, onReview, picked, onPick }: {
           Show content (it may display the secret on screen)
         </button>
       )}
-      {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your Library and its undo history (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
+      {armed && <div className="mt-1 text-[11.5px] text-amber">Saving it anyway stores it in your Bookshelf and its undo history (only the kind of secret is logged). Its text stays out of search. Click again to confirm.</div>}
       {it.context.problem && <div className="mt-1 text-[11.5px] text-amber">{String(it.context.problem)}</div>}
       {it.context.cwd && <div className="mt-0.5 text-[11px] text-mute">in {it.context.cwd}</div>}
       {it.context.reason && <div className="mt-0.5 text-[11px] text-amber/90">{String(it.context.reason)}</div>}

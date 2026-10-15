@@ -5,6 +5,7 @@ import { get, post } from "../api";
 import type { Batch, DigestJob, NoteFull, NoteMeta, SearchResult, SourcesPanel, VaultPanel } from "../types";
 import Sources from "./Sources";
 import Digests from "./Digests";
+import AddDocs from "./AddDocs";
 import Storage from "./Storage";
 import { ago, useNow } from "../util";
 
@@ -65,7 +66,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
     <div className="fixed inset-0 z-40 flex justify-center bg-void/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
       <div className="panel flex h-full w-full max-w-[1400px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="bookshelf">
         <div className="panel-head flex-wrap gap-y-1">
-          <span className="tab">LIBRARY</span>
+          <span className="tab">BOOKSHELF</span>
           <span className="text-mute normal-case tracking-normal">{vault ? `${vault.count} note${vault.count === 1 ? "" : "s"}` : "loading…"}</span>
           {vault && vault.problems > 0 && (
             <button className={`chip amber normal-case tracking-normal ${onlyProblems ? "pulse-amber" : ""}`} onClick={() => setOnlyProblems(!onlyProblems)}
@@ -219,7 +220,7 @@ const FLOW: [string, string][] = [
   ["Your documents", "Sage OS keeps a copy of the folders you choose so it can search them. Your originals are never changed."],
   ["Notes from them", "Sage suggests notes made from your documents, and an AI can write more that point back to where each fact came from."],
   ["Your OK", "Every suggested note waits in your Inbox, showing exactly what it would add. Anything that looks like a password is held back."],
-  ["Your Library", "Notes you approve land here, where you and every AI can search them. History can undo anything."],
+  ["Your Bookshelf", "Notes you approve land here, where you and every AI can search them. History can undo anything."],
 ];
 
 /** Where a note came from (its `source:`, K6). A cited file opens in Sources; a folder (what collection
@@ -240,7 +241,9 @@ function Cited({ source, folder, onOpen }: { source: string; folder: boolean; on
 function HowNotesArrive({ onSources }: { onSources: () => void }) {
   return (
     <div className="m-auto flex max-w-[560px] flex-col gap-4 p-6" data-testid="how-notes">
-      <div className="display text-[11px] text-mute">How your notes get here</div>
+      <div className="display text-[11px] text-mute">Start with your documents</div>
+      <AddDocs />
+      <div className="display mt-2 text-[11px] text-mute">How your notes get here</div>
       <ol className="flex flex-col gap-3">
         {FLOW.map(([step, what], i) => (
           <li key={step} className="flex gap-3">
@@ -250,7 +253,7 @@ function HowNotesArrive({ onSources }: { onSources: () => void }) {
           </li>
         ))}
       </ol>
-      <button className="chip self-start" onClick={onSources}>START WITH SOURCES →</button>
+      <button className="chip mute self-start" onClick={onSources}>SEE YOUR DOCUMENTS →</button>
     </div>
   );
 }
@@ -261,12 +264,12 @@ function EmptyVault({ onOpen, onSources, proposals }: { onOpen: () => void; onSo
       <div className="display text-[11px] text-cyan">No notes yet</div>
       <p>Your notes live in a folder on this computer. Sage OS never adds one on its own: an AI suggests it and you approve it in the Inbox.</p>
       {proposals > 0 ? (
-        <p className="border-l-2 border-amber/60 pl-2 text-amber">{proposals} note proposal{proposals === 1 ? " is" : "s are"} waiting in the inbox. Approve one and its notes appear here.</p>
+        <p className="border-l-2 border-amber/60 pl-2 text-amber">{proposals} suggested note{proposals === 1 ? " is" : "s are"} waiting in your Inbox. Approve one and its notes appear here.</p>
       ) : (
-        <p className="border-l-2 border-cyan/50 pl-2">To start from your own documents, open <b>Sources</b>.</p>
+        <div className="md:hidden"><AddDocs compact /></div>
       )}
       <span className="flex gap-2">
-        <button className="chip md:hidden" onClick={onSources}>GO TO SOURCES</button>
+        <button className="chip md:hidden" onClick={onSources}>SEE YOUR DOCUMENTS</button>
         <button className="chip mute" onClick={onOpen}>OPEN FOLDER</button>
       </span>
     </div>

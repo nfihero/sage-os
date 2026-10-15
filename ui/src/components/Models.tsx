@@ -1,3 +1,4 @@
+import { fitWords, goodFor } from "../util";
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import type { EngineJob, EngineModel, EnginePanel, EngineState, GameModePanel, ProviderInfo } from "../types";
@@ -128,11 +129,11 @@ function ModelRow({ m, serving, canRun, job, onStart, onDownload, onCancel }: {
     <div className="flex flex-wrap items-center gap-2 border-b border-cyan/10 py-1">
       <span className="min-w-0 flex-1">
         <span className="text-ink">{m.label}</span>
-        {m.note && <span className="text-mute"> · {m.note}</span>}
+        {m.note && <span className="text-mute"> · {goodFor(m.note) || m.note}</span>}
         <span className="block truncate font-mono text-[11px] text-mute" title={m.path ?? `${m.repo}/${m.file}`}>{m.path ?? `${m.repo} · ${m.licence ?? ""}`}</span>
       </span>
       <span className="text-mute">{gb(m.size)} · needs ~{m.need_gb} GB</span>
-      <span className={`chip ${tone}`} title={why}>{m.fit.toUpperCase()}</span>
+      <span className={`chip ${tone}`} title={why}>{fitWords(m.fit).toUpperCase()}</span>
       {serving === m.id ? <span className="chip">RUNNING</span>
         : have ? <button className="chip" disabled={!canRun || m.fit === "too big"} onClick={onStart}
             title={!canRun ? "Install the engine first" : m.fit === "too big" ? why : "Load this model in the local engine"}>START</button>

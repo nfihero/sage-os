@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { get, onChat, post } from "../api";
 import type { AI, ChatItem, ChatUsage, EngineModel, EngineState, Panels, Thread, ThreadRow } from "../types";
 import type { ConnectSection } from "./Connect";
-import { shortModel, useNow } from "../util";
+import { fitWords, goodFor, shortModel, useNow } from "../util";
 import ChatView from "./ChatView";
 import { toItems } from "./LocalPane";
 import { Ago, Num } from "./Readout";
@@ -352,7 +352,7 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
               <div className="relative border border-cyan bg-cyan/5 p-4 shadow-[0_0_28px_rgba(61,255,139,.12)]">
                 <span className="display absolute -top-2.5 left-3 bg-cyan px-2 text-[11px] tracking-[.18em] text-void">BEST FIT FOR THIS COMPUTER</span>
                 <div className="display mt-1 text-[22px] tracking-[.06em] text-ink">{rec.label}</div>
-                <p className="copy mb-3 mt-1 text-[13.5px] text-ink/80">{rec.note ? `${rec.note[0].toUpperCase()}${rec.note.slice(1)}. ` : ""}Runs on this computer; nothing you ask leaves it.</p>
+                <p className="copy mb-3 mt-1 text-[13.5px] text-ink/80">{goodFor(rec.note) ? `${goodFor(rec.note)}. ` : ""}Runs on this computer; nothing you ask leaves it.</p>
                 <div className="mb-3 flex gap-5 text-[11px] text-mute">
                   <span><Num className="block text-[18px]">{(rec.size / 1e9).toFixed(1)}</Num>GB download</span>
                   <span><Num className="block text-[18px]">{rec.need_gb}</Num>GB of memory</span>
@@ -361,13 +361,13 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
               </div>
             ) : <p className="copy text-mute">{eng ? "No model in the catalog fits this computer; connect an AI below." : "Looking at this computer…"}</p>}
             <div>
-              <div className="kicker"><span>Other models</span><span>fit</span></div>
+              <div className="kicker"><span>Other models</span><span>on this computer</span></div>
               {others.map((m) => (
                 <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 border-b border-cyan/10 py-1.5">
                   <span className="copy truncate text-[13px] text-ink">{m.label}</span>
-                  <span className={`row-span-2 text-[10.5px] uppercase tracking-[.1em] ${m.fit === "fits" ? "text-cyan" : m.fit === "tight" ? "text-amber" : "text-mute"}`}>{m.fit}</span>
+                  <span className={`row-span-2 text-[10.5px] uppercase tracking-[.1em] ${m.fit === "fits" ? "text-cyan" : m.fit === "tight" ? "text-amber" : "text-mute"}`}>{fitWords(m.fit)}</span>
                   <button className="chip mute row-span-2" disabled={!!busy || m.fit === "too big"} onClick={() => go(m)}>install</button>
-                  <span className="text-[10.5px] text-mute">{(m.size / 1e9).toFixed(1)} GB{m.note ? ` · ${m.note}` : ""}</span>
+                  <span className="text-[10.5px] text-mute">{goodFor(m.note) || m.note} · {(m.size / 1e9).toFixed(1)} GB</span>
                 </div>
               ))}
               <button className="chip mute mt-2" onClick={onModels}>ALL MODELS →</button>

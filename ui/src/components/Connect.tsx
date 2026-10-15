@@ -49,7 +49,7 @@ export default function Connect({ focus, onClose, onModels, onUsage }: {
       <div className="panel flex h-full w-full max-w-[1000px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="connect">
         <div className="panel-head">
           <span className="tab">CONNECT AN AI</span>
-          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">every AI you connect shares the same library and chat history</span>
+          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">every AI you connect shares the same Bookshelf and chat history</span>
           <button className="chip mute" onClick={onUsage}>USAGE & COSTS</button>
           <button onClick={onClose} className="text-mute hover:text-cyan" aria-label="close">✕</button>
         </div>
@@ -77,7 +77,7 @@ export default function Connect({ focus, onClose, onModels, onUsage }: {
             </Guide>}
             {open === "claude" && <Guide title="Claude Code" steps={[
               "Install Claude Code from claude.com/code (or the Claude desktop app, which includes it).",
-              "Sign it in once: in a terminal, run  claude auth login  and finish in the browser with your Claude account (a Pro or Max plan).",
+              "Sign it in once: open a terminal (the steps are below), paste the sign-in command, press Enter, and finish in the browser with your Claude account (a Pro or Max plan).",
               "Press CONNECT below. New Claude chats ask which folder Claude may work in; it asks before running commands or changing files, and those requests land in your inbox.",
             ]} notes={["Claude Code runs on your Claude plan, not per message: your plan has a 5-hour and a weekly limit, shown in the top bar and under USAGE & COSTS.",
               "USAGE also shows what the same work would cost on the pay-per-use API, so you can see what the plan saves."]}>
@@ -136,9 +136,12 @@ function ClaudeConnect({ c, onDone }: { c: Conns | null; onDone: () => void }) {
     } catch (e) { setMsg(String((e as Error).message)); }
   };
   const done = c?.claude.connected && c.claude.cli && c.claude.logged_in !== false;
-  return <div className="flex flex-wrap items-center gap-3">
-    <button className="chip h-8 px-4" onClick={go}>{done ? "CONNECTED ✓ · CHECK AGAIN" : "CONNECT"}</button>
-    {msg && <span className="copy text-[12.5px] text-amber">{msg}</span>}
+  return <div className="flex flex-col gap-3">
+    {!done && <SignIn />}
+    <div className="flex flex-wrap items-center gap-3">
+      <button className="chip h-8 px-4" onClick={go}>{done ? "CONNECTED ✓ · CHECK AGAIN" : "CONNECT"}</button>
+      {msg && <span className="copy text-[12.5px] text-amber">{msg}</span>}
+    </div>
   </div>;
 }
 
@@ -184,5 +187,27 @@ function KeyGuide({ service, onDone, onUsage }: { service: Cloud; onDone: () => 
         {msg && <p className={`copy m-0 text-[12.5px] ${msg.ok ? "text-cyan" : "text-amber"}`}>{msg.text}</p>}
       </div>
     </Guide>
+  );
+}
+
+/** The one terminal step on the main path (O0): the exact command, a COPY button, and how to open a terminal. */
+function SignIn() {
+  const cmd = "claude auth login";
+  const [copied, setCopied] = useState(false);
+  const mac = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(cmd); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* select it by hand */ }
+  };
+  return (
+    <div className="flex max-w-[560px] flex-col gap-2 border border-dashed border-cyan/30 p-3">
+      <div className="copy text-[13px] text-ink">The sign-in command</div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 select-all border border-cyan/30 bg-void/80 px-2 py-1 font-mono text-[13px] text-cyan">{cmd}</code>
+        <button className="chip h-8 px-3" onClick={copy}>{copied ? "COPIED ✓" : "COPY"}</button>
+      </div>
+      <p className="copy m-0 text-[12.5px] text-ink/75">{mac
+        ? "To open a terminal: press Command and Space, type Terminal, and press Return. Paste the command (Command V), press Return, and follow the browser."
+        : "To open a terminal: press the Windows key, type Terminal, and press Enter. Paste the command (right-click, or Ctrl V), press Enter, and follow the browser."}</p>
+    </div>
   );
 }

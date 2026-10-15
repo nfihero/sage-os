@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { get, post } from "../api";
 import type { BuildResult, GoogleStatus, SourceCollection, SourceDoc, SourceHit, SourceInfo, SourcesPanel } from "../types";
 import { ago, useNow } from "../util";
+import AddDocs from "./AddDocs";
 import { DigestStart } from "./Digests";
 
 /** The source library (D15): read-only copies of chosen folders, searchable, citable, never edited. */
@@ -33,9 +34,7 @@ export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { 
             className="w-full border border-cyan/35 bg-void/80 px-2 py-1 text-[12.5px] text-ink outline-none placeholder:text-mute focus:border-cyan" />
         </div>
         <div className="panel-body text-[12.5px]">
-          {sources.length === 0 && (
-            <p className="text-mute">No sources configured. Add a <code>[[sources]]</code> entry to config.toml (DECISIONS D15).</p>
-          )}
+          {!q.trim() && <div className="mb-3"><AddDocs compact={sources.some((s) => s.files > 0)} /></div>}
           {!q.trim() && data?.google && sources.some((s) => s.google) && <GoogleCard g={data.google} />}
           {!q.trim() && sources.map((s) => <SourceCard key={s.name} s={s} />)}
           {q.trim() && hits && (
@@ -55,7 +54,7 @@ export default function Sources({ panel, doc }: { panel?: SourcesPanel; doc?: { 
       </aside>
       <section className={`min-h-0 min-w-0 flex-1 flex-col ${open ? "flex" : "hidden md:flex"}`}>
         {open ? <DocView hit={open} onBack={() => setOpen(null)} />
-          : <div className="m-auto max-w-md p-6 text-center text-[12.5px] text-mute">Search your documents, then pick one to read its text. Agents search and cite these too; nobody edits them here.</div>}
+          : <div className="m-auto max-w-md p-6 text-center text-[12.5px] text-mute">Search your documents, then pick one to read it. Your AI reads and cites them too; they're never changed here.</div>}
       </section>
     </div>
   );
@@ -116,17 +115,17 @@ function SourceCard({ s }: { s: SourceInfo }) {
   return (
     <div className="mb-3 border border-cyan/20 p-2">
       <div className="flex items-baseline gap-2">
-        <span className="display text-[12px] text-cyan">{s.name}</span>
+        <span className="display text-[12px] text-cyan">{s.name === "library" ? "Files you added" : s.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-mute" title={`${s.path} → ${s.copy}`}>{s.path} → copy</span>
       </div>
       <div className="mt-1 text-[11.5px] text-ink/80">
-        {s.files} files copied, {s.indexed} searchable · {s.last_sync ? `synced ${ago(s.last_sync, now)} ago` : "never synced"}
+        {s.indexed} of {s.files} files readable · {s.last_sync ? `checked ${ago(s.last_sync, now)} ago` : "not read yet"}
         {st && <span className="text-mute"> · last run {st.copied} new/changed, {st.removed} removed{st.private_content ? `, ${st.private_content} private by content` : ""}</span>}
       </div>
       {s.syncing && <div className="mt-1 text-[11.5px] glow-cyan">syncing{s.progress ? ` ${s.progress.done}/${s.progress.total}` : ""}<span className="dots" /></div>}
       <div className="mt-1.5 flex flex-wrap gap-1.5">
-        <button className="chip" disabled={s.syncing} onClick={() => run("sync")} title="Copy new and changed files from the original (read-only) and index their text">SYNC NOW</button>
-        <button className="chip mute" onClick={() => run("open")} title="Show the copy in Explorer">OPEN COPY</button>
+        <button className="chip" disabled={s.syncing} onClick={() => run("sync")} title="Read new and changed files again (your originals are never changed)">CHECK FOR CHANGES</button>
+        <button className="chip mute" onClick={() => run("open")} title="Show these files on this computer">SHOW FILES</button>
         {s.skipped.length > 0 && <button className="chip mute" onClick={() => setShowSkipped(!showSkipped)}>{s.skipped.length} left out {showSkipped ? "▾" : "▸"}</button>}
       </div>
       {err && <div className="mt-1 text-[11.5px] text-red">{err}</div>}
@@ -157,11 +156,11 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
     setBusy(true); setMsg(null);
     try {
       const r = await post<BuildResult>(`/api/sources/${encodeURIComponent(name)}/build`);
-      const parts = [r.proposed ? `${r.notes} starter notes proposed in ${r.proposed} inbox card${r.proposed === 1 ? "" : "s"}` : "No new starter notes"];
+      const parts = [r.proposed ? `${r.notes} notes suggested in ${r.proposed} Inbox card${r.proposed === 1 ? "" : "s"}` : "No new notes to suggest"];
       if (r.already) parts.push(`${r.already} already built or waiting`);
       if (r.left_out.length) parts.push(`${r.left_out.length} left out (${r.left_out.map((x) => x.reason).slice(0, 2).join("; ")})`);
       if (r.not_sent.length) parts.push(`${r.not_sent.length} wait for earlier cards to be decided`);
-      setMsg({ tone: "ok", text: parts.join(" · ") + (r.proposed ? ". Approve the ones you want in the inbox." : ".") });
+      setMsg({ tone: "ok", text: parts.join(" · ") + (r.proposed ? ". Approve the ones you want in the Inbox." : ".") });
     } catch (e) { setMsg({ tone: "err", text: String((e as Error).message ?? e) }); }
     setBusy(false); load();
   };
@@ -175,11 +174,11 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
   const fresh = cols?.filter((c) => c.status === "new").length ?? 0;
   return (
     <div className="mt-2 border-t border-cyan/15 pt-2">
-      <div className="display mb-1 text-[11px] text-cyan/80">Build notes from this source</div>
-      <p className="text-[11.5px] text-ink/75">Starter notes: your markdown files as notes, plus one index note per folder of documents. Everything arrives in the inbox for you to approve.</p>
+      <div className="display mb-1 text-[11px] text-cyan/80">Make notes from these</div>
+      <p className="copy text-[12px] text-ink/75">Sage suggests a note for each folder listing what's in it (and turns any text notes you have into notes). Or press <b>AI WRITES NOTES</b> next to a folder, and your AI reads it and suggests notes that point back to the documents. Every note waits in your Inbox for your OK.</p>
       <button className="chip mt-1.5" disabled={busy || fresh === 0} onClick={build}
-        title={fresh === 0 ? "Every collection is already built or waiting in the inbox" : "Propose starter notes for every collection not built yet"}>
-        {busy ? "PROPOSING…" : `PROPOSE STARTER NOTES${fresh ? ` (${fresh})` : ""}`}
+        title={fresh === 0 ? "Every folder already has its notes, or they're waiting in your Inbox" : "Suggest notes for every folder that has none yet"}>
+        {busy ? "SUGGESTING…" : `SUGGEST NOTES${fresh ? ` (${fresh})` : ""}`}
       </button>
       {msg && <div className={`mt-1 text-[11.5px] ${msg.tone === "err" ? "text-red" : "text-ink/80"}`}>{msg.text}</div>}
       {cols && cols.length > 0 && (
@@ -188,9 +187,9 @@ function BuildNotes({ name, synced }: { name: string; synced: number | null }) {
             <div key={c.dir} className="flex items-baseline gap-1.5 text-[11.5px]">
               <span className="min-w-0 flex-1 truncate text-ink/85" title={`${c.dir || "(source root)"} → ${c.folder}`}>{c.title}</span>
               <span className="shrink-0 text-[11px] text-mute">{c.docs} docs{c.markdown ? ` · ${c.markdown} md` : ""}</span>
-              <span className={`chip shrink-0 ${c.status === "built" ? "" : c.status === "pending" ? "amber" : "mute"}`}>{c.status === "built" ? "in vault" : c.status === "pending" ? "in inbox" : "new"}</span>
+              <span className={`chip shrink-0 ${c.status === "built" ? "" : c.status === "pending" ? "amber" : "mute"}`}>{c.status === "built" ? "in Bookshelf" : c.status === "pending" ? "in Inbox" : "new"}</span>
               <button className="chip shrink-0" disabled={c.docs === 0} onClick={() => draft(c)}
-                title="Ask an agent (Hermes by default, free and local) to read these documents and propose concept notes that cite them">DRAFT</button>
+                title="Your AI reads these documents and suggests notes that point back to them">AI WRITES NOTES</button>
             </div>
           ))}
         </div>

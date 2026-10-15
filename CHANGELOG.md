@@ -12,6 +12,27 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.27.0] — 2026-10-15
+
+O0: everything in the first-time-user audit is addressed (D41.1). **Gate: waits on a real first-time user**
+(docs/O0-AUDIT.md). pytest 359.
+
+### Added
+- **Add your documents from the app:** **+ ADD FILES** (or drop files onto it) saves them into the Bookshelf and makes
+  them searchable; **+ ADD A FOLDER** opens the computer's own folder picker, copies the folder read-only, reads it
+  and remembers it. No config file, no Explorer. On the Bookshelf's empty screen and at the top of Sources.
+- **SETTINGS** in the top bar: look, animations, game mode and the safety log.
+- Claude Code's sign-in step shows the exact command with a COPY button and how to open a terminal on Windows or Mac.
+
+### Changed
+- The notes are called **Bookshelf** everywhere on screen (0.26.0 said Library). The folder on disk keeps its name.
+- The top bar shows what a newcomer needs: Bookshelf, Inbox, $ Usage, Guide, Report a problem, Settings. Game mode
+  and the safety chip come forward only when they have something to say; Claude's limit bars only once Claude reports.
+- Plain words in Sources ("Files you added", CHECK FOR CHANGES, SUGGEST NOTES, AI WRITES NOTES), the AI ACTIVITY screen
+  (what each AI may do on its own, saved / turned down), search (smart search), the systems strip (graphics memory,
+  model on this computer, DETAILS) and the model picker (what each model is good for; runs well here / runs, but
+  slowly / too big for this computer).
+
 ## [0.26.0] — 2026-10-14
 
 O0 part one: the screens a first-time user meets, in plain words (D41.1). **Gate: not yet** (it needs a person who

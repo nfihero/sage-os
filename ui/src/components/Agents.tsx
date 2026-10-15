@@ -13,14 +13,14 @@ type TrustData = {
 };
 
 const LEVEL: Record<TrustLevel, [string, string]> = {
-  ask: ["Ask first", "Everything it proposes waits in the inbox for you."],
-  new_notes: ["New notes file themselves", "New notes are filed at once and listed under Filed for you; changes to your existing notes still wait."],
-  trusted: ["Trusted", "Everything it proposes is filed at once. Each batch can be undone in History."],
+  ask: ["Ask first", "Everything it suggests waits in your Inbox for your OK."],
+  new_notes: ["New notes save themselves", "New notes are saved straight away and listed under Filed for you; changes to notes you already have still wait for your OK."],
+  trusted: ["Trusted", "Everything it suggests is saved straight away. You can undo any of it in Bookshelf → History."],
 };
 const ROLE: Record<string, string> = {
-  researcher: "Researcher: drafts new notes from your sources and chats",
-  librarian: "Librarian: tidies notes (tags, links, titles)",
-  reviewer: "Reviewer: reads proposals first and marks what it would drop",
+  researcher: "Writes new notes from your documents and chats",
+  librarian: "Librarian: tidies your notes (tags, links, clearer titles)",
+  reviewer: "Reviewer: reads suggested notes first and marks any it would turn down",
 };
 const ACTION: Record<string, string> = {
   searched: "searched", read: "read", searched_sources: "searched docs", read_source: "read doc", proposed: "proposed",
@@ -47,8 +47,8 @@ export default function Agents({ panel, librarian, onClose }: { panel?: unknown;
     <div className="fixed inset-0 z-40 flex justify-center bg-void/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
       <div className="panel flex h-full w-full max-w-[1100px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="agents">
         <div className="panel-head">
-          <span className="tab">AGENTS</span>
-          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">trust, roles and everything each agent did</span>
+          <span className="tab">AI ACTIVITY</span>
+          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">what each AI may do on its own, and everything it did</span>
           <button onClick={onClose} className="text-mute hover:text-cyan" aria-label="close agents">✕</button>
         </div>
         {err && <div className="border-b border-red/40 px-3 py-1 text-[12px] text-red">{err}</div>}
@@ -56,7 +56,7 @@ export default function Agents({ panel, librarian, onClose }: { panel?: unknown;
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <nav className={`panel-body flex-col gap-0.5 border-cyan/20 md:flex md:w-[280px] md:flex-none md:border-r ${sel === null ? "flex" : "hidden"} max-md:flex-none max-md:max-h-[40%]`}>
               <button onClick={() => setSel(null)} className={`border-l-2 py-1 pl-2 text-left text-[12.5px] ${sel === null ? "border-cyan bg-cyan/10" : "border-transparent hover:border-cyan/40"}`}>
-                <div className="text-ink">Everyone</div><div className="text-[11px] text-mute">the whole activity log, newest first</div>
+                <div className="text-ink">Everything</div><div className="text-[11px] text-mute">what every AI did, newest first</div>
               </button>
               {data.agents.map((a) => (
                 <button key={a.key} onClick={() => setSel(a.key)}
@@ -66,12 +66,12 @@ export default function Agents({ panel, librarian, onClose }: { panel?: unknown;
                     {a.key !== "reviewer" && <span className={`chip ${a.level === "ask" ? "mute" : "amber"}`}>{LEVEL[a.level][0].split(" ")[0]}</span>}
                     {a.suggest && <span className="text-amber" title="It has earned the next level">●</span>}
                   </div>
-                  <div className="text-[11px] text-mute">{a.role} · {a.record.approved} filed · {a.record.rejected} rejected</div>
+                  <div className="text-[11px] text-mute">{(ROLE[a.role] ?? a.role).split(":")[0]} · {a.record.approved} saved · {a.record.rejected} turned down</div>
                 </button>
               ))}
             </nav>
             <section className={`panel-body min-h-0 min-w-0 flex-1 ${sel === null ? "hidden md:block" : ""}`}>
-              {sel !== null && <div className="mb-2 md:hidden"><button className="chip mute" onClick={() => setSel(null)}>← ALL AGENTS</button></div>}
+              {sel !== null && <div className="mb-2 md:hidden"><button className="chip mute" onClick={() => setSel(null)}>← EVERYTHING</button></div>}
               {agent && <AgentDetail a={agent} data={data} onChanged={load} onErr={setErr} />}
               <Activity agentKey={sel} refresh={panel} />
             </section>
@@ -91,10 +91,10 @@ function AgentDetail({ a, data, onChanged, onErr }: { a: AgentTrust; data: Trust
   return (
     <div className="mb-4 max-w-[720px]">
       <h2 className="display mb-2 text-[18px] normal-case tracking-normal text-ink">{a.label}</h2>
-      <Row k="Proposals decided" v={<Num className="text-[15px]">{a.record.decided}</Num>} />
-      <Row k="Filed / rejected" v={`${a.record.approved} / ${a.record.rejected}`} />
+      <Row k="Suggestions you decided" v={<Num className="text-[15px]">{a.record.decided}</Num>} />
+      <Row k="Saved / turned down" v={`${a.record.approved} / ${a.record.rejected}`} />
       <Row k="Clean approvals in a row" v={<Num className="text-[15px]">{a.record.streak}</Num>} title="Approved by you without dropping or editing a note, and not undone" />
-      {a.record.auto_undone > 0 && <Row k="Filed itself, then undone" v={String(a.record.auto_undone)} />}
+      {a.record.auto_undone > 0 && <Row k="Saved on its own, then undone" v={String(a.record.auto_undone)} />}
       <label className="mt-3 block text-[11px] uppercase tracking-[.16em] text-mute">Role</label>
       <select value={a.role} onChange={(e) => set({ role: e.target.value })} className={`${field} mt-1 w-full`} aria-label="role">
         {data.roles.map((r) => <option key={r} value={r}>{ROLE[r] ?? r}</option>)}
@@ -112,7 +112,7 @@ function AgentDetail({ a, data, onChanged, onErr }: { a: AgentTrust; data: Trust
               </button>
             ))}
           </div>
-          <p className="mt-1 text-[11px] text-mute">At every level, secret-looking proposals are held for you and everything it does is in the log below.</p>
+          <p className="mt-1 text-[11px] text-mute">At every level, anything that looks like a password is held for you, and everything it does is listed below.</p>
         </>
       )}
       {a.key === "reviewer" && <ReviewerForm data={data} onChanged={onChanged} onErr={onErr} />}
@@ -162,7 +162,7 @@ function LibrarianForm({ data, onErr }: { data: TrustData; onErr: (e: string | n
       <div className="text-[11px] uppercase tracking-[.16em] text-mute">Tidy a folder</div>
       <div className="flex flex-wrap gap-1.5">
         <select value={folder} onChange={(e) => setFolder(e.target.value)} className={`${field} min-w-[160px] flex-1`} aria-label="folder">
-          <option value="">the whole library</option>
+          <option value="">the whole Bookshelf</option>
           {data.folders.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
         <input type="number" min={1} max={50} value={count} onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}

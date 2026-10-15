@@ -27,7 +27,7 @@ const RULES: [string, string][] = [
   ["It asks before it acts.", "Nothing is saved or changed until you approve it in the Inbox."],
   ["Your files stay here.", "Your documents and notes live on this computer. Google Drive is only read, never changed."],
   ["Use any AI.", "A free one on this computer, or ChatGPT, Claude or Gemini. $ USAGE shows what each one costs."],
-  ["Everything can be undone.", "Library → History puts your notes back exactly as they were."],
+  ["Everything can be undone.", "Bookshelf → History puts your notes back exactly as they were."],
 ];
 
 type Step = { target: string; title: string; body: string };
@@ -40,7 +40,7 @@ const STEPS: Step[] = [
     body: "When an AI wants to save a note or run something, it asks here. Approve it or say no. Nothing happens without you." },
   { target: '[data-tour="systems-tab"]', title: "Systems",
     body: "What's running behind the scenes, like the graphics card. You can ignore it." },
-  { target: '[data-testid="bookshelf-open"]', title: "Library: your notes and documents",
+  { target: '[data-testid="bookshelf-open"]', title: "Bookshelf: your notes and documents",
     body: "Add your documents here. Sage turns them into notes, and each one waits for your OK in the Inbox first." },
   { target: '[data-tour="guide"]', title: "That's it",
     body: "Open GUIDE any time to see this again. If something isn't working, REPORT A PROBLEM is right next to it." },
@@ -124,7 +124,7 @@ export default function Guide({ open, panels, onClose, onBookshelf }: {
             </div>
             <div className="flex gap-2 sm:ml-auto">
               <button className="chip" onClick={() => { markSeen(); onClose(); onBookshelf(); }}
-                title="Your notes and documents">OPEN LIBRARY</button>
+                title="Your notes and documents">OPEN BOOKSHELF</button>
               <button className="chip amber" onClick={() => setMode("tour")} data-testid="guide-tour" autoFocus>TAKE THE TOUR →</button>
             </div>
           </section>

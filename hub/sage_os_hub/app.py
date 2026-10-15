@@ -43,7 +43,7 @@ from .gamemode import GameMode
 from .inbox import Inbox
 from .threads import Threads, ai_label
 from .keys import CLOUD, Keys
-from . import report
+from . import adddocs, report
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -129,6 +129,7 @@ class Hub:
                                      cfg.data_dir / "backups", self.device.id)
         self.store = Store(cfg.store, cfg.keep_events)
         self.threads = Threads(self, self.store.db, self.store.lock)     # W3: the one chat space (D39)
+        self._sync_waiting: set[str] = set()                              # O0: sources waiting to sync (sync_soon)
         self.usage = Usage(self.store.db, self.store.lock)                 # D40: tokens, prices, spend
         self.keys = Keys()                                                 # D40: API keys in the OS keychain
         self.panels: dict = {}
@@ -506,6 +507,41 @@ class Hub:
     def publish_sources(self):
         self.panel("sources", self.sources.summary())
 
+    async def sync_soon(self, name: str) -> None:
+        """Sync a source as soon as no other sync runs; asking again while it waits does nothing (O0: files added
+        one after another make one sync, not a refusal)."""
+        waiting = self._sync_waiting
+        if name in waiting:
+            return
+        waiting.add(name)
+        try:
+            while self.sources.syncing:
+                await asyncio.sleep(0.5)
+        finally:
+            waiting.discard(name)
+        await self.sync_source(name)
+
+    def add_folder(self, folder: Path) -> dict:
+        """A folder of the user's documents becomes a source: copied read-only, indexed, remembered (O0)."""
+        folder = folder.expanduser().resolve()
+        if not folder.is_dir():
+            raise ValueError("that folder doesn't exist on this computer")
+        if folder == Path(folder.anchor):
+            raise ValueError("choose a folder, not a whole drive")
+        for root in filter(None, [self.cfg.data_dir, self.cfg.library]):
+            r = Path(root).resolve()
+            if folder == r or r in folder.parents or folder in r.parents:
+                raise ValueError("that's Sage OS's own folder; choose a folder of your documents")
+        for spec in self.sources.specs.values():
+            if not spec.api and Path(spec.path).expanduser().resolve() == folder:
+                return {"name": spec.name, "path": str(folder), "added": False}
+        name = adddocs.source_name(folder, set(self.sources.specs))
+        adddocs.remember_source(self.cfg.local_config, name, folder)
+        self.sources.specs[name] = SourceSpec(name, folder)
+        self.publish_sources()
+        self.event("knowledge", "sources", "sources.added", {"source": name})
+        return {"name": name, "path": str(folder), "added": True}
+
     async def sync_source(self, name: str) -> dict:
         """Copy and index one source in a worker thread, publishing progress to the UI."""
         def progress(src, done, total):
@@ -622,9 +658,9 @@ class Hub:
             raise ValueError("this install keeps notes in the old data/ folder; move it to app data first")
         new = new.resolve()
         if new == old.resolve():
-            raise ValueError("that's already the Library")
+            raise ValueError("the Bookshelf is already in that folder")
         if old.resolve() in new.parents or new in old.resolve().parents:
-            raise ValueError("the new Library can't be inside the current one, or the other way round")
+            raise ValueError("the new Bookshelf folder can't be inside the current one, or the other way round")
         new.mkdir(parents=True, exist_ok=True)
         with self.writer.lock:
             merged = {sub: storage.merge_into(old / sub, new / sub) for sub in ("Notes", "Files")}
@@ -990,6 +1026,10 @@ class KeyBody(BaseModel):
     key: str = Field(min_length=1, max_length=500)
 
 
+class FolderBody(BaseModel):
+    path: str | None = Field(default=None, max_length=1000)
+
+
 class ReportBody(BaseModel):
     description: str = Field(default="", max_length=4000)
     doing: str = Field(default="", max_length=2000)
@@ -1234,6 +1274,53 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if doc is None:
             raise HTTPException(404, "no such source file")
         return doc
+
+    # -- adding documents from the app (O0) -------------------------------------------------------------------
+    @app.post("/api/bookshelf/files", dependencies=W)
+    async def bookshelf_add_file(request: Request, name: str = Query(min_length=1, max_length=255)):
+        """One file, sent as the request body, saved into the Bookshelf's Files folder and indexed there."""
+        lib = cfg.library
+        if lib is None or "library" not in hub.sources.specs:
+            raise HTTPException(409, "this install has no Bookshelf folder for files")
+        folder = Path(hub.sources.specs["library"].path)
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = adddocs.unique(folder, adddocs.safe_name(name))
+        part = dest.with_name(dest.name + ".part")
+        size = 0
+        try:
+            with open(part, "wb") as f:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > adddocs.MAX_FILE:
+                        raise HTTPException(413, f"{name} is over {adddocs.MAX_FILE // 2**20} MB")
+                    f.write(chunk)
+            os.replace(part, dest)
+        finally:
+            part.unlink(missing_ok=True)
+        asyncio.create_task(hub.sync_soon("library"))
+        return {"saved": dest.name, "bytes": size}
+
+    @app.post("/api/bookshelf/folders", dependencies=W)
+    async def bookshelf_add_folder(body: FolderBody):
+        """Add a folder of documents: the path given, or the one picked in the computer's own folder picker."""
+        path = body.path
+        if not path:
+            if not adddocs.PICKING.acquire(blocking=False):
+                raise HTTPException(409, "the folder picker is already open (it may be behind this window)")
+            try:
+                path = await asyncio.to_thread(adddocs.pick_folder)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise HTTPException(501, f"this computer's folder picker didn't open ({exc}); type the folder's path instead")
+            finally:
+                adddocs.PICKING.release()
+            if not path:
+                return {"cancelled": True}
+        try:
+            r = await asyncio.to_thread(hub.add_folder, Path(path))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        asyncio.create_task(hub.sync_soon(r["name"]))
+        return r
 
     @app.post("/api/sources/{name}/sync", dependencies=W)
     async def sources_sync(name: str):
@@ -1566,7 +1653,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     async def storage_library(body: LibraryMove):
         path = Path(body.path).expanduser()
         if not path.is_absolute():
-            raise HTTPException(400, "give the full path of a folder, e.g. C:\\Users\\you\\OneDrive\\Sage Library")
+            raise HTTPException(400, "give the full path of a folder, e.g. C:\\Users\\you\\OneDrive\\Sage Bookshelf")
         try:
             r = await asyncio.to_thread(hub.move_library, path)
         except (ValueError, OSError) as exc:

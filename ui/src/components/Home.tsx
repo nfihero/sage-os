@@ -143,7 +143,7 @@ export function LibrarySearch({ panels, onOpenNote, onOpenSource, onAsk }: {
         <span className="chip mute hidden sm:inline-flex">CTRL K</span>
       </label>
       <div className="flex flex-wrap items-center gap-x-3 border-t border-dashed border-cyan/10 px-3.5 py-1 text-[11px] uppercase tracking-[.16em] text-mute">
-        <span>Enter asks your AI · results open in the Library</span>
+        <span>Type to search your notes · press Enter to ask your AI</span>
         <SearchMode s={panels.semantic} />
       </div>
       </section>
@@ -190,18 +190,18 @@ function SearchMode({ s }: { s?: SemanticPanel }) {
     try { await post("/api/semantic/download"); } catch (e) { setErr(String((e as Error).message)); }
   };
   let body: ReactNode;
-  if (dl) body = <>downloading the search model <Num className="text-[13px]">{dl.total ? Math.round((dl.done / dl.total) * 100) : 0}</Num>%</>;
+  if (dl) body = <>getting smart search ready <Num className="text-[13px]">{dl.total ? Math.round((dl.done / dl.total) * 100) : 0}</Num>%</>;
   else if (!s.installed) body = <>{s.download?.state === "failed" && <span className="mr-2 text-amber" title={s.download.error ?? ""}>download failed: {s.download.error}</span>}
     <button className="chip h-6 normal-case tracking-normal" onClick={turnOn}
     title={`Downloads EmbeddingGemma 300M (${Math.round(s.size / 1e6)} MB) once; it runs on the processor, not the graphics card`}>
-    search by meaning too · {Math.round(s.size / 1e6)} MB</button></>;
-  else if (s.state === "indexing") body = <span title="Search uses meaning for what's done; the rest still matches by words">
-    {s.what === "documents" ? <>words + meaning · reading documents, <Num className="text-[13px]">{s.documents_left ?? 0}</Num> to go</>
+    turn on smart search · {Math.round(s.size / 1e6)} MB</button></>;
+  else if (s.state === "indexing") body = <span title="Smart search finds notes by what they mean, not only their words; it works on what's ready so far">
+    {s.what === "documents" ? <>smart search · reading documents, <Num className="text-[13px]">{s.documents_left ?? 0}</Num> to go</>
       : <>reading notes <Num className="text-[13px]">{s.done ?? 0}</Num>/{s.total ?? "?"}</>}</span>;
-  else if (s.state === "paused") body = <span title={s.reason ?? ""}>words only · paused for a game</span>;
-  else if (s.state === "error") body = <span className="text-amber" title={s.reason ?? ""}>words only · search model stopped</span>;
-  else if (s.state === "ready" || s.notes > 0) body = <span className="text-cyan/80" title={`${s.notes} notes and ${s.documents} documents searchable by meaning`}>words + meaning</span>;
-  else body = <span>words only</span>;
+  else if (s.state === "paused") body = <span title={s.reason ?? ""}>simple search · paused for a game</span>;
+  else if (s.state === "error") body = <span className="text-amber" title={s.reason ?? ""}>simple search · smart search stopped</span>;
+  else if (s.state === "ready" || s.notes > 0) body = <span className="text-cyan/80" title={`${s.notes} notes and ${s.documents} documents searchable by meaning`}>smart search on</span>;
+  else body = <span>simple search</span>;
   return <span className="ml-auto normal-case tracking-normal">{body}{err && <span className="ml-2 text-red">{err}</span>}</span>;
 }
 
@@ -243,9 +243,9 @@ export function RecentNotes({ panels, onOpenNote, onLibrary }: { panels: Panels;
     .sort((a, b) => (Date.parse(b.updated ?? b.created ?? "") || 0) - (Date.parse(a.updated ?? a.created ?? "") || 0)).slice(0, 6), [panels.vault?.notes]);
   return (
     <section className="panel min-h-0">
-      <div className="panel-head"><span className="tab">Recent notes</span><button className="chip mute ml-auto normal-case tracking-normal" onClick={onLibrary}>library</button></div>
+      <div className="panel-head"><span className="tab">Recent notes</span><button className="chip mute ml-auto normal-case tracking-normal" onClick={onLibrary}>bookshelf</button></div>
       <div className="panel-body">
-        {notes.length === 0 && <p className="text-mute">No notes yet. Add your documents in the Library; notes made from them show up here once you approve them.</p>}
+        {notes.length === 0 && <p className="text-mute">No notes yet. Add your documents in the Bookshelf; notes made from them show up here once you approve them.</p>}
         {notes.map((n) => {
           const when = Date.parse(n.updated ?? n.created ?? "");
           return (
@@ -261,12 +261,12 @@ export function RecentNotes({ panels, onOpenNote, onLibrary }: { panels: Panels;
   );
 }
 
-/** Bottom: the machine in one line; the full dashboard is under Systems. */
+/** Bottom: the machine in one line, in plain words (O0); the full dashboard is under Systems. Things that are fine and
+ *  don't matter to a newcomer (game mode watching, Hermes not set up) stay out of it. */
 export function SystemsStrip({ panels, onSystems }: { panels: Panels; onSystems: () => void }) {
   const g = panels.gpu?.gpu;
   const e = panels.engine?.serving;
   const game = panels.gamemode;
-  const lib = panels.vault;
   const hermes = panels.health?.gateway.state;
   const item = (k: string, v: React.ReactNode) => (
     <span className="flex items-baseline gap-2"><span className="text-[11px] uppercase tracking-[.16em] text-mute">{k}</span><span className="font-mono text-[12px] text-ink/90">{v}</span></span>
@@ -275,16 +275,15 @@ export function SystemsStrip({ panels, onSystems }: { panels: Panels; onSystems:
     <section className="panel flex-wrap items-center gap-x-6 gap-y-1 px-3.5 py-1.5 text-[12px]" style={{ flex: "none", flexDirection: "row" }} data-tour="systems-strip">
       {g && (
         <span className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[.16em] text-mute">GPU</span>
+          <span className="text-[11px] uppercase tracking-[.16em] text-mute" title="Memory on the graphics card, which local models use">Graphics memory</span>
           <span className="vram-bar w-20"><span className={`vram-fill ${g.vram_used_mb / g.vram_total_mb > .92 ? "hot" : ""}`} style={{ width: `${(g.vram_used_mb / g.vram_total_mb) * 100}%` }} /></span>
           <span className="text-[12px] text-mute"><Num className="text-[15px]">{(g.vram_used_mb / GB).toFixed(1)}</Num> / {(g.vram_total_mb / GB).toFixed(1)} GB</span>
         </span>
       )}
-      {item("Engine", e ? <><span className={`light ${e.ready ? "up" : "idle"} mr-1`} />{shortModel(e.id)}</> : <span className="text-mute">off</span>)}
-      {game && item("Game mode", game.state === "aside" || game.state === "micro" ? <span className="text-amber">stepped aside</span> : game.mode === "never" ? "off" : "watching")}
-      {lib && item("Library", <><Num className="text-[15px]">{lib.count}</Num> notes</>)}
+      {item("Model on this computer", e ? <><span className={`light ${e.ready ? "up" : "idle"} mr-1`} />{shortModel(e.id)}{e.ready ? "" : " · loading"}</> : <span className="text-mute">none running</span>)}
+      {game && (game.state === "aside" || game.state === "micro") && item("Game mode", <span className="text-amber">paused for a game</span>)}
       {hermes && hermes !== "absent" && item("Hermes", hermes === "up" ? "running" : <span className={hermes === "down" ? "text-red" : "text-mute"}>{hermes === "down" ? "stopped" : "not running"}</span>)}
-      <button className="chip mute ml-auto" onClick={onSystems}>SYSTEMS: BOARD, GPU, SAFETY</button>
+      <button className="chip mute ml-auto" onClick={onSystems} title="Tasks, the graphics card and the safety log">DETAILS</button>
     </section>
   );
 }
