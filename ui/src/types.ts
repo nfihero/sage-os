@@ -118,7 +118,7 @@ export type EngineState = EnginePanel & { catalog: EngineModel[]; local: EngineM
   setup?: { model: string; step: "engine" | "model" | "start" | "loading" | "ready"; error: string | null } | null };
 /** W3 (D39): the one chat space. */
 export type AI = { agent: string; provider: string | null; model: string | null; label: string; kind: string; where: string;
-  ready?: boolean; switch_into?: boolean };
+  ready?: boolean; switch_into?: boolean ; name?: string; note?: string | null; first?: boolean };
 export type ThreadRow = { id: string; title: string; pinned: boolean; archived: boolean; updated: number; created: number;
   ais: string[]; current: { agent: string; label: string; model: string | null; provider?: string | null }; busy: boolean; snippet: string | null };
 export type ThreadPart = { agent: string; sid: string; label: string; model: string | null; provider?: string | null; started: number; items: any[];

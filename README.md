@@ -11,8 +11,8 @@ under *Assets*. No Python, Node or code needed; the app carries everything it ru
 
 | Computer | Download | Needs |
 |---|---|---|
-| Windows | `Sage OS_<version>_x64-setup.exe` | Windows 10 or 11, 64-bit |
-| Mac | `Sage OS_<version>_aarch64.dmg` | Apple Silicon (M1 or newer), macOS 11+ |
+| Windows | `Sage.OS_<version>_x64-setup.exe` | Windows 10 or 11, 64-bit |
+| Mac | `Sage.OS_<version>_aarch64.dmg` | Apple Silicon (M1 or newer), macOS 11+ |
 
 **Windows**
 
@@ -139,14 +139,22 @@ Cloud (Drive API enabled, consent screen in testing mode with yourself as a test
 `config.toml`. Without Hermes or an NVIDIA GPU those panels show as down or empty; Claude works if the
 `claude` CLI is installed and signed in (`claude auth login`).
 
-**One-time Claude login** (the Agent SDK's CLI needs its own sign-in; `/login` inside a chat won't work):
+**One-time Claude login** (the Agent SDK's CLI needs its own sign-in; `/login` inside a chat won't work). In the app,
+CONNECT → Claude Code shows this command with a COPY button. Open a terminal (Mac: Command-Space, type *Terminal*,
+Return; Windows: the Windows key, type *Terminal*, Enter) and run:
+
+```
+claude auth login
+```
+
+If the terminal says `claude` isn't found, use the full path. On a Mac it's usually `~/.local/bin/claude`. On Windows
+with the Claude desktop app (PowerShell):
 
 ```
 & "$env:LOCALAPPDATA\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code\<newest>\claude.exe" auth login
 ```
 
-(PowerShell; drop the leading `&` and use `%LOCALAPPDATA%` in Command Prompt. Override the path with
-`SAGE_OS_CLAUDE_CLI`.)
+Override the path Sage OS uses with `SAGE_OS_CLAUDE_CLI`.
 
 ## What's on screen
 

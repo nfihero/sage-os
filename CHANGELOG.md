@@ -12,6 +12,29 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.28.0] — 2026-10-17
+
+The first Mac run's findings fixed (D42). **Gate: the owner's re-run on the Mac** (docs/MAC-FIRST-RUN.md). pytest 365.
+
+### Fixed
+- The AI picker no longer runs off the window: it sits above every panel, scrolls, and keeps *Install or connect
+  another… CONNECT* at the bottom. Checked at 1024×768 and 375×812 with 60 Gemini models: every entry and CONNECT
+  can be reached.
+- Cloud services offer chat models only (no text-to-speech, image, music, robotics or computer-use models), the
+  best-known four first with what each is good for, the rest under *More … models*, all with readable names.
+- A model's thinking (`<thought>` blocks) is no longer shown as its answer, and a reply that stops early says so.
+- No "kanban poll failed" line every few seconds on a computer without Hermes.
+
+### Added
+- **SWITCH OR CONNECT AN AI** on the left card, and one-click entries in the picker for a model on this computer,
+  Claude Code, ChatGPT and Gemini when they aren't set up yet.
+- An empty chat list says how many chats are in the Archive; an archived chat offers *Put it back*.
+
+### Changed
+- On a Mac: *Memory* instead of graphics memory, *this Mac*, and Command-key steps for the terminal.
+- README and the Mac checklist name the installers as GitHub publishes them (`Sage.OS_<version>_…`), and the README's
+  Claude sign-in works on a Mac too.
+
 ## [0.27.0] — 2026-10-15
 
 O0: everything in the first-time-user audit is addressed (D41.1). **Gate: waits on a real first-time user**

@@ -2,23 +2,25 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { get, post } from "../api";
 import type { ClaudePanel, Panels, SearchResult, SemanticPanel, SourceHit } from "../types";
 import type { Answering } from "./ChatSpace";
-import { shortModel, useNow } from "../util";
+import { isMac, shortModel, useNow } from "../util";
 import Orb from "./LazyOrb";
 import { Snippet } from "./Bookshelf";
 import { Ago, Meter, Num, Row } from "./Readout";
 import { UsageBars } from "./Usage";
 
-/** W2 (D35): the library-first home. Left, the agent side panel (planet, model, where it runs, usage) and the
- *  agents you can switch between; centre, search over your library and the conversation; right, what waits for you.
+/** W2 (D35): the library-first home. Left, the AI answering you (planet, model, where it runs, usage) and a
+ *  "Switch or connect an AI" button that opens the chat's AI picker (D42); centre, search over your Bookshelf and the
+ *  conversation; right, what waits for you.
  *  The board, GPU lane and safety feed live under Systems. */
 
 export type AgentKey = "local" | "claude";
 
 const GB = 1024;
 
-/** Left: the agent answering you, as a planet with its facts, then the others to switch to or connect. */
-export function AgentPanel({ agent, answering, panels, lowPower, onModels }: {
+/** Left: the AI answering you, as a planet with its facts, and one button to switch to another or connect one. */
+export function AgentPanel({ agent, answering, panels, lowPower, onModels, onSwitch, onConnect }: {
   agent: AgentKey; answering: Answering; panels: Panels; lowPower?: boolean; onModels: () => void;
+  onSwitch: () => void; onConnect: () => void;
 }) {
   const engine = panels.engine?.serving;
   const chats = panels.chat?.sessions ?? [];
@@ -59,7 +61,7 @@ export function AgentPanel({ agent, answering, panels, lowPower, onModels }: {
               <Row k="Where" v="cloud" />
             </> : <>
               <Row k="Model" v={engine ? shortModel(engine.id) : game?.previous ? shortModel(game.previous) : "none loaded"} />
-              <Row k="Where" v={g ? "this PC, on the GPU" : "this PC"} />
+              <Row k="Where" v={isMac() ? "this Mac" : g ? "this PC, on the graphics card" : "this PC"} />
               <Row k="Chats" v={String(chats.length)} />
             </>}
           </div>
@@ -83,6 +85,11 @@ export function AgentPanel({ agent, answering, panels, lowPower, onModels }: {
           {!waiting && !cloud && agent === "local" && !engine && !aside && (
             <button className="chip w-full justify-center" onClick={onModels}>START A MODEL (MODELS)</button>
           )}
+          <div className="flex w-full flex-col gap-1.5" data-testid="switch-ai">
+            <button className="chip h-8 w-full justify-center" onClick={waiting ? onConnect : onSwitch}
+              title="Pick which AI answers: a model on this computer, ChatGPT, Gemini, Claude…">{waiting ? "CONNECT AN AI" : "SWITCH OR CONNECT AN AI"}</button>
+            {!waiting && <button className="text-[11px] text-mute hover:text-cyan" onClick={onConnect}>connect another AI →</button>}
+          </div>
         </div>
       </section>
     </div>
@@ -275,7 +282,7 @@ export function SystemsStrip({ panels, onSystems }: { panels: Panels; onSystems:
     <section className="panel flex-wrap items-center gap-x-6 gap-y-1 px-3.5 py-1.5 text-[12px]" style={{ flex: "none", flexDirection: "row" }} data-tour="systems-strip">
       {g && (
         <span className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[.16em] text-mute" title="Memory on the graphics card, which local models use">Graphics memory</span>
+          <span className="text-[11px] uppercase tracking-[.16em] text-mute" title={/apple/i.test(g.name) ? "Memory, shared by the processor, graphics and local models" : "Memory on the graphics card, which local models use"}>{/apple/i.test(g.name) ? "Memory" : "Graphics memory"}</span>
           <span className="vram-bar w-20"><span className={`vram-fill ${g.vram_used_mb / g.vram_total_mb > .92 ? "hot" : ""}`} style={{ width: `${(g.vram_used_mb / g.vram_total_mb) * 100}%` }} /></span>
           <span className="text-[12px] text-mute"><Num className="text-[15px]">{(g.vram_used_mb / GB).toFixed(1)}</Num> / {(g.vram_total_mb / GB).toFixed(1)} GB</span>
         </span>

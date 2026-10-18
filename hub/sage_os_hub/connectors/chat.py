@@ -150,6 +150,11 @@ class ChatConnector(AgentConnector):
                 if text.strip():
                     self._item(sid, "text", {"text": text})
                 if not calls:
+                    if spent.get("finish") == "length" or not text.strip():
+                        why = ("it stopped while still thinking" if spent.get("thought_only")
+                               else "it hit the model's length limit" if spent.get("finish") == "length" else "it came back empty")
+                        self._item(sid, "error", {"text": f"The reply was cut off ({why}). Try again, or pick another model "
+                                                           "in the AI picker above the chat."})
                     break
                 msgs.append({"role": "assistant", "content": text or None, "tool_calls": calls})
                 for c in calls:
@@ -189,7 +194,8 @@ class ChatConnector(AgentConnector):
             body["stream_options"] = {"include_usage": True}
         if tools:
             body["tools"] = tools
-        text, calls, reported = "", {}, None
+        text, calls, reported, finish = "", {}, None, None
+        think = ThinkFilter()
         sid = next((k for k, t in self.tasks.items() if t is asyncio.current_task()), None)
         async with httpx.AsyncClient(timeout=httpx.Timeout(30, read=600)) as c:
             async with c.stream("POST", f"{provider.base_url.rstrip('/')}/chat/completions", json=body,
@@ -217,11 +223,13 @@ class ChatConnector(AgentConnector):
                     if chunk.get("usage"):
                         reported = chunk["usage"]
                     for ch in chunk.get("choices") or []:
+                        finish = ch.get("finish_reason") or finish
                         d = ch.get("delta") or {}
-                        if d.get("content"):
-                            text += d["content"]
-                            if sid:
-                                self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "delta", "text": d["content"]})
+                        if d.get("content"):                 # thinking (reasoning_content, <thought> blocks) is not the reply
+                            shown = think.feed(d["content"])
+                            text += shown
+                            if sid and shown:
+                                self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "delta", "text": shown})
                         for tc in d.get("tool_calls") or []:
                             # OpenAI streams pieces keyed by index; some servers (Gemini) send whole calls without one
                             idx = tc["index"] if "index" in tc else (len(calls) if tc.get("id") or not calls else len(calls) - 1)
@@ -230,7 +238,13 @@ class ChatConnector(AgentConnector):
                             fn = tc.get("function") or {}
                             slot["function"]["name"] += fn.get("name") or ""
                             slot["function"]["arguments"] += fn.get("arguments") or ""
+        tail = think.flush()
+        if tail:
+            text += tail
+            if sid:
+                self.hub.publish({"t": "chat", "pane": self.pane(sid), "op": "delta", "text": tail})
         if spent is not None:
+            spent["finish"], spent["thought_only"] = finish, bool(think.thought.strip()) and not text.strip()
             if reported and (reported.get("prompt_tokens") or reported.get("completion_tokens")):
                 spent["in"] += int(reported.get("prompt_tokens") or 0)
                 spent["out"] += int(reported.get("completion_tokens") or 0)
@@ -264,6 +278,52 @@ class ChatConnector(AgentConnector):
         except (TypeError, ValueError) as exc:
             r = {"error": f"bad arguments: {exc}"}
         return as_text(r)
+
+
+class ThinkFilter:
+    """Hides a model's thinking that arrives inside the reply (<thought>, <think>, <thinking> blocks; Mac test, D42),
+    across streamed pieces that may split a tag. What's inside is kept apart in `thought`."""
+    TAGS = ("thought", "thinking", "think")
+
+    def __init__(self):
+        self.buf, self.inside, self.thought = "", None, ""
+
+    def feed(self, piece: str) -> str:
+        self.buf += piece
+        out = ""
+        while self.buf:
+            low = self.buf.lower()
+            if self.inside:
+                close = f"</{self.inside}>"
+                i = low.find(close)
+                if i < 0:                                  # keep enough to recognise a close tag split in two
+                    keep = len(close) - 1
+                    self.thought += self.buf[:-keep] if len(self.buf) > keep else ""
+                    self.buf = self.buf[-keep:] if len(self.buf) > keep else self.buf
+                    break
+                self.thought += self.buf[:i]
+                self.buf, self.inside = self.buf[i + len(close):], None
+                continue
+            i = low.find("<")
+            if i < 0:
+                out, self.buf = out + self.buf, ""
+                break
+            out, self.buf, low = out + self.buf[:i], self.buf[i:], low[i:]
+            tag = next((t for t in self.TAGS if low.startswith(f"<{t}>")), None)
+            if tag:
+                self.buf, self.inside = self.buf[len(tag) + 2:], tag
+                continue
+            if any(f"<{t}>".startswith(low) for t in self.TAGS):
+                break                                      # maybe the start of a tag: wait for more
+            out, self.buf = out + "<", self.buf[1:]
+        return out
+
+    def flush(self) -> str:
+        rest, self.buf = self.buf, ""
+        if self.inside:
+            self.thought += rest
+            return ""
+        return rest
 
 
 NO_USAGE: set[str] = set()      # providers that refused stream_options this run (their tokens are estimated)

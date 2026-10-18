@@ -22,6 +22,7 @@ export function stamp(ts?: number | null): string {
 /** "Nail-Qwen3.6-35B-A3B-MTP-UD-IQ3_S" -> "Qwen3.6-35B" : short labels for chips. */
 export function shortModel(id?: string | null): string {
   if (!id) return "—";
+  id = id.replace(/^models\//, "");
   const m = id.match(/(Qwen[\d.]+-\d+B|gemma-4-\d+B|gemma-4-\d+b|guardian-\d+b)/i);
   const base = m ? m[1] : id.split("-").slice(0, 2).join("-");
   return id.startsWith("Dirk") ? `Dirk ${base}` : base;
@@ -51,4 +52,9 @@ export function goodFor(note?: string | null): string {
 /** How a model will run on this computer, in plain words (catalog fit: fits / tight / too big). */
 export function fitWords(fit: string): string {
   return ({ fits: "runs well here", tight: "runs, but slowly", "too big": "too big for this computer" } as Record<string, string>)[fit] ?? fit;
+}
+
+/** On a Mac (wording: "this Mac", Command keys, unified memory). */
+export function isMac(): boolean {
+  return /Mac/i.test(navigator.platform || navigator.userAgent);
 }

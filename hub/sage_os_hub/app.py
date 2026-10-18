@@ -43,7 +43,7 @@ from .gamemode import GameMode
 from .inbox import Inbox
 from .threads import Threads, ai_label
 from .keys import CLOUD, Keys
-from . import adddocs, report
+from . import adddocs, modelnames, report
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -1888,9 +1888,17 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         for p in await provider_models():
             if p["id"] == "hermes-router":           # Hermes' own router serves Hermes, not Sage's chats
                 continue
+            where = "this computer" if p["id"] == "engine" else p["label"]
+            if p.get("kind") == "cloud":                # chat models only, best-known first, readable names (D42)
+                fam = {"openai": "openai", "gemini": "gemini"}.get(p["id"], p["id"])
+                order = [r["model"] for r in hub.usage.list["models"] if r["provider"] == fam]
+                for m in modelnames.arrange(fam, [x["id"] for x in p["models"]], order):
+                    out.append({"agent": "chat", "provider": p["id"], "model": m["id"], "label": ai_label("chat", m["name"], p["label"]),
+                                "kind": "cloud", "where": where, "name": m["name"], "note": m["note"], "first": m["first"]})
+                continue
             for m in p["models"]:
                 out.append({"agent": "chat", "provider": p["id"], "model": m["id"], "label": ai_label("chat", m["id"], p["label"]),
-                            "kind": p.get("kind", "local"), "where": "this computer" if p["id"] == "engine" else p["label"]})
+                            "kind": p.get("kind", "local"), "where": where, "first": True})
         c = hub.agents.get("claude")
         if c is not None:
             out.append({"agent": "claude", "provider": None, "model": None, "label": "Claude Code", "kind": "cloud",
@@ -1908,7 +1916,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         with agent_errors():
             s = await hub.agents[ai.agent].create_session(title, cwd=ai.cwd, model=ai.model, provider=ai.provider)
         label = "Claude Code" if ai.agent == "claude" else hub.agents[ai.agent].label if ai.agent.startswith("hermes:") \
-            else ai_label("chat", ai.model, hub.providers[ai.provider].label if ai.provider in hub.providers else None)
+            else ai_label("chat", modelnames.friendly(ai.model) if ai.provider in hub.providers and hub.providers[ai.provider].kind == "cloud"
+                          else ai.model, hub.providers[ai.provider].label if ai.provider in hub.providers else None)
         return str(s["id"]), label, ai.model
 
     @app.get("/api/threads")

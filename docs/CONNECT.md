@@ -15,9 +15,9 @@ or *Install or connect another…* in the AI picker above a chat) has these same
 
 ## A model on this computer
 
-1. Open **MODELS**. Sage OS looks at your memory and graphics card and marks each model *fits*, *tight* or
+1. Open **MODELS**. Sage OS looks at this computer and marks each model *runs well here*, *runs, but slowly* or
    *too big*.
-2. Pick one marked *fits* (the largest that fits is usually best) and press **install**. Sage OS fetches llama.cpp,
+2. Pick one that *runs well here* (the biggest of those is usually best) and press **install**. Sage OS fetches llama.cpp,
    the program that runs it, by itself.
 3. Press **start**, then pick it in the AI picker above a chat.
 
@@ -27,7 +27,8 @@ small one instead.
 ## Claude Code
 
 1. Install Claude Code from [claude.com/code](https://claude.com/code) (the Claude desktop app includes it).
-2. Sign it in once: in a terminal, run `claude auth login` and finish in the browser.
+2. Sign it in once: open a terminal (Mac: Command-Space, type *Terminal*, Return; Windows: the Windows key, type
+   *Terminal*, Enter), run `claude auth login`, and finish in the browser.
 3. In **CONNECT → Claude Code**, press **CONNECT**. New Claude chats ask which folder Claude may work in. Claude asks
    before running commands or changing files, and those requests appear in your inbox.
 

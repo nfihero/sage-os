@@ -1047,3 +1047,30 @@ review.
   game mode and the safety log into SETTINGS; game mode and safety come forward only when they have news.
 - **Revisit if:** testers show a different first need than these.
 
+## D42 — What the first Mac run found: the AI picker, a way back to every AI, chat models only
+
+- **Date / by:** 2026-10-17, owner's Mac test (Apple M1, 8 GB, macOS 26.6.2, 0.26.0) and brief; fixes by Claude in 0.28.0
+- **Status:** accepted; built in 0.28.0. Changes part of D39 (W3): the left card gets a button back.
+- **Found:** install, first start, self-check and the helpers' downloads worked, and Gemini connected and answered. Then:
+  the AI picker ran off the window (63 Gemini models, no scrolling), which also hid its only CONNECT row, so after one
+  cloud AI there was no way to the local model, ChatGPT or Claude; Gemini's list held text-to-speech, image, music,
+  robotics and computer-use models that error in a chat, with names cut to the same `models/gemini-2.5`; a Gemma
+  reply stopped inside a raw `<thought>` block and looked finished; a chat landed in the Archive.
+- **Decision:**
+  1. **The picker never runs off the window:** it's drawn above every panel, scrolls, and keeps *Install or connect
+     another… CONNECT* pinned at the bottom, with one-click entries for what isn't set up yet (a model on this
+     computer, Claude Code, ChatGPT, Gemini).
+  2. **The left card has SWITCH OR CONNECT AN AI** again (D39 had removed its switch list): it opens the open chat's
+     picker, or the new-chat menu, or CONNECT on a fresh install.
+  3. **Cloud model lists are cut to chat models** in the hub (by name: no tts, image, music, live/audio, embedding,
+     robotics, computer-use, transcription, moderation…), the best-known four come first with a plain description
+     (from the price list's newest-first order), the rest fold under *More … models*, and every id gets a readable
+     name (*Gemini 2.5 Flash*, *GPT-5.4 mini*).
+  4. **A model's thinking isn't shown as its answer:** `<thought>`/`<think>`/`<thinking>` blocks are held back while
+     streaming, and a reply that ends early (length limit, empty, or still thinking) says so with what to do next.
+  5. **Archive is recoverable at a glance:** an empty chat list says how many chats are in the Archive, and an
+     archived chat says so with *Put it back*. Nothing in the hub archives a chat by itself; it was a click.
+  6. **Mac wording:** *Memory* (not graphics memory) on Apple Silicon, *this Mac*, Command-key terminal steps, and
+     the installer's real name (`Sage.OS_<version>_aarch64.dmg`; GitHub writes the space as a dot).
+- **Revisit if:** a provider starts reporting which of its models chat (then use that instead of names).
+

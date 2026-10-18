@@ -60,6 +60,7 @@ export default function App() {
   const [usage, setUsage] = useState(false);
   const [reporting, setReporting] = useState(false);     // F1: Report a problem
   const [aisVersion, setAisVersion] = useState(0);
+  const [pickAsk, setPickAsk] = useState(false);            // D42: the left card asks the chat to open its AI picker
   const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
   const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
   const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
@@ -119,10 +120,11 @@ export default function App() {
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       {askErr && <div className="border border-amber/50 px-2 py-1 text-[12px] text-amber">{askErr} <button className="chip ml-1" onClick={() => setModels(true)}>MODELS</button></div>}
       <ChatSpace panels={panels} openId={chatOpen} onOpen={setChatOpen} onAnswering={setAnswering} onModels={() => setModels(true)}
-        onConnect={(s) => setConnect(s ?? "any")} onUsage={() => setUsage(true)} aisVersion={aisVersion} />
+        onConnect={(s) => setConnect(s ?? "any")} onUsage={() => setUsage(true)} aisVersion={aisVersion} pickAsk={pickAsk} onPickDone={() => setPickAsk(false)} />
     </div>
   );
-  const agentPanel = <AgentPanel agent={shown} answering={answering} panels={panels} lowPower={lowPower} onModels={() => setModels(true)} />;
+  const agentPanel = <AgentPanel agent={shown} answering={answering} panels={panels} lowPower={lowPower} onModels={() => setModels(true)}
+    onSwitch={() => { setTab("home"); setPickAsk(true); }} onConnect={() => setConnect("any")} />;
   const search = <LibrarySearch panels={panels} onOpenNote={openNote} onOpenSource={openSource} onAsk={ask} />;
   const hermesRan = panels.health?.gateway.state === "up" || panels.health?.gateway.state === "down";
   const local = <LocalPane sessions={panels.sessions ?? []} board={panels.board} runs={panels.hermes_runs ?? {}} compact={phone} lowPower={lowPower}

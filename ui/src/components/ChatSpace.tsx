@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { get, onChat, post } from "../api";
 import type { AI, ChatItem, ChatUsage, EngineModel, EngineState, Panels, Thread, ThreadRow } from "../types";
 import type { ConnectSection } from "./Connect";
@@ -36,21 +37,25 @@ function group(rows: ThreadRow[], now: number): [string, ThreadRow[]][] {
   return Object.entries(g).filter(([, v]) => v.length);
 }
 
-export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModels, onConnect, onUsage, aisVersion }: {
+export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModels, onConnect, onUsage, aisVersion, pickAsk, onPickDone }: {
   panels: Panels; openId: string | null; onOpen: (id: string | null) => void; onAnswering: (a: Answering) => void; onModels: () => void;
-  onConnect: (s?: ConnectSection) => void; onUsage: () => void; aisVersion: number;
+  onConnect: (s?: ConnectSection) => void; onUsage: () => void; aisVersion: number; pickAsk: boolean; onPickDone: () => void;
 }) {
   const now = useNow(30000);
   const [rows, setRows] = useState<ThreadRow[] | null>(null);
   const [ais, setAis] = useState<AI[] | null>(null);
   const [q, setQ] = useState("");
   const [archived, setArchived] = useState(false);
+  const [inArchive, setInArchive] = useState(0);          // shown when the chat list is empty (Mac test, D42)
   const [starting, setStarting] = useState(false);       // the "new chat with…" menu
   const [rail, setRail] = useState(false);                // phone: the history list instead of the conversation
   const [err, setErr] = useState<string | null>(null);
 
   const loadList = useCallback(() => {
-    get<ThreadRow[]>(`/api/threads?q=${encodeURIComponent(q.trim())}&archived=${archived}`).then(setRows).catch((e) => setErr(String(e.message)));
+    get<ThreadRow[]>(`/api/threads?q=${encodeURIComponent(q.trim())}&archived=${archived}`).then((r) => {
+      setRows(r);
+      if (!archived && r.length === 0) get<ThreadRow[]>("/api/threads?archived=true").then((a) => setInArchive(a.length)).catch(() => {});
+    }).catch((e) => setErr(String(e.message)));
   }, [q, archived]);
   const loadAis = useCallback(() => { get<{ ais: AI[] }>("/api/ais").then((r) => setAis(r.ais)).catch(() => setAis([])); }, []);
   useEffect(() => { const t = setTimeout(loadList, q ? 200 : 0); return () => clearTimeout(t); },
@@ -74,6 +79,13 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
 
   const nothing = rows !== null && ais !== null && rows.length === 0 && !q && !archived && ais.filter((a) => a.ready !== false).length === 0;
   useEffect(() => { if (nothing) onAnswering(null); }, [nothing]);
+  // the left card's "Switch or connect an AI" (D42): no chat open -> the "new chat with" menu; nothing at all -> CONNECT
+  // a request survives this panel mounting later (on a phone the chat appears only once Home is shown)
+  useEffect(() => {
+    if (!pickAsk || rows === null || ais === null) return;
+    if (nothing) { onPickDone(); onConnect(); }
+    else if (!openId) { onPickDone(); setStarting(true); }      // else the open conversation takes it
+  }, [pickAsk, rows === null, ais === null, openId]);
   // the first AI arrived on a fresh install (a model finished setting up, Claude signed in): open a first chat with it
   const wasNothing = useRef(false);
   useEffect(() => {
@@ -116,7 +128,11 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
         </label>
         <div className="min-h-0 flex-1 overflow-auto px-1.5 pb-2">
           {rows === null && <p className="px-2 text-mute">loading…</p>}
-          {rows?.length === 0 && <p className="copy px-2 py-2 text-[12px] text-mute">{q ? "No chat matches." : archived ? "Nothing archived." : "No chats yet. Start one above."}</p>}
+          {rows?.length === 0 && <p className="copy px-2 py-2 text-[12px] text-mute">{q ? "No chat matches." : archived ? "Nothing archived." : inArchive ? "" : "No chats yet. Start one above."}</p>}
+          {rows?.length === 0 && !q && !archived && inArchive > 0 && (
+            <button className="copy mx-2 text-left text-[12px] text-amber hover:underline" onClick={() => setArchived(true)}>
+              No chats here, but {inArchive} {inArchive === 1 ? "is" : "are"} in the Archive. Show {inArchive === 1 ? "it" : "them"} →</button>
+          )}
           {rows && group(rows, now).map(([name, list]) => (
             <div key={name}>
               <div className="display mx-1.5 mb-1 mt-2.5 text-[10.5px] tracking-[.2em] text-mute">{name}</div>
@@ -139,7 +155,7 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
       <div className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${rail || !openId ? "max-md:hidden" : ""}`}>
         {err && <div className="mx-3 mt-2 border border-amber/50 px-2 py-1 text-[12px] text-amber">{err}</div>}
         {openId
-          ? <Conversation key={openId} id={openId} ais={ais ?? []} onChanged={loadList} onAnswering={onAnswering} onConnect={onConnect} onUsage={onUsage} onRail={() => setRail(true)}
+          ? <Conversation key={openId} id={openId} ais={ais ?? []} onChanged={loadList} onAnswering={onAnswering} onConnect={onConnect} onUsage={onUsage} pickAsk={pickAsk} onPickDone={onPickDone} onRail={() => setRail(true)}
               onGone={() => onOpen(null)} />
           : <div className="m-auto max-w-[420px] p-6 text-center">
               <p className="copy text-[14px] text-ink/80">Pick a chat on the left, or start a new one with any AI you have.</p>
@@ -150,42 +166,92 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
   );
 }
 
-/** Every AI there is to talk to, for a new chat or the next reply. */
+/** Every AI there is to talk to, for a new chat or the next reply. It never runs off the window: the list scrolls and
+ *  "Install or connect another" stays pinned at the bottom (Mac test, D42). Cloud services list their best-known
+ *  chat models first; the rest are under "More models". */
 function AiMenu({ ais, title, current, onPick, onClose, onConnect }: {
-  ais: AI[]; title: string; current?: string; onPick: (ai: AI) => void; onClose: () => void; onConnect: () => void;
+  ais: AI[]; title: string; current?: string; onPick: (ai: AI) => void; onClose: () => void; onConnect: (s?: ConnectSection) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const anchor = useRef<HTMLSpanElement>(null);
+  // drawn over everything (a portal, fixed to the window) so no panel can cover it, and never past the window's edge
+  const [pos, setPos] = useState<{ left: number; top: number; width: number; maxH: number } | null>(null);
+  const [more, setMore] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) onClose(); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const fit = () => {
+      const host = anchor.current?.parentElement?.getBoundingClientRect();
+      if (!host) return;
+      const width = Math.min(340, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(host.left + 10, window.innerWidth - width - 8));
+      const top = Math.min(host.bottom + 2, window.innerHeight - 220);
+      setPos({ left, top, width, maxH: Math.max(200, window.innerHeight - top - 8) });
+    };
+    fit();
     setTimeout(() => document.addEventListener("mousedown", away));
     document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); };
+    window.addEventListener("resize", fit);
+    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); window.removeEventListener("resize", fit); };
   }, []);
-  return (
-    <div ref={box} role="menu" className="absolute left-2.5 top-[calc(100%+2px)] z-30 w-[300px] border border-cyan/45 bg-[#020f07] p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.6)]">
-      <div className="kicker mx-1 mb-1"><span>{title}</span><span>{ais.length ? "" : "none yet"}</span></div>
-      {ais.map((a) => {
-        const off = a.ready === false;
-        return (
-          <button key={aiKey(a)} role="menuitem" disabled={off} onClick={() => onPick(a)}
-            className={`grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-2.5 px-2 py-1.5 text-left hover:bg-cyan/10 disabled:opacity-45 ${current === aiKey(a) ? "bg-cyan/10" : ""}`}>
-            <span className={`h-2 w-2 rounded-full ${dot(a.agent, a.label)}`} aria-hidden />
-            <span className="copy truncate text-[13px] text-ink">{a.agent === "chat" ? shortModel(a.model ?? "") : a.label}</span>
-            <span className="text-[10.5px] text-mute">{off ? "sign in first" : a.where}</span>
-          </button>
-        );
-      })}
-      <div className="my-1 border-t border-dashed border-cyan/20" />
-      <button role="menuitem" className="w-full px-2 py-1.5 text-left text-[12px] text-mute hover:bg-cyan/10" onClick={() => { onClose(); onConnect(); }}>
-        Install or connect another… <span className="float-right">CONNECT</span>
+  const row = (a: AI) => {
+    const off = a.ready === false;
+    return (
+      <button key={aiKey(a)} role="menuitem" disabled={off} onClick={() => onPick(a)}
+        className={`grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-2.5 px-2 py-1.5 text-left hover:bg-cyan/10 disabled:opacity-45 ${current === aiKey(a) ? "bg-cyan/10" : ""}`}>
+        <span className={`h-2 w-2 rounded-full ${dot(a.agent, a.label)}`} aria-hidden />
+        <span className="min-w-0">
+          <span className="copy block text-[13px] leading-snug text-ink [overflow-wrap:anywhere]">{a.agent === "chat" ? (a.name ?? shortModel(a.model ?? "")) : a.label}</span>
+          {a.note && <span className="copy block text-[11px] text-mute">{a.note}</span>}
+        </span>
+        <span className="self-start pt-0.5 text-[10.5px] text-mute">{off ? "sign in first" : a.where}</span>
       </button>
-    </div>
-  );
+    );
+  };
+  // the cloud services' extra models fold away per service
+  // what isn't set up yet, one click from here (D42): a model on this computer, Claude, ChatGPT, Gemini
+  const has = (f: (a: AI) => boolean) => ais.some(f);
+  const missing: [ConnectSection, string][] = ([
+    ["computer", "A model on this computer", has((a) => a.provider === "engine" || a.provider === "ollama")],
+    ["claude", "Claude Code", has((a) => a.agent === "claude")],
+    ["openai", "ChatGPT", has((a) => a.provider === "openai")],
+    ["gemini", "Gemini", has((a) => a.provider === "gemini")],
+  ] as [ConnectSection, string, boolean][]).filter(([, , here]) => !here).map(([k, n]) => [k, n]);
+  const groups = new Map<string, AI[]>();
+  for (const a of ais) if (a.first === false) groups.set(a.where, [...(groups.get(a.where) ?? []), a]);
+  return <><span ref={anchor} hidden />{pos && createPortal(
+    <div ref={box} role="menu" className="flex flex-col border border-cyan/45 bg-[#020f07] shadow-[0_12px_40px_rgba(0,0,0,.6)]"
+      style={{ position: "fixed", left: pos.left, top: pos.top, width: pos.width, maxHeight: pos.maxH, zIndex: 70 }} data-testid="ai-menu">
+      <div className="kicker mx-2.5 mb-1 mt-1.5"><span>{title}</span><span>{ais.length ? "" : "none yet"}</span></div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
+        {ais.filter((a) => a.first !== false).map(row)}
+        {[...groups.entries()].map(([where, list]) => (
+          <div key={where}>
+            <button className="w-full px-2 py-1.5 text-left text-[11.5px] text-cyan/80 hover:bg-cyan/10" aria-expanded={!!more[where]}
+              onClick={() => setMore({ ...more, [where]: !more[where] })}>
+              {more[where] ? "▾" : "▸"} More {where} models ({list.length})
+            </button>
+            {more[where] && list.map(row)}
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-dashed border-cyan/20 p-1.5">
+        {missing.length > 0 && <div className="mb-1 flex flex-wrap items-center gap-1 px-1.5" data-testid="ai-menu-missing">
+          <span className="copy text-[11px] text-mute">Not set up yet:</span>
+          {missing.map(([k, n]) => (
+            <button key={k} className="chip mute h-6 normal-case tracking-normal" onClick={() => { onClose(); onConnect(k); }}
+              title={k === "computer" ? "Install or start a model that runs on this computer" : `How to connect ${n}`}>{n} +</button>
+          ))}
+        </div>}
+        <button role="menuitem" className="w-full px-2 py-1.5 text-left text-[12px] text-mute hover:bg-cyan/10" onClick={() => { onClose(); onConnect(); }}>
+          Install or connect another… <span className="float-right">CONNECT</span>
+        </button>
+      </div>
+    </div>, document.body)}</>;
 }
 
-function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, onGone, onRail }: {
-  id: string; ais: AI[]; onChanged: () => void; onAnswering: (a: Answering) => void; onConnect: () => void; onUsage: () => void; onGone: () => void;
+function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, pickAsk, onPickDone, onGone, onRail }: {
+  id: string; ais: AI[]; onChanged: () => void; onAnswering: (a: Answering) => void; onConnect: (s?: ConnectSection) => void; onUsage: () => void; pickAsk: boolean; onPickDone: () => void; onGone: () => void;
   onRail: () => void;
 }) {
   const [t, setT] = useState<Thread | null>(null);
@@ -194,6 +260,7 @@ function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, onG
   const [next, setNext] = useState<AI | null>(null);        // another AI picked for the next reply
   const [picking, setPicking] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  useEffect(() => { if (pickAsk && t) { onPickDone(); setPicking(true); } }, [pickAsk, !!t]);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => get<Thread>(`/api/threads/${id}`).then((x) => { setT(x); setBusy(x.parts[x.parts.length - 1]?.busy ?? false); })
     .catch((e) => { if (String(e.message).includes("no such")) onGone(); else setErr(String(e.message)); }), [id]);
@@ -267,6 +334,7 @@ function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, onG
         <AiMenu ais={ais.filter((a) => a.switch_into !== false || aiKey(a) === aiKey(cur))} title="Answer with" current={aiKey(showAi)}
           onPick={(a) => { setPicking(false); setNext(aiKey(a) === aiKey(cur) ? null : a); }} onClose={() => setPicking(false)} onConnect={onConnect} />
       )}
+      {t.archived && <span className="w-full text-[11.5px] text-amber">This chat is in the Archive, so it isn't in your chat list. <button className="underline" onClick={() => edit({ archived: false })}>Put it back</button></span>}
       {err && <span className="w-full text-[11.5px] text-red">{err}</span>}
     </div>
   );

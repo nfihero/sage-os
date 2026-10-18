@@ -46,6 +46,11 @@ class KanbanAdapter(Adapter):
         return out
 
     def poll(self):
+        if not self.db.exists():                      # no Hermes board on this computer (a fresh install): nothing to read
+            if self._fingerprint != "absent":
+                self._fingerprint = "absent"
+                self.emit.panel("board", {"tasks": [], "archived": 0, "links": []})
+            return
         with connect_ro(self.db) as con:
             have = columns(con, "tasks")
             cols = [c for c in BOARD_COLS if c in have]

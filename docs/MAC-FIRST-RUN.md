@@ -9,7 +9,7 @@ This checklist covers what a machine can't: a real person, a real first open, a 
 
 Use a Mac that has never had Sage OS on it, or a new macOS user account (System Settings → Users & Groups).
 
-1. **Install.** Download `Sage OS_<version>_aarch64.dmg` from the
+1. **Install.** Download `Sage.OS_<version>_aarch64.dmg` (GitHub writes the space as a dot) from the
    [latest release](https://github.com/nfihero/sage-os/releases/latest), open it, drag Sage OS to Applications.
 2. **First open.** Open it from Applications. If macOS says it can't check the app, open System Settings → Privacy &
    Security → **Open Anyway**. Note whether the README's steps were enough.
@@ -17,7 +17,7 @@ Use a Mac that has never had Sage OS on it, or a new macOS user account (System 
    already be connected, and there should be no chats.
 4. **A model on this Mac.** Press **INSTALL AND START** on the recommended model. Note how long the download and
    start take. A first chat opens: ask it something and get an answer.
-5. **Your notes.** Add a note and a document (Library), then ask the chat about them. The reading strip should show
+5. **Your notes.** BOOKSHELF → **+ ADD FILES**: add a document (and try **+ ADD A FOLDER**), then ask the chat about them. The reading strip should show
    them.
 6. **An AI with a key** (optional). CONNECT → Gemini: follow the steps, paste a key; macOS may ask to let Sage OS use
    the keychain (choose *Always Allow*). Pick Gemini in the AI picker and ask something. $ USAGE shows its tokens.

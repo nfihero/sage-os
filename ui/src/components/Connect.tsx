@@ -68,8 +68,8 @@ export default function Connect({ focus, onClose, onModels, onUsage }: {
           </nav>
           <section className="panel-body min-w-0 flex-1 px-5 py-4">
             {open === "computer" && <Guide title="A model on this computer" steps={[
-              "Open MODELS. Sage OS looks at your memory and graphics card and marks each model fits, tight or too big.",
-              "Pick one marked fits (the largest that fits is usually the best; a first download of 3 to 7 GB is typical) and press install. Sage OS gets llama.cpp, the program that runs it, by itself.",
+              "Open MODELS. Sage OS looks at this computer and marks each model: runs well here, runs but slowly, or too big.",
+              "Pick one that runs well here (the biggest of those usually gives the best answers; a first download of 3 to 7 GB is typical) and press install. Sage OS gets llama.cpp, the program that runs it, by itself.",
               "Press start. When it's loaded, pick it in the AI picker above a chat (or start a new chat with it).",
             ]} notes={["Everything stays on this computer and costs nothing per message.",
               "While a game uses the graphics card, game mode pauses the model and offers a small one instead."]}>
