@@ -7,7 +7,7 @@ Facts from this repository. Replace the pre-launch items with user numbers as so
 | What | Evidence |
 |---|---|
 | A working product | Desktop app for Windows and Mac, installers built and published by CI, signed automatic updates; the app updated itself in the field (0.22.1 → 0.22.2) |
-| Speed of building | First commit 30 Sep 2026; 41 tagged releases by 18 Oct 2026, each with its changelog entry and a gate it had to pass |
+| Speed of building | First commit 30 Sep 2026; 40 tagged releases by 18 Oct 2026, each with its changelog entry and a gate it had to pass |
 | Quality | 380 automated tests; every release self-checked on clean Windows and macOS machines before it ships |
 | Learning from users | First outside demo (14 Oct 2026) → five roadmap items (D41); first Mac test (15 Oct) → ten fixes shipped two days later (D42) |
 | Discipline | 47 dated design decisions with reasons and "revisit if" conditions |

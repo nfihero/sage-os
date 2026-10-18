@@ -22,7 +22,7 @@ helpers with an approval inbox, not a chat box.
 and trust in where personal and company data goes has become a buying criterion.
 
 **Where it stands (October 2026).**
-- Working app on Windows and Mac with signed automatic updates; 41 releases since the first commit on 30 Sep 2026.
+- Working app on Windows and Mac with signed automatic updates; 40 releases since the first commit on 30 Sep 2026.
 - Built: the Bookshelf (search by meaning, AI-written notes you approve, exact undo), one chat for every AI, connect
   guides with costs per AI, device pairing, a problem-report flow, a first-time-user pass, and a first screen built
   to reach a useful answer in about five minutes.
