@@ -8,7 +8,7 @@ data room and are listed here by name only.
 | For | See |
 |---|---|
 | Product direction and principles | [MISSION.md](../MISSION.md) |
-| Every design decision, dated, with reasons | [DECISIONS.md](../DECISIONS.md) (D1–D46) |
+| Every design decision, dated, with reasons | [DECISIONS.md](../DECISIONS.md) (D1–D47) |
 | Plan and what's done | [ROADMAP.md](../ROADMAP.md) ("The plan") |
 | What's verified, step by step | [STATUS.md](../STATUS.md) (each step's gate and result) |
 | Release history | [CHANGELOG.md](../../CHANGELOG.md) |

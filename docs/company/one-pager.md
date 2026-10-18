@@ -22,14 +22,15 @@ helpers with an approval inbox, not a chat box.
 and trust in where personal and company data goes has become a buying criterion.
 
 **Where it stands (October 2026).**
-- Working app on Windows and Mac with signed automatic updates; 39 releases since the first commit on 30 Sep 2026.
+- Working app on Windows and Mac with signed automatic updates; 41 releases since the first commit on 30 Sep 2026.
 - Built: the Bookshelf (search by meaning, AI-written notes you approve, exact undo), one chat for every AI, connect
-  guides with costs per AI, device pairing, a problem-report flow, and a first-time-user pass.
+  guides with costs per AI, device pairing, a problem-report flow, a first-time-user pass, and a first screen built
+  to reach a useful answer in about five minutes.
 - 380 automated tests; every release is checked on clean Windows and macOS machines before it ships.
 - First outside demo (an investment professional, 14 Oct 2026) asked for recurring jobs, meeting briefs, a
   note-taker and team libraries: all now on the roadmap.
 
-**Next.** Five minutes from download to a useful answer (U2); ready-made helpers (U3); signed installers and a
-download page (U1); then sync between a person's devices.
+**Next.** Ready-made helpers (U3); a download page with no terminal steps (U1; signed installers later); then sync
+between a person's devices.
 
 **Team.** TO FILL. **The ask.** TO FILL (kept in the private data room).

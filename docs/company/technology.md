@@ -42,7 +42,7 @@
 - 380 automated tests run on every change.
 - Each release builds on clean Windows and macOS machines and runs a first-run self-check (empty start, keychain,
   bundled files, the local model's engine downloads and runs, the sync listener's handshake) before it can ship.
-- 46 recorded design decisions with dates and reasons ([DECISIONS.md](../DECISIONS.md)).
+- 47 recorded design decisions with dates and reasons ([DECISIONS.md](../DECISIONS.md)).
 
 ## Stack
 
