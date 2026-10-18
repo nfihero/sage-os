@@ -1074,3 +1074,29 @@ review.
      the installer's real name (`Sage.OS_<version>_aarch64.dmg`; GitHub writes the space as a dot).
 - **Revisit if:** a provider starts reporting which of its models chat (then use that instead of names).
 
+## D43 — Sync without any outside service: your devices talk to each other directly
+
+- **Date / by:** 2026-10-17, owner ("I don't want to use iCloud or OneDrive or any other service"); design by Claude
+- **Status:** accepted as the sync plan; **replaces D27's Sage account and sync server** (Y3–Y4) and takes folder sync
+  (D25, Y0) off the recommended path (it stays in STORAGE for anyone who wants it, but the app won't suggest a cloud
+  folder). The Y1 data model (ULIDs, change logs, tombstones, device identity) is exactly what this needs and stays.
+- **Decision:**
+  1. **Devices pair directly.** On one device, *Add a device* shows a short code; you type it on the other. Each
+     device has its own key pair (in the OS keychain, Y2); pairing exchanges and checks them, so only your paired
+     devices can ever talk to each other. Any device can remove another.
+  2. **They find each other on your own network** (Bonjour/mDNS, or by typing the other's address) and sync over an
+     encrypted connection that both sides authenticate with the paired keys. The hub's own port stays localhost-only;
+     sync gets a separate listener that refuses anything but a paired device.
+  3. **What syncs:** the synced tables' change logs (Y1.3 manifest: chats, inbox decisions, undo history, digests,
+     price corrections, threads), replayed with the Y1 merge; then the Bookshelf's notes and files by content hash,
+     keeping both copies when the same file changed on two devices. Never secrets, keys, held proposals, indexes or
+     models.
+  4. **The cost, said plainly:** sync happens when two devices are on and on the same network; changes made apart
+     merge the next time they meet. Nothing is stored anywhere else.
+  5. **Away from home is a later choice (P4)**, still with no outside service: one of your own devices (the PC)
+     reachable from outside through your own router, holding only encrypted data. Decided when the phone app (Y6)
+     needs it.
+  6. **Organization bookshelves (O1) follow the same idea:** an organization runs Sage OS on its own machine and
+     members pair with it.
+- **Revisit if:** two devices are rarely on the same network at once, so syncs are too far apart to be useful.
+

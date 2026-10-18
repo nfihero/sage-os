@@ -12,6 +12,10 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Docs (17 Oct)
+- D43: sync without any outside service; devices pair and sync directly (replaces D27's account and server). The
+  roadmap laid out as one plan: Y2, P1 pairing, P2 records, P3 Bookshelf, J1 + M1, A3, M2.
+
 ## [0.28.0] — 2026-10-17
 
 The first Mac run's findings fixed (D42). **Gate: the owner's re-run on the Mac** (docs/MAC-FIRST-RUN.md). pytest 365.

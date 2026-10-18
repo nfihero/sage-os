@@ -82,8 +82,8 @@ lead or reviewer (D26).
    `hub/sage_os_hub/pricing.json` from the providers' price pages each release). ~~F1~~ built (0.25.0): Report a problem, and a first-run self-check
    (`--self-check`) in the release workflow on macOS and Windows; the owner's Mac run follows docs/MAC-FIRST-RUN.md.
    O0 built (0.26.0–0.27.0; on-screen name is **Bookshelf**, the owner's choice); its gate is a real first-time user.
-   D42 (0.28.0): the first Mac run's fixes. **Next:** the owner's Mac re-run (docs/MAC-FIRST-RUN.md), then sync between
-   the Mac and the PC (the owner's brief of 17 Oct: Y1.8 through a synced folder, needs the owner's OK), or D41's J1 + M1. D41 (first demo, 14 Oct): assume users have
+   D42 (0.28.0): the first Mac run's fixes. **Next:** ROADMAP "The plan" (17 Oct): the owner's Mac re-run, then Y2,
+   P1 pairing, P2 records, P3 Bookshelf (D43: no outside service, no cloud folder, no account), J1 + M1, A3, M2. D41 (first demo, 14 Oct): assume users have
    never used an agent; proposed O0, J1, M1, M2, O1 (ROADMAP track *From the first demo*), order to be decided with the user.
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices
    yet; "sync by file" (export / import changes in STORAGE) was offered on 11 Oct, no answer yet. The friend's

@@ -5,12 +5,36 @@ starts. No dates; the order is the plan. Source: the design doc
 ([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
 on 30 Sep 2026 with the Bookshelf track.
 
-## Build order (13 Oct 2026 — DECISIONS D30, D32, D39)
+## The plan (17 Oct 2026 — DECISIONS D41, D42, D43)
 
-**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Report a problem, first-run self-check on every release, 0.25.0; the Mac tester run is the owner's) **→ O0** onboarding pass (D41; built 0.26–0.27, audit in docs/O0-AUDIT.md; gate: a real first-time user) **→ A3 → Y2**, then (W1, the desktop app, came in ahead: 0.18.0) Y3–Y6, S2, K9, K11 and Phases 4–6. Y1 first so everything after it is
-born sync-ready; G1 is small and fixes a real clash; K7 clears the textbook backlog; K14 makes briefing packs pick
-the right notes; F1 puts that app in a friend's hands on a Mac for real-world bug reports; A3's new board store
-starts with ULIDs and the change log.
+**Done so far:** the hub and desktop app on Windows and Mac with signed updates (W1, F1); the Bookshelf with review,
+undo, digests, briefing packs and meaning-based search (K1–K14); one chat space for every AI (W3); connect guides,
+keys in the keychain and costs (D40); the first-time-user pass (O0); the first Mac run's fixes (D42, 0.28.0); the
+sync-ready data model (Y1).
+
+**Next, in order:**
+
+| # | Step | What you get | Size |
+|---|---|---|---|
+| 0 | **Mac re-run** (owner) | The rest of docs/MAC-FIRST-RUN.md on 0.28.0: Gatekeeper, a local model on 8 GB, ADD FILES, the report email, an update keeping data | owner |
+| 1 | **Y2** secrets in the keychain | The Google sign-in token and the engine key leave plain files; each device gets its own key pair, ready for pairing | small |
+| 2 | **P1** pair your devices | *Add a device* on the PC shows a code; type it on the Mac. They find each other on your network. Remove a device any time | medium |
+| 3 | **P2** sync chats and decisions | Chats, inbox decisions, undo history, digests and threads flow between paired devices and merge (Y1 merge) | medium |
+| 4 | **P3** sync the Bookshelf | Notes and documents copy across by content; a file changed on both keeps both copies | medium |
+| 5 | **J1 + M1** recurring jobs and meeting briefs | Jobs on a schedule in plain words; a brief before each meeting from your notes (needs a calendar connection) | medium |
+| 6 | **A3** Sage OS task board | Work handed to AIs by stage, without Hermes' board | medium |
+| 7 | **M2** note-taker | Sage listens to a meeting (with consent), transcribes on the computer, proposes notes and follow-ups | large |
+
+**Later, order not set:** P4 sync away from home (through one of your own devices, D43.5), then Y6 the phone app;
+O1 organization bookshelves (an organization's own Sage OS that members pair with); S2 OCR; K9 work becomes
+knowledge; K11 answers only from your notes; A4 a second local agent; Phases 4–6. **Open checks:** O0's gate (a real
+first-time user), K7's live Librarian run, G1 with a real game.
+
+No outside services anywhere in this plan (D43): no cloud folder, no Sage account, no sync server.
+
+### Build order before 17 Oct (13 Oct 2026 — DECISIONS D30, D32, D39)
+
+**Y1** (done, 0.16.0) **→ G1** (built, 0.17.0) **→ K7** (built, 0.20.0) **→ K14** (done, 0.21.0) **→ F1 part one** (self-contained app + signed updates, 0.22) **→ W3** one chat space (done, 0.23.0) **→ D40** connect guides and costs (done, 0.24.0) **→ F1 rest** (Report a problem, first-run self-check on every release, 0.25.0) **→ O0** onboarding pass (D41; built 0.26–0.27) **→ D42** first Mac run fixes (0.28.0). Superseded by the plan above.
 
 ## Agent hub track
 
@@ -72,20 +96,24 @@ plug in through connectors; Hermes becomes optional. No custom llama.cpp runtime
 Open checks before A3/A4: which agent tools work reliably on Windows; what the Hermes kanban does
 that a Sage OS board must match.
 
-## Sync and devices track (9 Oct 2026 — DECISIONS D25, D27)
+## Sync and devices track (9 Oct 2026; rewritten 17 Oct — DECISIONS D25, D27, D43)
 
-Goal: install on phone, Mac and PC, sign in on each, and everything is there. D25 (app data + Library, folder
-sync) is done; the rest builds the account-based, end-to-end encrypted sync of D27.
+Goal: install on phone, Mac and PC, pair them, and everything is there, with **no outside service** (D43): devices
+talk to each other directly over your own network. Y1's data model carries over unchanged.
 
 | Step | Scope | Gate |
 |---|---|---|
-| Y0 | App data per computer; the Library (Notes + Files) in a synced folder; STORAGE tab (open, export, move, conflicts) (D25) | **Done** (9 Oct, v0.15.0) |
-| Y1 | **Sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only event logs for chats / inbox / journal, synced vs device-local stores split, a device identity | Two hub instances on one PC, sharing only the synced stores by file copy, converge with no lost or duplicated item — **pass** (11 Oct, v0.16.0) |
-| Y2 | Keychain for secrets (Google token, API keys, engine key); API keys entered in the app | No secret is a plain file in app data |
-| Y3 | Sage account + passkey sign-in, device enrollment and revocation, recovery key | A second device joins with the first device's approval; a revoked device can't sync |
-| Y4 | E2EE sync service (thin server: blobs, metadata, push) and the shared sync engine | Notes, files, chats and inbox decisions made offline on two devices merge correctly; the server holds only ciphertext |
-| Y5 | Jobs routed to capable devices; the relay (phone ↔ desktop engine) | A digest started on the phone runs on the desktop and its proposals are approved on the phone |
-| Y6 | Phone app (native shell around the UI + sync client) and signed desktop installers (an unsigned Mac .dmg comes first, in F1) | Install on phone, Mac and PC, sign in, everything is there |
+| Y0 | App data per computer; the Bookshelf (Notes + Files) can sit in a folder you choose; STORAGE tab (open, export, move, conflicts) (D25). Folder sync through a cloud service is no longer suggested (D43) | **Done** (9 Oct, v0.15.0) |
+| Y1 | **Sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only change logs, synced vs device-local stores split, a device identity | Two hub instances on one PC, sharing only the synced stores by file copy, converge with no lost or duplicated item — **pass** (11 Oct, v0.16.0) |
+| Y2 | **Secrets in the keychain**: the Google token and the engine key (API keys done in D40), and each device's own key pair for pairing | No secret is a plain file in app data |
+| P1 | **Pairing**: *Add a device* shows a short code, the other device types it; key pairs exchanged and checked; devices found on the local network (Bonjour/mDNS) or by address; a separate sync listener that accepts paired devices only (the hub stays localhost-only); remove a device | A Mac and a PC pair with a code; an unpaired device is refused; a removed device can't connect again |
+| P2 | **Records sync**: change logs exchanged over the paired, encrypted connection and replayed with the Y1 merge; per-device cursors; in the background when both are on the same network | A chat started on the Mac and continued on the PC, and an inbox decision on each, converge on both with nothing lost or doubled, made apart or together |
+| P3 | **Bookshelf sync**: notes and files by content hash; both copies kept when one file changed on two devices; STORAGE shows them | A note added on the Mac and a document added on the PC appear on both; a note edited on both keeps both versions |
+| P4 | **Away from home** (later): one of your own devices reachable from outside through your own router, holding only encrypted data (D43.5) | The Mac syncs with the PC from another network, and nothing readable leaves your devices |
+| Y6 | Phone app (native shell around the UI + sync client), after P1–P3 (and P4 to work away from home) | Install on phone, Mac and PC, pair, everything is there |
+
+Superseded by D43: Y3 (Sage account and passkeys), Y4 (a sync server we run), Y5 (jobs routed through that server;
+it comes back as jobs sent to a paired device once P2 works).
 
 ### Y1 plan (11 Oct 2026; choices in D28, how it was built in D31) — done, v0.16.0
 
