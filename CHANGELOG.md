@@ -15,6 +15,8 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 ### Docs (18 Oct)
 - D46: Sage OS is an independent app built to win new users. MISSION.md rewritten; the roadmap reordered:
   U2 five minutes to value, U3 helpers (J1 + M1), U1 clean download, then P2, P3, A3, M2.
+- docs/company/: the company documents for investors (one-pager, pitch outline with a five-minute demo, product,
+  technology, market and competition, business model options, traction and milestones, risks, data-room index).
 
 ## [0.30.0] — 2026-10-18
 
