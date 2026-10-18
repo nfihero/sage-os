@@ -16,7 +16,7 @@ data room and are listed here by name only.
 | Connecting AIs, costs, where keys are kept | [CONNECT.md](../CONNECT.md) |
 | Mac first-run checklist | [MAC-FIRST-RUN.md](../MAC-FIRST-RUN.md) |
 | Security model: secrets (D40, D44), pairing and sync (D43, D45), approval and undo (D11, D12) | DECISIONS.md |
-| Tests | `hub/tests/` (376 tests) |
+| Tests | `hub/tests/` (380 tests) |
 | Release pipeline and self-check | `.github/workflows/release.yml`, `hub/sage_os_hub/selfcheck.py` |
 
 ## Private (not in this repository)

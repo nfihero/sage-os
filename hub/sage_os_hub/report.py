@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import __version__
 from .engine import hardware
+from .firstrun import minutes
 
 ADDRESS = "roundederror@gmail.com"
 KEEP = 60                       # warnings and errors kept in memory, newest last
@@ -119,6 +120,11 @@ def build(hub, description: str, doing: str) -> str:
         + f" · llama.cpp {'installed' if (e or {}).get('binary') else 'not installed'}",
         f"  Search by meaning: {'ready' if sem.get('installed') else 'not ready'} · notes in the Bookshelf: {vault.get('count', '?')}",
     ]
+    fr = hub.firstrun.summary() if getattr(hub, "firstrun", None) else None
+    if fr is not None:
+        names = {"ai_ready": "an AI ready", "first_document": "first document read", "first_answer": "first answer"}
+        reached = [f"  {names[k]}: {minutes(v)}" for k, v in fr.items()] or ["  nothing reached yet"]
+        lines += ["", "First run (time from the first start)", *reached]
     if failed:
         lines += ["", "Downloads that failed", *[f"  {f}" for f in failed]]
     recent = list(PROBLEMS.lines)[-SHOWN:]

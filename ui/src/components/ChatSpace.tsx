@@ -4,6 +4,7 @@ import { get, onChat, post } from "../api";
 import type { AI, ChatItem, ChatUsage, EngineModel, EngineState, Panels, Thread, ThreadRow } from "../types";
 import type { ConnectSection } from "./Connect";
 import { fitWords, goodFor, shortModel, useNow } from "../util";
+import AddDocs from "./AddDocs";
 import ChatView from "./ChatView";
 import { toItems } from "./LocalPane";
 import { Ago, Num } from "./Readout";
@@ -260,6 +261,7 @@ function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, pic
   const [next, setNext] = useState<AI | null>(null);        // another AI picked for the next reply
   const [picking, setPicking] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [starters, setStarters] = useState<string[]>([]);   // U2: first questions from the person's own documents
   useEffect(() => { if (pickAsk && t) { onPickDone(); setPicking(true); } }, [pickAsk, !!t]);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => get<Thread>(`/api/threads/${id}`).then((x) => { setT(x); setBusy(x.parts[x.parts.length - 1]?.busy ?? false); })
@@ -301,6 +303,10 @@ function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, pic
     return out;
   }, [t]);
 
+  const empty = !!t && items.length === 0;
+  useEffect(() => {
+    if (empty) get<{ questions: string[] }>("/api/starters").then((r) => setStarters(r.questions)).catch(() => setStarters([]));
+  }, [empty, id]);
   if (!t || !cur) return <div className="p-4 text-mute">{err ?? "loading…"}</div>;
   const edit = async (body: Record<string, unknown>) => {
     setErr(null);
@@ -339,7 +345,7 @@ function Conversation({ id, ais, onChanged, onAnswering, onConnect, onUsage, pic
     </div>
   );
   return (
-    <ChatView items={items} live={live} busy={busy} tone={claude ? "orange" : "cyan"} banner={banner} chat={cur.pane}
+    <ChatView items={items} live={live} busy={busy} tone={claude ? "orange" : "cyan"} banner={banner} chat={cur.pane} suggestions={starters}
       placeholder={`Message ${showAi.agent === "chat" ? shortModel(showAi.model ?? "") : showAi.label}… (Enter to send)`}
       onSend={async (text) => {
         const switching = next;
@@ -368,11 +374,15 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
 
   const models = (eng?.catalog ?? []).filter((m) => !(m as any).micro);
   const order = { fits: 0, tight: 1, "too big": 2 } as const;
-  // the best first model: the largest that fits and downloads in reasonable time; else the smallest that fits or nearly
+  // U2 (D47): start with the starter model, small enough to be answering in minutes; the best fit for this computer
+  // (the largest that fits in a reasonable download) is offered as the upgrade for later
   const fits = models.filter((m) => m.fit === "fits");
-  const rec = [...fits].filter((m) => m.size <= 8e9).sort((a, b) => b.size - a.size)[0]
+  const best = [...fits].filter((m) => m.size <= 8e9).sort((a, b) => b.size - a.size)[0]
     ?? [...fits].sort((a, b) => a.size - b.size)[0]
     ?? [...models].filter((m) => m.fit === "tight").sort((a, b) => a.size - b.size)[0];
+  const starter = models.find((m) => m.starter && m.fit !== "too big");
+  const rec = starter ?? best;
+  const later = best && rec && best.id !== rec.id && best.size > rec.size ? best : null;
   const others = models.filter((m) => m !== rec).sort((a, b) => order[a.fit] - order[b.fit] || a.size - b.size).slice(0, 4);
   const hw = eng?.hardware;
   const go = async (m: EngineModel) => {
@@ -386,6 +396,14 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
     onConnected();
   };
   const job = (k: string) => eng?.jobs?.[k];
+  // time left at the speed so far (U2): "about 3 min left"
+  const eta = (k: string) => {
+    const j = job(k);
+    if (!j || !j.total || !j.done || !j.started) return "";
+    const rate = j.done / Math.max(1, Date.now() / 1000 - j.started);
+    const left = (j.total - j.done) / Math.max(1, rate);
+    return left > 90 ? ` · about ${Math.round(left / 60)} min left` : left > 5 ? " · less than two minutes left" : "";
+  };
   const pct = (k: string) => { const j = job(k); return j && j.total ? Math.round((j.done / j.total) * 100) : 0; };
   const s = panels.semantic;
   const step = setup && !setup.error && setup.step !== "ready" ? setup : null;
@@ -396,8 +414,8 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
       <div className="panel-body flex flex-col gap-5 px-6 py-6">
         <div>
           <h1 className="display m-0 text-[28px] normal-case tracking-[.06em] text-ink">Give Sage a mind, then say hello.</h1>
-          <p className="copy mt-2 max-w-[620px] text-[14.5px] text-ink/80">Sage OS runs AI models on this computer, privately, or talks to the AIs you
-            already use. Pick one to start; you can add others any time, and every chat keeps its history here.</p>
+          <p className="copy mt-2 max-w-[620px] text-[14.5px] text-ink/80">Two steps, about five minutes: pick an AI, and give it your documents
+            while it gets ready. Then ask it about them.</p>
         </div>
         {hw && (
           <div className="flex flex-wrap gap-x-6 gap-y-1 border border-dashed border-cyan/25 px-3 py-2 text-[12px]">
@@ -409,8 +427,8 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
           <div className="border border-cyan bg-cyan/5 p-4" role="status">
             <div className="display text-[18px] tracking-[.06em] text-ink">Setting up {rec && step.model === rec.id ? rec.label : step.model}…</div>
             <div className="copy mt-2 text-[13px] text-ink/80">
-              {step.step === "engine" && <>Getting llama.cpp, the program that runs models: <Num className="text-[14px]">{pct("binary")}</Num>%</>}
-              {step.step === "model" && <>Downloading the model: <Num className="text-[14px]">{pct(`model:${step.model}`)}</Num>% of {Math.round((job(`model:${step.model}`)?.total ?? 0) / 1e9 * 10) / 10} GB</>}
+              {step.step === "engine" && <>Getting llama.cpp, the program that runs models: <Num className="text-[14px]">{pct("binary")}</Num>%{eta("binary")}</>}
+              {step.step === "model" && <>Downloading the model: <Num className="text-[14px]">{pct(`model:${step.model}`)}</Num>% of {Math.round((job(`model:${step.model}`)?.total ?? 0) / 1e9 * 10) / 10} GB{eta(`model:${step.model}`)}</>}
               {(step.step === "start" || step.step === "loading") && <>Loading it into memory; your first chat opens when it's ready.</>}
             </div>
           </div>
@@ -418,14 +436,18 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             {rec ? (
               <div className="relative border border-cyan bg-cyan/5 p-4 shadow-[0_0_28px_rgba(61,255,139,.12)]">
-                <span className="display absolute -top-2.5 left-3 bg-cyan px-2 text-[11px] tracking-[.18em] text-void">BEST FIT FOR THIS COMPUTER</span>
+                <span className="display absolute -top-2.5 left-3 bg-cyan px-2 text-[11px] tracking-[.18em] text-void">{rec.starter ? "1 · QUICK START" : "1 · BEST FIT FOR THIS COMPUTER"}</span>
                 <div className="display mt-1 text-[22px] tracking-[.06em] text-ink">{rec.label}</div>
-                <p className="copy mb-3 mt-1 text-[13.5px] text-ink/80">{goodFor(rec.note) ? `${goodFor(rec.note)}. ` : ""}Runs on this computer; nothing you ask leaves it.</p>
+                <p className="copy mb-3 mt-1 text-[13.5px] text-ink/80">{rec.starter ? "Ready in a few minutes. Good for everyday questions about your documents. " : goodFor(rec.note) ? `${goodFor(rec.note)}. ` : ""}Runs on this computer, free; nothing you ask leaves it.</p>
                 <div className="mb-3 flex gap-5 text-[11px] text-mute">
                   <span><Num className="block text-[18px]">{(rec.size / 1e9).toFixed(1)}</Num>GB download</span>
                   <span><Num className="block text-[18px]">{rec.need_gb}</Num>GB of memory</span>
                 </div>
                 <button className="chip h-8 px-4 font-semibold" style={SOLID} disabled={!!busy} onClick={() => go(rec)}>INSTALL AND START →</button>
+                {later && <p className="copy mb-0 mt-3 text-[12px] text-mute">Later, for better answers: <b className="text-ink/80">{later.label}</b> ({(later.size / 1e9).toFixed(1)} GB)
+                  in MODELS. It runs well here too, but takes longer to download.</p>}
+                <p className="copy mb-0 mt-2 text-[12px] text-mute">No download at all? <button className="text-cyan underline" onClick={() => onConnect("gemini")}>Use Gemini instead</button>: free
+                  with a Google account, ready in a minute; your questions go to Google.</p>
               </div>
             ) : <p className="copy text-mute">{eng ? "No model in the catalog fits this computer; connect an AI below." : "Looking at this computer…"}</p>}
             <div>
@@ -444,7 +466,11 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
         )}
         {setup?.error && <div className="border border-amber/50 px-3 py-2 text-[12.5px] text-amber">Setup stopped: {setup.error}</div>}
         <div>
-          <div className="kicker"><span>Or connect an AI you already use</span><span>bring your own</span></div>
+          <div className="kicker"><span>2 · Give it your documents</span><span>{step ? "while it gets ready" : "now or later"}</span></div>
+          <AddDocs />
+        </div>
+        <div>
+          <div className="kicker"><span>Or use an AI you already have</span><span>instead of step 1</span></div>
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(190px,1fr))]">
             <Connect dot="bg-orange" name="Claude Code" detail="sign in with your Claude plan" onClick={() => onConnect("claude")} />
             <Connect dot="bg-[#7cc8ff]" name="ChatGPT" detail="paste an OpenAI API key" onClick={() => onConnect("openai")} />

@@ -16,10 +16,11 @@ export const SAFE_MD: Components = {
 };
 
 /** One transcript + composer. Items are the durable history; `live` is the streaming tail. */
-export default function ChatView({ items, live, busy, tone, placeholder, onSend, onStop, disabled, banner, chat }: {
+export default function ChatView({ items, live, busy, tone, placeholder, onSend, onStop, disabled, banner, chat, suggestions }: {
   items: ChatItem[]; live: string; busy: boolean; tone: Tone; placeholder: string;
   onSend: (text: string) => Promise<void>; onStop?: () => void; disabled?: string | null; banner?: React.ReactNode;
   chat?: string | null;     // pane id: shows the K8 Reading strips and toggle for this chat
+  suggestions?: string[];   // U2: first questions to ask, shown while the chat is empty
 }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -60,7 +61,15 @@ export default function ChatView({ items, live, busy, tone, placeholder, onSend,
       {banner}
       <div ref={scroller} className="panel-body flex flex-col gap-2.5 text-[13.5px] leading-relaxed"
         onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}>
-        {items.length === 0 && !live && <div className="m-auto text-mute">No messages yet.</div>}
+        {items.length === 0 && !live && (suggestions?.length
+          ? <div className="m-auto flex max-w-[560px] flex-col items-center gap-2 text-center" data-testid="starters">
+              <div className="copy text-[13px] text-mute">Try asking</div>
+              {suggestions.map((q) => (
+                <button key={q} disabled={busy || !!disabled} onClick={() => { setErr(null); onSend(q).catch((e) => setErr(String((e as Error).message))); }}
+                  className="copy w-full border border-cyan/30 px-3 py-2 text-left text-[13.5px] text-ink/90 hover:border-cyan hover:bg-cyan/5">{q}</button>
+              ))}
+            </div>
+          : <div className="m-auto text-mute">No messages yet.</div>)}
         {items.map((it) => (
           <div key={it.id} className="chat-in">
             <Item it={it} tone={tone} />

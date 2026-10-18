@@ -25,7 +25,7 @@ and trust in where personal and company data goes has become a buying criterion.
 - Working app on Windows and Mac with signed automatic updates; 39 releases since the first commit on 30 Sep 2026.
 - Built: the Bookshelf (search by meaning, AI-written notes you approve, exact undo), one chat for every AI, connect
   guides with costs per AI, device pairing, a problem-report flow, and a first-time-user pass.
-- 376 automated tests; every release is checked on clean Windows and macOS machines before it ships.
+- 380 automated tests; every release is checked on clean Windows and macOS machines before it ships.
 - First outside demo (an investment professional, 14 Oct 2026) asked for recurring jobs, meeting briefs, a
   note-taker and team libraries: all now on the roadmap.
 

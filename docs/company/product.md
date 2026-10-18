@@ -15,16 +15,15 @@
 | Stay in control | One Inbox for every request; trust levels per AI; a full log of what each did | 0.20 |
 | Use two computers | Pair them with a code, directly, no account | 0.30 |
 | Get help | Report a problem from the app, with a report they read before it's sent | 0.25 |
+| Be answering in minutes | A quick-start model (2.7 GB) or Gemini with no download; documents added while it gets ready; first questions suggested from their own documents | 0.31 |
 
 ## Next (D46)
 
-1. **Five minutes to value (U2):** a starter model that's ready in minutes on an 8 GB laptop; documents added on the
-   first screen; a first question suggested from them.
-2. **Helpers (U3):** ready-made helpers to switch on (morning brief, weekly recap, meeting prep, summarize each new
+1. **Helpers (U3):** ready-made helpers to switch on (morning brief, weekly recap, meeting prep, summarize each new
    document), each with a plain description, a schedule, results in the Inbox and a log.
-3. **Clean download (U1):** signed and notarized installers, a download page, no terminal anywhere.
-4. **Sync between a person's devices (P2, P3):** chats, decisions and the Bookshelf, directly between devices.
-5. **Task board (A3), note-taker (M2), team bookshelves (O1).**
+2. **Clean download (U1):** a download page and no terminal anywhere; signed installers once signing is set up.
+3. **Sync between a person's devices (P2, P3):** chats, decisions and the Bookshelf, directly between devices.
+4. **Task board (A3), note-taker (M2), team bookshelves (O1).**
 
 ## Design principles that shape the product
 

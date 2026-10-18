@@ -12,6 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.31.0] — 2026-10-18
+
+U2: five minutes to value (D47). **Gate: the owner's timed first run on the M1** (the app now records it). pytest 380.
+
+### Added
+- The first screen is two steps: *1 · Quick start* (a 2.7 GB starter model that's ready in a few minutes, with the
+  bigger best fit named for later, or Gemini with no download) and *2 · Give it your documents* (add files or a
+  folder while the model downloads).
+- Downloads show the time left.
+- An empty chat suggests first questions built from your newest documents; one click asks.
+- A fresh install records how long it took to an AI, a first document and a first answer, on this computer only;
+  a problem report includes it.
+
+### Changed
+- Code signing is deferred (D46 update); the download page and no-terminal work stay in U1.
+
 ### Docs (18 Oct)
 - D46: Sage OS is an independent app built to win new users. MISSION.md rewritten; the roadmap reordered:
   U2 five minutes to value, U3 helpers (J1 + M1), U1 clean download, then P2, P3, A3, M2.

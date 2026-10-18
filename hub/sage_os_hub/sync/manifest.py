@@ -67,6 +67,7 @@ INTERNAL_TABLES = ("sqlite_*",)
 FILES: dict[str, str] = {
     "Library": LIBRARY,
     "device.json": LOCAL,               # this install's identity (Y1.1)
+    "firstrun.json": LOCAL,             # how long this install took to its first answer (U2)
     "device.damaged-*.json": LOCAL,
     "gamemode.json": LOCAL,             # game mode settings: a game on this computer (G1)
     "engine": LOCAL,                    # llama-server builds and models (D22.3)

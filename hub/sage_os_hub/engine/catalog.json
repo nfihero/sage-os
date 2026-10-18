@@ -25,6 +25,7 @@
  {
   "id": "qwen-3-5-4b",
   "label": "Qwen 3.5 4B",
+  "starter": true,
   "note": "small \u00b7 laptops",
   "repo": "unsloth/Qwen3.5-4B-GGUF",
   "file": "Qwen3.5-4B-Q4_K_M.gguf",

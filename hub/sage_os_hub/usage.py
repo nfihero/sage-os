@@ -63,6 +63,7 @@ class Usage:
             self.db.commit()
         self.list = json.loads(PRICES.read_text(encoding="utf-8"))
         self.limits: dict[str, dict] = {}            # provider -> rate-limit headers seen last (this run only)
+        self.on_record = None                         # U2: told about each reply (the first answer's time)
 
     # -- prices ---------------------------------------------------------------------------------------------
     def overrides(self) -> dict[tuple[str, str], dict]:
@@ -138,6 +139,11 @@ class Usage:
                             "VALUES (?,?,?,?,?,?,?,?,?,?,?)", (row["id"], row["ts"], agent, provider, model, chat, row["tokens_in"],
                                                                 row["tokens_out"], cost, billing, int(estimated)))
             self.db.commit()
+        if self.on_record:
+            try:
+                self.on_record(row)
+            except Exception:                         # noqa: BLE001 -- bookkeeping never breaks a reply
+                pass
         return row
 
     def note_limits(self, provider: str, headers) -> None:

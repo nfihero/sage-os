@@ -48,6 +48,7 @@ from .sync.listener import SyncService
 from .sync.listener import addresses as lan_addresses
 from .sync.peers import PairingError, Peers
 from . import adddocs, modelnames, report
+from .firstrun import FirstRun, starter_questions
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
 from .knowledge.mcp_http import build_server, mcp_path
@@ -125,6 +126,7 @@ class Hub:
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        fresh = not (Path(cfg.data_dir) / "hub.db").exists()      # U2: this start is the install's first
         self.device = Device.load(cfg.data_dir)            # Y1.1: who this install is; stamped on every change
         # Y1.6: records made before 0.16 move to ULIDs once, before anything opens the databases
         self.migration = migrate.run({"hub.db": cfg.store, "bookshelf.db": cfg.vault_journal,
@@ -135,6 +137,8 @@ class Hub:
         self.threads = Threads(self, self.store.db, self.store.lock)     # W3: the one chat space (D39)
         self._sync_waiting: set[str] = set()                              # O0: sources waiting to sync (sync_soon)
         self.usage = Usage(self.store.db, self.store.lock)                 # D40: tokens, prices, spend
+        self.firstrun = FirstRun(cfg.data_dir, fresh)                      # U2: time to the first answer
+        self.usage.on_record = lambda row: self.firstrun.mark("first_answer") if row["tokens_out"] else None
         self.keys = Keys()                                                 # D40: API keys in the OS keychain
         self.panels: dict = {}
         self.subscribers: set[asyncio.Queue] = set()
@@ -569,6 +573,8 @@ class Hub:
         finally:
             self.publish_sources()
         self.event("knowledge", "sources", "sources.synced", {"source": name, **stats})
+        if any(s["indexed"] for s in self.sources.summary()["sources"]):
+            self.firstrun.mark("first_document")
         self.semantic.wake.set()
         return stats
 
@@ -1991,7 +1997,15 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             if a.vendor == "hermes":
                 out.append({"agent": a.id, "provider": None, "model": None, "label": a.label, "kind": "local",
                             "where": "Hermes", "switch_into": False})
+        if any(a.get("ready") is not False for a in out):
+            hub.firstrun.mark("ai_ready")
         return {"ais": out}
+
+    @app.get("/api/starters")
+    async def starters():
+        """First questions from the person's own newest documents (U2), and how far this install has come."""
+        notes = (hub.panels.get("vault") or {}).get("count", 0)
+        return {"questions": await asyncio.to_thread(starter_questions, hub.sources, notes), "firstrun": hub.firstrun.summary()}
 
     async def open_part(ai: NewThread, title: str | None = None) -> tuple[str, str, str | None]:
         """A new session with this AI. -> (sid, label, model)"""

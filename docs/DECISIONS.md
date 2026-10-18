@@ -1175,3 +1175,22 @@ review.
 - **Update (18 Oct):** the owner deferred code signing (Apple Developer, Windows certificate). U1 keeps the download page
   and the no-terminal work; installers stay unsigned, with the first-open steps in the README, until signing is picked up.
 
+## D47 — U2: five minutes to value, and measuring it without analytics
+
+- **Date / by:** 2026-10-18, owner (D46's plan, "start U2" by order); design by Claude
+- **Status:** accepted; built in 0.31.0. The gate (download to a useful answer in about five minutes on the owner's
+  M1) is the owner's run; the app now measures it.
+- **Decision:**
+  1. **A starter model first:** the catalog marks one quick model (Qwen 3.5 4B, 2.7 GB, good with the Bookshelf
+     tools) and the first screen offers it as *QUICK START*, with the computer's best fit (e.g. Gemma 4 12B, 7.1 GB)
+     named as the upgrade for later. Downloads show the time left at the speed so far.
+  2. **Gemini as the no-download start:** offered right under the starter, with its cost said plainly (free with a
+     Google account; questions go to Google).
+  3. **Documents on the first screen:** step 2, *Give it your documents*, with ADD FILES / ADD A FOLDER, usable while
+     the model downloads, so the wait isn't idle.
+  4. **First questions from their own documents:** an empty chat suggests questions built from the newest documents'
+     names ("What are the main points of …?"), or simple ones when there are none; one click asks.
+  5. **Measured on the device, never sent anywhere:** a fresh install records when it reached an AI, a first document
+     and a first answer (`firstrun.json`, LOCAL). The person sees it in a problem report they choose to send; that's
+     how testers' first sessions get measured without analytics (D43).
+
