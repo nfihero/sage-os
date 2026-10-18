@@ -64,7 +64,7 @@ export default function Inbox({ items, onOpenTask, events = [], auto = [], onAge
         )}
         {sel.length > 0 && <Selection ids={sel} items={items} onDone={() => setPicked(new Set())} />}
         {recentAuto.length > 0 && <FiledForYou batches={recentAuto} now={now} onAgents={onAgents} />}
-        {items.length === 0 && <div className="m-auto text-center text-[12.5px] text-mute">Nothing needs you.<br />When an AI wants to save a note or run something, it asks here first.</div>}
+        {items.length === 0 && <div className="copy m-auto max-w-[30ch] text-center text-[13px] text-mute"><span className="mb-1 block text-ink/80">Nothing needs you.</span>When an AI wants to save a note or run something, it asks here first.</div>}
         {entries.map((e) => e.items[0].context.group && isProposal(e.items[0])
           ? <GroupCard key={e.key} items={e.items} now={now} picked={picked.has(e.key)}
               onPick={(on) => toggle(e.key, on)} onReview={setReviewing} />

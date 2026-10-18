@@ -80,8 +80,7 @@ export default function Bookshelf({ panel, sources, digests, proposals = 0, onCl
             <button className={`htab ${view === "storage" ? "on" : ""}`} onClick={() => setView("storage")} title="Where your notes and files live, syncing them between devices, export">STORAGE</button>
           </span>
           <span className="ml-auto flex min-w-0 items-center gap-2">
-            {vault && <span className="hidden min-w-0 truncate font-mono text-[11px] normal-case tracking-normal text-mute md:inline" title={vault.root}>{vault.root}</span>}
-            <button className="chip" onClick={openVault} title="Show your notes folder on this computer">OPEN FOLDER</button>
+            <button className="chip mute" onClick={openVault} title={vault ? `Show your notes folder: ${vault.root}` : "Show your notes folder on this computer"}>OPEN FOLDER</button>
             <button onClick={onClose} className="text-mute hover:text-cyan" aria-label="close">✕</button>
           </span>
         </div>
@@ -241,15 +240,15 @@ function Cited({ source, folder, onOpen }: { source: string; folder: boolean; on
 function HowNotesArrive({ onSources }: { onSources: () => void }) {
   return (
     <div className="m-auto flex max-w-[560px] flex-col gap-4 p-6" data-testid="how-notes">
-      <div className="display text-[11px] text-mute">Start with your documents</div>
+      <h2 className="display m-0 text-[16px] normal-case tracking-[.06em] text-ink">Start with your documents</h2>
       <AddDocs />
-      <div className="display mt-2 text-[11px] text-mute">How your notes get here</div>
+      <h3 className="display m-0 mt-3 text-[12px] text-mute">How your notes get here</h3>
       <ol className="flex flex-col gap-3">
         {FLOW.map(([step, what], i) => (
           <li key={step} className="flex gap-3">
             <span className="font-dot glow-cyan w-6 shrink-0 text-[20px] leading-none">{i + 1}</span>
             <span><span className="display text-[13px] text-cyan">{step}</span>
-              <span className="mt-0.5 block text-[12.5px] leading-snug text-ink/85">{what}</span></span>
+              <span className="copy mt-0.5 block text-[13px] leading-snug text-ink/80">{what}</span></span>
           </li>
         ))}
       </ol>

@@ -1194,3 +1194,24 @@ review.
      and a first answer (`firstrun.json`, LOCAL). The person sees it in a problem report they choose to send; that's
      how testers' first sessions get measured without analytics (D43).
 
+## D48 — A polish pass for newcomers on ordinary laptops (impeccable, refine)
+
+- **Date / by:** 2026-10-18, owner ("another round of redesign to refine the UI and look/feel"; chose: refine the phosphor
+  look; focus on first run and empty states, the home screen's hierarchy, consistent modals, laptop and phone sizes);
+  design by Claude
+- **Status:** accepted; built in 0.32.0. The phosphor world, the planet card and the Doto clock stay as they are.
+- **Decision:**
+  1. **Each home panel's own title names it;** the label row above the panels (ANSWERING / YOUR AI…) repeated it and
+     cost a line on a 768-pixel screen. It stays for screen readers as each region's name.
+  2. **The first-run screen shows both steps side by side** (pick an AI; give it your documents), with this computer's
+     hardware in one line and the other models folded away, so a 1366×768 laptop shows everything that matters
+     without scrolling; the no-download Gemini option comes before the "upgrade later" note.
+  3. **Empty means quiet, not broken:** the waiting AI card shows its planet dimmed but its button bright, and no empty
+     "—" rows; the inbox's empty state reads in the sentence font.
+  4. **Modals share one shape:** the title tab, a one-line description and ✕ to close; short ones (Your devices,
+     Report a problem) size to their content instead of filling the window. The Bookshelf hides its folder path behind
+     OPEN FOLDER, and sentences everywhere use the sentence font, not the code font.
+  5. **Hermes' lights appear only when Hermes is connected,** even if it happens to run on the computer.
+  6. **`?shot=<screen>`** opens the app without the boot animation or guide, on a given screen, so every release can be
+     screenshotted at laptop size with a headless browser.
+

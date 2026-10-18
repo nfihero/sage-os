@@ -10,8 +10,9 @@ web
 
 ## Users
 
-- **Primary: the owner, daily.** A finance and AI student who keeps Sage OS open for hours beside other work, on a gaming PC with a large GPU: reviewing digested textbook chapters, asking questions of their own notes, running local and cloud agents, and stepping away to play games.
-- **Next: testers (F1).** Friends who use several AIs and keep notes and documents in many places (D22), starting from an empty library on their own Mac, reporting bugs.
+- **Primary (from 18 Oct 2026, D46): new users.** Someone who has used ChatGPT, maybe, and nothing else: no terminal, no "agents", no markdown (D41). An ordinary 8 GB laptop (1366×768 is common), no graphics card. Sage OS has to make sense in the first five minutes.
+- **Also: the owner, daily.** Keeps Sage OS open for hours beside other work on a gaming PC with a large GPU; reviews digests, asks their notes, runs local and cloud AIs.
+- **Testers (F1).** Friends starting from an empty Bookshelf on their own Mac, reporting problems.
 
 ## Product Purpose
 

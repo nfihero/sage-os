@@ -414,16 +414,16 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
       <div className="panel-body flex flex-col gap-5 px-6 py-6">
         <div>
           <h1 className="display m-0 text-[28px] normal-case tracking-[.06em] text-ink">Give Sage a mind, then say hello.</h1>
-          <p className="copy mt-2 max-w-[620px] text-[14.5px] text-ink/80">Two steps, about five minutes: pick an AI, and give it your documents
+          <p className="copy mt-2 max-w-[640px] text-[14.5px] text-ink/80">Two steps, about five minutes: pick an AI, and give it your documents
             while it gets ready. Then ask it about them.</p>
+          {hw && <p className="copy m-0 mt-1 text-[12px] text-mute" title="what the models below are rated for">
+            This computer: {({ windows: "Windows", darwin: "macOS", macos: "macOS", linux: "Linux" } as Record<string, string>)[hw.os] ?? hw.os} · {Math.round(hw.ram_gb)} GB memory · {hw.gpu ? `${hw.gpu.name.replace(/^NVIDIA GeForce |^AMD Radeon\(TM\) /, "")}, ${hw.gpu.vram_gb} GB` : "no graphics card: models run on the processor"}</p>}
         </div>
-        {hw && (
-          <div className="flex flex-wrap gap-x-6 gap-y-1 border border-dashed border-cyan/25 px-3 py-2 text-[12px]">
-            <span><span className="kicker !m-0 !inline">This computer </span>{({ windows: "Windows", darwin: "macOS", macos: "macOS", linux: "Linux" } as Record<string, string>)[hw.os] ?? hw.os} · {Math.round(hw.ram_gb)} GB memory</span>
-            <span><span className="kicker !m-0 !inline">Graphics </span>{hw.gpu ? `${hw.gpu.name.replace(/^NVIDIA GeForce |^AMD Radeon\(TM\) /, "")} · ${hw.gpu.vram_gb} GB` : "none: models run on the processor"}</span>
-          </div>
-        )}
-        {step ? (
+        {setup?.error && <div className="border border-amber/50 px-3 py-2 text-[12.5px] text-amber">Setup stopped: {setup.error}</div>}
+        {/* both steps side by side, so step 2 is in view on a 1366×768 laptop (O0/U2 polish) */}
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-2">
+            {step ? (
           <div className="border border-cyan bg-cyan/5 p-4" role="status">
             <div className="display text-[18px] tracking-[.06em] text-ink">Setting up {rec && step.model === rec.id ? rec.label : step.model}…</div>
             <div className="copy mt-2 text-[13px] text-ink/80">
@@ -432,9 +432,7 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
               {(step.step === "start" || step.step === "loading") && <>Loading it into memory; your first chat opens when it's ready.</>}
             </div>
           </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-            {rec ? (
+            ) : rec ? (
               <div className="relative border border-cyan bg-cyan/5 p-4 shadow-[0_0_28px_rgba(61,255,139,.12)]">
                 <span className="display absolute -top-2.5 left-3 bg-cyan px-2 text-[11px] tracking-[.18em] text-void">{rec.starter ? "1 · QUICK START" : "1 · BEST FIT FOR THIS COMPUTER"}</span>
                 <div className="display mt-1 text-[22px] tracking-[.06em] text-ink">{rec.label}</div>
@@ -444,30 +442,34 @@ function FirstRun({ panels, onModels, onConnect, onConnected }: {
                   <span><Num className="block text-[18px]">{rec.need_gb}</Num>GB of memory</span>
                 </div>
                 <button className="chip h-8 px-4 font-semibold" style={SOLID} disabled={!!busy} onClick={() => go(rec)}>INSTALL AND START →</button>
-                {later && <p className="copy mb-0 mt-3 text-[12px] text-mute">Later, for better answers: <b className="text-ink/80">{later.label}</b> ({(later.size / 1e9).toFixed(1)} GB)
-                  in MODELS. It runs well here too, but takes longer to download.</p>}
-                <p className="copy mb-0 mt-2 text-[12px] text-mute">No download at all? <button className="text-cyan underline" onClick={() => onConnect("gemini")}>Use Gemini instead</button>: free
+                <p className="copy mb-0 mt-3 text-[12.5px] text-ink/75">No download? <button className="text-cyan underline underline-offset-2" onClick={() => onConnect("gemini")}>Use Gemini instead</button>: free
                   with a Google account, ready in a minute; your questions go to Google.</p>
+                {later && <p className="copy mb-0 mt-1.5 text-[12px] text-mute">Later, for better answers: {later.label} ({(later.size / 1e9).toFixed(1)} GB), in MODELS.</p>}
               </div>
-            ) : <p className="copy text-mute">{eng ? "No model in the catalog fits this computer; connect an AI below." : "Looking at this computer…"}</p>}
-            <div>
-              <div className="kicker"><span>Other models</span><span>on this computer</span></div>
+            ) : <p className="copy text-mute">{eng ? "No model in the catalog fits this computer; use an AI you already have, below." : "Looking at this computer…"}</p>}
+            {!step && others.length > 0 && (
+              <details className="group">
+                <summary className="cursor-pointer list-none text-[12px] text-cyan/80 hover:text-cyan"><span className="inline-block transition-transform group-open:rotate-90">▸</span> Other models for this computer ({others.length})</summary>
+                <div className="mt-1">
               {others.map((m) => (
-                <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 border-b border-cyan/10 py-1.5">
-                  <span className="copy truncate text-[13px] text-ink">{m.label}</span>
-                  <span className={`row-span-2 text-[10.5px] uppercase tracking-[.1em] ${m.fit === "fits" ? "text-cyan" : m.fit === "tight" ? "text-amber" : "text-mute"}`}>{fitWords(m.fit)}</span>
-                  <button className="chip mute row-span-2" disabled={!!busy || m.fit === "too big"} onClick={() => go(m)}>install</button>
-                  <span className="text-[10.5px] text-mute">{goodFor(m.note) || m.note} · {(m.size / 1e9).toFixed(1)} GB</span>
+                    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 border-b border-cyan/10 py-1.5">
+                      <span className="copy truncate text-[13px] text-ink">{m.label}</span>
+                      <span className={`row-span-2 text-[10.5px] uppercase tracking-[.1em] ${m.fit === "fits" ? "text-cyan" : m.fit === "tight" ? "text-amber" : "text-mute"}`}>{fitWords(m.fit)}</span>
+                      <button className="chip mute row-span-2" disabled={!!busy || m.fit === "too big"} onClick={() => go(m)}>install</button>
+                      <span className="text-[10.5px] text-mute">{goodFor(m.note) || m.note} · {(m.size / 1e9).toFixed(1)} GB</span>
+                    </div>
+                  ))}
+                  <button className="chip mute mt-2" onClick={onModels}>ALL MODELS →</button>
                 </div>
-              ))}
-              <button className="chip mute mt-2" onClick={onModels}>ALL MODELS →</button>
-            </div>
+              </details>
+            )}
           </div>
-        )}
-        {setup?.error && <div className="border border-amber/50 px-3 py-2 text-[12.5px] text-amber">Setup stopped: {setup.error}</div>}
-        <div>
-          <div className="kicker"><span>2 · Give it your documents</span><span>{step ? "while it gets ready" : "now or later"}</span></div>
-          <AddDocs />
+          <div className="flex min-w-0 flex-col gap-2">
+            <h2 className="display m-0 text-[14px] text-ink">2 · Give it your documents <span className="normal-case tracking-normal text-mute">{step ? "while it gets ready" : "now or later"}</span></h2>
+            <AddDocs />
+            <p className="copy m-0 text-[12px] text-mute">They stay on this computer. Sage reads them so its answers come from your own work, and shows where each
+              answer came from.</p>
+          </div>
         </div>
         <div>
           <div className="kicker"><span>Or use an AI you already have</span><span>instead of step 1</span></div>

@@ -25,7 +25,7 @@ export default function Report({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex justify-center bg-void/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
-      <div className="panel flex h-full w-full max-w-[760px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="report">
+      <div className="panel my-auto flex h-auto max-h-full w-full max-w-[760px] min-w-0 flex-col" style={{ flex: "none" }} onClick={(e) => e.stopPropagation()} data-testid="report">
         <div className="panel-head">
           <span className="tab">REPORT A PROBLEM</span>
           <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">tell us what went wrong; you see everything before it's sent</span>

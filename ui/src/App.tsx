@@ -26,7 +26,7 @@ import { AgentPanel, DigestStrip, LibrarySearch, RecentNotes, SystemsStrip, askL
 type Tab = "home" | "agent" | "inbox" | "systems";
 type Area = "agent" | "centre" | "inbox" | "board" | "gpu" | "local";
 
-// What each panel is, in plain words (left) and its role (right).
+// What each panel is, for screen readers (each panel's own title says it on screen; a label row above repeated it).
 const KICKERS: Record<Area, [string, string]> = {
   agent: ["Answering", "Your AI"], centre: ["Ask", "Your bookshelf"], inbox: ["Inbox", "Needs you"],
   board: ["Task board", "Work in flight"], gpu: ["System", "GPU · memory"], local: ["Hermes", "Local agent"],
@@ -64,8 +64,14 @@ export default function App() {
   const [aisVersion, setAisVersion] = useState(0);
   const [pickAsk, setPickAsk] = useState(false);            // D42: the left card asks the chat to open its AI picker
   const [agentsOpen, setAgentsOpen] = useState(false);      // K7: trust, roles, activity
-  const [guide, setGuide] = useState<"why" | "tour" | null>(() => (guideSeen() ? null : "why"));
-  const [booting, setBooting] = useState(true);   // the guide waits, so keys that skip the boot don't reach it
+  // ?shot=<screen> (screenshots and QA): no boot or guide, and the named screen open
+  const shot = new URLSearchParams(location.search).get("shot");
+  const [guide, setGuide] = useState<"why" | "tour" | null>(() => (shot === "guide" ? "why" : shot !== null || guideSeen() ? null : "why"));
+  const [booting, setBooting] = useState(shot === null);   // the guide waits, so keys that skip the boot don't reach it
+  useEffect(() => {
+    if (shot === "connect") setConnect("any"); else if (shot === "usage") setUsage(true); else if (shot === "devices") setDevices(true);
+    else if (shot === "report") setReporting(true); else if (shot === "bookshelf") setShelf(true); else if (shot === "models") setModels(true);
+  }, []);
   const { panels } = hub;
   const safety = useSafety(panels.safety ?? []);
   const inbox = panels.inbox ?? [];
@@ -135,8 +141,8 @@ export default function App() {
   const board = <BoardView board={panels.board} events={hub.events} onOpen={setOpenTask} compact={phone} />;
   const gpu = <GpuLane gpu={panels.gpu} health={panels.health} events={hub.events} engine={panels.engine} />;
   const cell = (a: Area, node: React.ReactNode) => (
-    <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }} data-tour={a}>
-      <div className={`kicker ${a === "agent" && shown === "claude" ? "text-orange/70" : ""}`}><span>{KICKERS[a][0]}</span><span>{KICKERS[a][1]}</span></div>
+    <div ref={(el) => { areas.current[a] = el; }} className="flex min-h-0 flex-col" style={{ gridArea: a }} data-tour={a}
+      role="region" aria-label={KICKERS[a].join(": ")}>
       {node}
     </div>
   );

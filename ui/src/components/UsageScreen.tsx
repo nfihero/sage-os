@@ -56,17 +56,19 @@ export default function UsageScreen({ onClose, onConnect }: { onClose: () => voi
             {(["today", "week", "month"] as const).map((k) => (
               <button key={k} onClick={() => setSpan(k)} aria-pressed={span === k}
                 className={`border px-3 py-2 text-left ${span === k ? "border-cyan bg-cyan/10" : "border-cyan/20 hover:border-cyan/50"}`}>
-                <span className="kicker !m-0 block">{k === "today" ? "Spent today" : k === "week" ? "Last 7 days" : "Last 30 days"}</span>
+                <span className="display block text-[11px] uppercase tracking-[.2em] text-mute">{k === "today" ? "Spent today" : k === "week" ? "Last 7 days" : "Last 30 days"}</span>
                 <span className="font-dot glow-cyan text-[30px] leading-none">{s ? money(s.spent[k]) : "…"}</span>
-                <span className="copy block text-[11px] text-mute">on API keys (models here and your Claude plan cost nothing extra)</span>
               </button>
             ))}
             <div className="border border-orange/30 px-3 py-2">
-              <span className="kicker !m-0 block">Claude plan, {span === "today" ? "today" : span === "week" ? "7 days" : "30 days"}</span>
+              <span className="display block text-[11px] uppercase tracking-[.2em] text-mute">Claude plan, {span === "today" ? "today" : span === "week" ? "7 days" : "30 days"}</span>
               <span className="font-dot glow-orange text-[30px] leading-none">{money(plan)}</span>
               <span className="copy block text-[11px] text-mute">what the same work would cost on the pay-per-use API</span>
             </div>
           </div>
+
+          <p className="copy -mt-3 mb-0 text-[12px] text-mute">Spend counts AI services paid per use (API keys). Models on this computer and
+            your Claude plan cost nothing extra.</p>
 
           {/* daily tokens */}
           {s && s.days.length > 0 && (

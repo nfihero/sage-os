@@ -168,7 +168,9 @@ class HealthAdapter(Adapter):
                 self._seen.add(name)
             # D22.1: something never set up reads "not set up", something not started "off"; red ("down")
             # only when it was running earlier and stopped
-            svc["state"] = ("up" if svc["up"] else "down" if name in self._seen
+            # a Hermes that runs on this computer but isn't connected to Sage OS isn't shown at all (O0, D46)
+            svc["state"] = ("absent" if not getattr(self.cfg, "hermes_profiles", None)
+                            else "up" if svc["up"] else "down" if name in self._seen
                             else "off" if installed else "absent")
         self.emit.panel("health", services)
         for name, s in services.items():

@@ -41,12 +41,14 @@ export default function Models({ panel, game, onClose }: { panel?: EnginePanel; 
       <div className="panel flex h-full w-full max-w-[1100px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="models">
         <div className="panel-head">
           <span className="tab">MODELS</span>
-          <span className="normal-case tracking-normal text-mute">which AI answers, and where it runs</span>
-          <button className="chip ml-auto" onClick={onClose}>CLOSE ✕</button>
+          <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">AI models that run on this computer</span>
+          <button onClick={onClose} className="text-mute hover:text-cyan" aria-label="close">✕</button>
         </div>
         <div className="panel-body flex flex-col gap-4 text-[12.5px]">
-          {err && <div className="border border-red/50 px-2 py-1 text-red">{err}</div>}
-          {!s ? <div className="text-mute">loading…</div> : s.disabled ? <div className="text-mute">The local engine is turned off in config.toml.</div> : (
+          {err && <div className="copy border border-red/50 px-2 py-1 text-red">{err}</div>}
+          {!s ? (!err && <div className="text-mute">loading<span className="dots" /></div>) : s.disabled
+            ? <p className="copy text-mute">Models on this computer are turned off in this install's settings (config.toml, <code>[engine] enabled</code>).
+                You can still use ChatGPT, Gemini or Claude: <b>Connect an AI</b> on the home screen.</p> : (
             <>
               <section>
                 <h3 className="display mb-1 text-[12px] text-cyan">This computer</h3>

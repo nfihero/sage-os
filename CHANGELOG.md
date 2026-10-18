@@ -12,6 +12,27 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.32.0] — 2026-10-18
+
+A polish pass for newcomers on ordinary laptops (D48). **Gate: checked at 1366×768 and 375 px; the owner's look.**
+pytest 380.
+
+### Changed
+- The first-run screen shows both steps side by side (pick an AI; give it your documents), so nothing important is
+  below the fold on a 1366×768 laptop. The hardware box is one line; other models fold away; "Use Gemini instead"
+  comes before the upgrade note.
+- The home screen drops the label row above its panels (each panel's title already names it), giving the content
+  more room.
+- The waiting AI card keeps its button bright and drops empty rows; the inbox's empty state reads in the sentence font.
+- Modals look alike: ✕ to close everywhere; Your devices and Report a problem fit their content; the Bookshelf hides its
+  folder path behind OPEN FOLDER; Usage says once what spend counts; the Models screen explains instead of loading
+  forever when local models are turned off.
+- Hermes' status lights show only when Hermes is connected to Sage OS.
+
+### Added
+- `?shot=<screen>` for screenshots and checks (no boot animation or guide; opens home, guide, bookshelf, connect,
+  usage, devices, report or models).
+
 ## [0.31.0] — 2026-10-18
 
 U2: five minutes to value (D47). **Gate: the owner's timed first run on the M1** (the app now records it). pytest 380.

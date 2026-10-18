@@ -45,14 +45,13 @@ export function AgentPanel({ agent, answering, panels, lowPower, onModels, onSwi
     <div className="flex min-h-0 flex-col gap-3" data-tour="agent">
       <section className={`panel min-h-0 ${agent === "claude" ? "claude" : ""}`} style={{ flex: "none" }}>
         <div className="panel-head"><span className={`tab ${waiting ? "!bg-mute" : ""}`}>{title}</span></div>
-        <div className={`panel-body flex flex-col items-center gap-3 [--orb:min(200px,22vh)] ${waiting ? "opacity-40" : ""}`}>
-          <Orb id={agent === "claude" ? "claude" : "local"} state={waiting ? "idle" : state} tone={agent === "claude" ? "claude" : "accent"} size="var(--orb)" lowPower={lowPower || waiting} />
+        <div className="panel-body flex flex-col items-center gap-3 [--orb:min(200px,22vh)]">
+          <div className={waiting ? "opacity-40" : ""}>{/* only the planet dims while there's no AI; the button stays bright */}
+            <Orb id={agent === "claude" ? "claude" : "local"} state={waiting ? "idle" : state} tone={agent === "claude" ? "claude" : "accent"} size="var(--orb)" lowPower={lowPower || waiting} />
+          </div>
           <div className="readout w-full text-[12px]">
             <Row k="State" v={label} hot={!["IDLE", "NOT LOADED", "NO MODEL YET"].includes(label)} />
-            {waiting ? <>
-              <Row k="Model" v="—" />
-              <Row k="Where" v="—" />
-            </> : agent === "claude" ? <>
+            {waiting ? null : agent === "claude" ? <>
               <Row k="Model" v={latest?.model ?? "default"} />
               <Row k="Folder" v={latest ? latest.cwd.split(/[\\/]/).slice(-2).join("/") : "none yet"} />
               <Row k="Turns" v={String(latest?.turns ?? 0)} />

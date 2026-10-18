@@ -8,7 +8,7 @@ import { reducedMotion } from "../theme";
  */
 export default function BootScreen({ hub, replay, onShowing }: { hub: HubState; replay: number; onShowing?: (showing: boolean) => void }) {
   const [show, setShow] = useState(() => {
-    try { return !sessionStorage.getItem("sageos.booted"); } catch { return true; }
+    try { return !sessionStorage.getItem("sageos.booted") && !new URLSearchParams(location.search).has("shot"); } catch { return true; }
   });
   const [step, setStep] = useState(0);
   const [leaving, setLeaving] = useState(false);

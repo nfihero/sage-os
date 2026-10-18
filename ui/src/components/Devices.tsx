@@ -52,7 +52,7 @@ export default function Devices({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex justify-center bg-void/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
-      <div className="panel flex h-full w-full max-w-[820px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} data-testid="devices">
+      <div className="panel my-auto flex h-auto max-h-full w-full max-w-[820px] min-w-0 flex-col" style={{ flex: "none" }} onClick={(e) => e.stopPropagation()} data-testid="devices">
         <div className="panel-head">
           <span className="tab">YOUR DEVICES</span>
           <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-mute">your computers, paired directly; no account, no cloud</span>
