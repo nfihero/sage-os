@@ -22,7 +22,7 @@ pairing devices (P1, 0.30.0).
 |---|---|---|---|
 | 1 | **U2** five minutes to value | A starter model that downloads and starts in a few minutes on an 8 GB laptop (or a free Gemini key); add documents on the first screen; a first question suggested from them; the answer shows its sources. Gate: download to first useful answer in about five minutes on the owner's M1 | medium |
 | 2 | **U3** helpers (J1 + M1) | Ready-made helpers to switch on: morning brief, weekly recap, meeting prep (calendar), summarize each new document. Plain words for what each does and when; results in the Inbox; every run logged. Gate: a new user switches one on and gets its first result without help | medium |
-| 3 | **U1** clean download | Signed and notarized Mac app and signed Windows installer (no OS warnings); one download page that picks the right file; Claude Code's sign-in run by the app (no terminal anywhere). Needs the owner's Apple Developer and Windows signing accounts | medium |
+| 3 | **U1** clean download | One download page that picks the right file; Claude Code's sign-in run by the app (no terminal anywhere). **Signing deferred** (owner, 18 Oct): installers stay unsigned for now, so the README's first-open steps stay | medium |
 | 4 | **P2** sync chats and decisions | Paired devices share chats, inbox decisions, undo history and helpers' results | medium |
 | 5 | **P3** sync the Bookshelf | Notes and documents copy across between paired devices | medium |
 | 6 | **A3** task board | Hand bigger work to helpers by stage, without Hermes | medium |

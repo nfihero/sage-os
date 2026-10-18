@@ -1172,4 +1172,6 @@ review.
   clean-ups (U4) go along with each step.
 - **Revisit if:** testers' first sessions show a different first blocker than install, first answer or "what would
   an agent do for me".
+- **Update (18 Oct):** the owner deferred code signing (Apple Developer, Windows certificate). U1 keeps the download page
+  and the no-terminal work; installers stay unsigned, with the first-open steps in the README, until signing is picked up.
 
