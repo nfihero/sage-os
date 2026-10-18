@@ -71,6 +71,7 @@ export default function App() {
   useEffect(() => {
     if (shot === "connect") setConnect("any"); else if (shot === "usage") setUsage(true); else if (shot === "devices") setDevices(true);
     else if (shot === "report") setReporting(true); else if (shot === "bookshelf") setShelf(true); else if (shot === "models") setModels(true);
+    else if (shot === "picker") setTimeout(() => setPickAsk(true), 1500);         // the AI picker, once the chat has loaded
   }, []);
   const { panels } = hub;
   const safety = useSafety(panels.safety ?? []);

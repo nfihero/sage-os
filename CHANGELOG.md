@@ -12,6 +12,21 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.34.0] — 2026-10-18
+
+The AI picker redesigned (D50). **Gate: the owner's look.** pytest 380.
+
+### Changed
+- The AI picker above a chat groups AIs by where they run, each group saying once what it costs and who sees your
+  questions: On this computer (free, private, offline), Claude (your plan), ChatGPT (pay per use), Gemini (free tier,
+  then pay per use).
+- The AI answering now is named at the top and marked in its group; a group's extra models open inside it; a search
+  box appears for long lists; "Add another AI" lists what isn't set up with what it takes.
+- A "more below" fade when part of the list is out of sight; arrow keys move through it.
+
+### Added
+- `?shot=picker` opens the AI picker, for screenshots.
+
 ## [0.33.0] — 2026-10-18
 
 MODELS redesigned for choosing a model (D49). **Gate: the owner's look.** pytest 380.

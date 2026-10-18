@@ -167,86 +167,149 @@ export default function ChatSpace({ panels, openId, onOpen, onAnswering, onModel
   );
 }
 
-/** Every AI there is to talk to, for a new chat or the next reply. It never runs off the window: the list scrolls and
- *  "Install or connect another" stays pinned at the bottom (Mac test, D42). Cloud services list their best-known
- *  chat models first; the rest are under "More models". */
+/** Where an AI runs, grouped the way a person thinks about it (D50): what it costs and who sees the questions. */
+type Group = { key: string; name: string; hint: string; connect?: ConnectSection };
+const GROUPS: Group[] = [
+  { key: "computer", name: "On this computer", hint: "free · private · works offline", connect: "computer" },
+  { key: "claude", name: "Claude", hint: "your Claude plan", connect: "claude" },
+  { key: "openai", name: "ChatGPT", hint: "pay per use, with your API key", connect: "openai" },
+  { key: "gemini", name: "Gemini", hint: "free tier, then pay per use", connect: "gemini" },
+  { key: "hermes", name: "Hermes", hint: "your Hermes setup" },
+];
+const ADD_HINT: Record<string, string> = {
+  computer: "free and private; a download of a few GB", claude: "sign in with your Claude plan",
+  openai: "paste an OpenAI API key", gemini: "paste a free Google AI key",
+};
+function groupOf(a: AI): string {
+  if (a.agent === "claude") return "claude";
+  if (a.agent.startsWith("hermes:")) return "hermes";
+  if (a.provider === "engine" || a.provider === "ollama" || a.kind === "local") return "computer";
+  return a.provider ?? a.where;
+}
+const aiName = (a: AI) => (a.agent === "chat" ? (a.name ?? shortModel(a.model ?? "")) : a.label);
+
+/** Every AI there is to talk to, for a new chat or the next reply (D42, redesigned in D50): grouped by where it runs,
+ *  each group saying what it costs; the one answering now on top; a group's extra models one click away inside it;
+ *  what isn't set up yet at the bottom. Drawn above every panel, never past the window, arrow keys move through it. */
 function AiMenu({ ais, title, current, onPick, onClose, onConnect }: {
   ais: AI[]; title: string; current?: string; onPick: (ai: AI) => void; onClose: () => void; onConnect: (s?: ConnectSection) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const anchor = useRef<HTMLSpanElement>(null);
-  // drawn over everything (a portal, fixed to the window) so no panel can cover it, and never past the window's edge
   const [pos, setPos] = useState<{ left: number; top: number; width: number; maxH: number } | null>(null);
   const [more, setMore] = useState<Record<string, boolean>>({});
+  const [q, setQ] = useState("");
+  const list = useRef<HTMLDivElement>(null);
+  const [below, setBelow] = useState(false);              // more of the list is out of sight: say so
+  const look = () => { const el = list.current; setBelow(!!el && el.scrollHeight - el.scrollTop - el.clientHeight > 6); };
   useEffect(() => {
     const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) onClose(); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     const fit = () => {
       const host = anchor.current?.parentElement?.getBoundingClientRect();
       if (!host) return;
-      const width = Math.min(340, window.innerWidth - 16);
+      const width = Math.min(380, window.innerWidth - 16);
       const left = Math.max(8, Math.min(host.left + 10, window.innerWidth - width - 8));
-      const top = Math.min(host.bottom + 2, window.innerHeight - 220);
-      setPos({ left, top, width, maxH: Math.max(200, window.innerHeight - top - 8) });
+      const top = Math.min(host.bottom + 4, window.innerHeight - 240);
+      setPos({ left, top, width, maxH: Math.max(220, window.innerHeight - top - 10) });
     };
     fit();
+    const again = setTimeout(fit, 120);                    // once the page around it has settled
     setTimeout(() => document.addEventListener("mousedown", away));
     document.addEventListener("keydown", esc);
     window.addEventListener("resize", fit);
-    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); window.removeEventListener("resize", fit); };
+    return () => { clearTimeout(again); document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); window.removeEventListener("resize", fit); };
   }, []);
+  useEffect(look);
+  useEffect(() => {      // focus the AI answering now (or the first), so the keyboard starts in the right place
+    if (!pos) return;
+    const el = box.current?.querySelector<HTMLElement>("[data-current=true]:not(:disabled)") ?? box.current?.querySelector<HTMLElement>("[role=menuitem]:not(:disabled)");
+    el?.focus({ preventScroll: false });
+  }, [!!pos]);
+  const keys = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+    e.preventDefault();
+  };
+
+  const needle = q.trim().toLowerCase();
+  const shown = needle ? ais.filter((a) => `${aiName(a)} ${a.where} ${a.note ?? ""}`.toLowerCase().includes(needle)) : ais;
+  const known = new Set(GROUPS.map((g) => g.key));
+  const extra: Group[] = [...new Set(shown.map(groupOf))].filter((k) => !known.has(k)).map((k) => ({ key: k, name: shown.find((a) => groupOf(a) === k)?.where ?? k, hint: "" }));
+  const groups = [...GROUPS, ...extra].map((g) => ({ g, list: shown.filter((a) => groupOf(a) === g.key) })).filter((x) => x.list.length);
+  const missing = GROUPS.filter((g) => g.connect && !ais.some((a) => groupOf(a) === g.key));
+  const cur = ais.find((a) => aiKey(a) === current);
+
   const row = (a: AI) => {
     const off = a.ready === false;
+    const on = current === aiKey(a);
     return (
-      <button key={aiKey(a)} role="menuitem" disabled={off} onClick={() => onPick(a)}
-        className={`grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-2.5 px-2 py-1.5 text-left hover:bg-cyan/10 disabled:opacity-45 ${current === aiKey(a) ? "bg-cyan/10" : ""}`}>
-        <span className={`h-2 w-2 rounded-full ${dot(a.agent, a.label)}`} aria-hidden />
-        <span className="min-w-0">
-          <span className="copy block text-[13px] leading-snug text-ink [overflow-wrap:anywhere]">{a.agent === "chat" ? (a.name ?? shortModel(a.model ?? "")) : a.label}</span>
-          {a.note && <span className="copy block text-[11px] text-mute">{a.note}</span>}
+      <button key={aiKey(a)} role="menuitem" disabled={off} data-current={on} onClick={() => onPick(a)}
+        className={`group/row flex w-full items-start gap-3 px-3 py-2 text-left outline-none hover:bg-cyan/10 focus-visible:bg-cyan/10 disabled:cursor-not-allowed ${on ? "bg-cyan/[.07]" : ""}`}>
+        <span className={`mt-[7px] h-2 w-2 flex-none rounded-full ${off ? "bg-mute/50" : dot(a.agent, a.label)}`} aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className={`copy block text-[13.5px] leading-snug [overflow-wrap:anywhere] ${off ? "text-mute" : "text-ink"}`}>{aiName(a)}</span>
+          {(a.note || off) && <span className="copy block text-[11.5px] leading-snug text-mute">{off ? "sign in first: CONNECT → Claude Code" : a.note}</span>}
         </span>
-        <span className="self-start pt-0.5 text-[10.5px] text-mute">{off ? "sign in first" : a.where}</span>
+        {on && <span className="mt-0.5 flex-none text-[10.5px] uppercase tracking-[.14em] text-cyan">✓ answering</span>}
       </button>
     );
   };
-  // the cloud services' extra models fold away per service
-  // what isn't set up yet, one click from here (D42): a model on this computer, Claude, ChatGPT, Gemini
-  const has = (f: (a: AI) => boolean) => ais.some(f);
-  const missing: [ConnectSection, string][] = ([
-    ["computer", "A model on this computer", has((a) => a.provider === "engine" || a.provider === "ollama")],
-    ["claude", "Claude Code", has((a) => a.agent === "claude")],
-    ["openai", "ChatGPT", has((a) => a.provider === "openai")],
-    ["gemini", "Gemini", has((a) => a.provider === "gemini")],
-  ] as [ConnectSection, string, boolean][]).filter(([, , here]) => !here).map(([k, n]) => [k, n]);
-  const groups = new Map<string, AI[]>();
-  for (const a of ais) if (a.first === false) groups.set(a.where, [...(groups.get(a.where) ?? []), a]);
+
   return <><span ref={anchor} hidden />{pos && createPortal(
-    <div ref={box} role="menu" className="flex flex-col border border-cyan/45 bg-[#020f07] shadow-[0_12px_40px_rgba(0,0,0,.6)]"
+    <div ref={box} role="menu" aria-label={title} onKeyDown={keys}
+      className="flex flex-col border border-cyan/45 bg-[#020f07] shadow-[0_16px_48px_rgba(0,0,0,.65)]"
       style={{ position: "fixed", left: pos.left, top: pos.top, width: pos.width, maxHeight: pos.maxH, zIndex: 70 }} data-testid="ai-menu">
-      <div className="kicker mx-2.5 mb-1 mt-1.5"><span>{title}</span><span>{ais.length ? "" : "none yet"}</span></div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
-        {ais.filter((a) => a.first !== false).map(row)}
-        {[...groups.entries()].map(([where, list]) => (
-          <div key={where}>
-            <button className="w-full px-2 py-1.5 text-left text-[11.5px] text-cyan/80 hover:bg-cyan/10" aria-expanded={!!more[where]}
-              onClick={() => setMore({ ...more, [where]: !more[where] })}>
-              {more[where] ? "▾" : "▸"} More {where} models ({list.length})
-            </button>
-            {more[where] && list.map(row)}
-          </div>
-        ))}
+      <div className="flex items-baseline gap-2 border-b border-cyan/15 px-3 pb-2 pt-2.5">
+        <span className="display text-[12px] uppercase tracking-[.16em] text-ink">{title}</span>
+        {cur && <span className="copy min-w-0 flex-1 truncate text-right text-[11.5px] text-mute">now: {aiName(cur)}</span>}
       </div>
-      <div className="border-t border-dashed border-cyan/20 p-1.5">
-        {missing.length > 0 && <div className="mb-1 flex flex-wrap items-center gap-1 px-1.5" data-testid="ai-menu-missing">
-          <span className="copy text-[11px] text-mute">Not set up yet:</span>
-          {missing.map(([k, n]) => (
-            <button key={k} className="chip mute h-6 normal-case tracking-normal" onClick={() => { onClose(); onConnect(k); }}
-              title={k === "computer" ? "Install or start a model that runs on this computer" : `How to connect ${n}`}>{n} +</button>
-          ))}
-        </div>}
-        <button role="menuitem" className="w-full px-2 py-1.5 text-left text-[12px] text-mute hover:bg-cyan/10" onClick={() => { onClose(); onConnect(); }}>
-          Install or connect another… <span className="float-right">CONNECT</span>
-        </button>
+      {ais.length > 8 && (
+        <div className="border-b border-cyan/10 px-3 py-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an AI or model" aria-label="Find an AI or model"
+            onKeyDown={(e) => { if (e.key === "ArrowDown") { e.preventDefault(); box.current?.querySelector<HTMLElement>("[role=menuitem]:not(:disabled)")?.focus(); } }}
+            className="copy w-full border border-cyan/25 bg-void/80 px-2 py-1 text-[12.5px] text-ink outline-none placeholder:text-mute focus:border-cyan" />
+        </div>
+      )}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={list} onScroll={look} className="min-h-0 flex-1 overflow-y-auto py-1">
+        {groups.length === 0 && <p className="copy m-0 px-3 py-3 text-[12.5px] text-mute">{needle ? "Nothing matches." : "No AI is ready yet."}</p>}
+        {groups.map(({ g, list }) => {
+          const top = needle ? list : list.filter((a) => a.first !== false || aiKey(a) === current);
+          const rest = needle ? [] : list.filter((a) => !top.includes(a));
+          return (
+            <section key={g.key} className="pb-1" aria-label={g.name}>
+              <div className="flex items-baseline gap-2 px-3 pb-0.5 pt-2">
+                <span className="display text-[11.5px] uppercase tracking-[.16em] text-cyan/80">{g.name}</span>
+                {g.hint && <span className="copy truncate text-[11px] text-mute">{g.hint}</span>}
+              </div>
+              {top.map(row)}
+              {rest.length > 0 && (more[g.key] ? rest.map(row) : (
+                <button role="menuitem" className="copy w-full px-3 py-1.5 pl-8 text-left text-[12px] text-cyan/75 outline-none hover:bg-cyan/10 hover:text-cyan focus-visible:bg-cyan/10"
+                  onClick={() => setMore({ ...more, [g.key]: true })}>{rest.length} more {g.name} model{rest.length === 1 ? "" : "s"}</button>
+              ))}
+            </section>
+          );
+        })}
+      </div>
+      {below && <button tabIndex={-1} aria-hidden onClick={() => list.current?.scrollBy({ top: 160, behavior: "smooth" })}
+        className="copy absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-[#020f07] from-45% to-transparent pb-1.5 text-[11px] text-cyan/80">more below ↓</button>}
+      </div>
+      <div className="border-t border-dashed border-cyan/20 py-1" data-testid="ai-menu-missing">
+        {missing.length > 0 && <div className="display px-3 pb-0.5 pt-1.5 text-[11.5px] uppercase tracking-[.16em] text-mute">Add another AI</div>}
+        {missing.map((g) => (
+          <button key={g.key} role="menuitem" onClick={() => { onClose(); onConnect(g.connect); }}
+            className="flex w-full items-baseline gap-3 px-3 py-1.5 text-left outline-none hover:bg-cyan/10 focus-visible:bg-cyan/10">
+            <span className="w-2 flex-none text-center text-cyan" aria-hidden>+</span>
+            <span className="copy text-[13px] text-ink/90">{g.name === "On this computer" ? "A model on this computer" : g.name}</span>
+            <span className="copy min-w-0 flex-1 truncate text-[11.5px] text-mute">{ADD_HINT[g.key]}</span>
+          </button>
+        ))}
+        <button role="menuitem" onClick={() => { onClose(); onConnect(); }}
+          className="copy w-full px-3 py-1.5 pl-8 text-left text-[12px] text-mute outline-none hover:bg-cyan/10 hover:text-ink focus-visible:bg-cyan/10">
+          All the ways to connect an AI →</button>
       </div>
     </div>, document.body)}</>;
 }

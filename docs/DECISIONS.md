@@ -1232,3 +1232,21 @@ review.
      reported graphics memory is larger than the card shows "shared memory" instead of an impossible number.
   6. **Cloud AIs get one line and CONNECT AN AI**, replacing the old "edit config.toml" text.
 
+## D50 — The AI picker, grouped by where an AI runs and what it costs
+
+- **Date / by:** 2026-10-18, owner ("give the AI picker above the chat the same treatment" as MODELS, D49); design by
+  Claude
+- **Status:** accepted; built in 0.34.0.
+- **Decision:**
+  1. **Groups, not a flat list:** *On this computer* (free · private · works offline), *Claude* (your Claude plan),
+     *ChatGPT* (pay per use, with your API key), *Gemini* (free tier, then pay per use), *Hermes*; each heading says
+     the cost and privacy once instead of repeating the service on every row.
+  2. **The AI answering now** is named at the top ("now: …") and marked *✓ answering* in its group; a row that can't be
+     used says why ("sign in first").
+  3. **A group's extra models open inside that group** ("9 more Gemini models"), and a search box appears once there
+     are more than eight.
+  4. **"Add another AI"** lists, one row each, what isn't set up yet with what it takes ("paste an OpenAI API key"),
+     then *All the ways to connect an AI*.
+  5. **It never hides its own content silently:** when more of the list is out of sight a fade says *more below*;
+     arrow keys move through it and focus starts on the AI answering now (or the first one available).
+

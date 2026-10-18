@@ -1,7 +1,7 @@
 {
   "name": "sage-os-desktop",
   "private": true,
-  "version": "0.33.0",
+  "version": "0.34.0",
   "description": "Sage OS desktop app (W1): a Tauri window and tray around the hub",
   "scripts": {
     "tauri": "tauri",
