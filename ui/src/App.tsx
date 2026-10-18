@@ -216,7 +216,7 @@ export default function App() {
       {reporting && <Report onClose={() => setReporting(false)} />}
       {devices && <Devices onClose={() => setDevices(false)} />}
       {usage && <UsageScreen onClose={() => setUsage(false)} onConnect={() => { setUsage(false); setConnect("any"); }} />}
-      {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} />}
+      {models && <Models panel={panels.engine} game={panels.gamemode} onClose={() => setModels(false)} onConnect={() => setConnect("any")} />}
       {agentsOpen && <Agents panel={panels.agents_trust} librarian={panels.librarian} onClose={() => setAgentsOpen(false)} />}
       <Guide open={booting ? null : guide} panels={panels} onClose={() => setGuide(null)} onBookshelf={() => setShelf(true)} />
       {openTask && <TaskDrawer id={openTask} onClose={() => setOpenTask(null)} onOpen={setOpenTask} />}

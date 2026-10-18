@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.32.0** (tags through 0.32.0; D48 polish pass; screenshots: `?shot=<screen>` with headless Chrome; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.33.0** (tags through 0.33.0; D49 MODELS; D48 polish pass; screenshots: `?shot=<screen>` with headless Chrome; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and

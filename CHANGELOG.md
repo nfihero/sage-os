@@ -12,6 +12,18 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.33.0] — 2026-10-18
+
+MODELS redesigned for choosing a model (D49). **Gate: the owner's look.** pytest 380.
+
+### Changed
+- MODELS opens on what's running (or how to start), then two recommended models as big cards (*Quick start* and *Best
+  answers here*, with a filled button), then every other model as a card: what it's good for, its size, how it runs
+  on this computer, one button. Source and licence are in the tooltip; models too big for the computer fold away.
+- Downloads show a dot-matrix meter with the time left, PAUSE and CONTINUE.
+- Game mode is one folded line at the bottom of MODELS; its process list no longer shows impossible memory figures.
+- Cloud AIs: one line with CONNECT AN AI instead of config-file instructions.
+
 ## [0.32.0] — 2026-10-18
 
 A polish pass for newcomers on ordinary laptops (D48). **Gate: checked at 1366×768 and 375 px; the owner's look.**

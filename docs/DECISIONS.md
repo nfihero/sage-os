@@ -1215,3 +1215,20 @@ review.
   6. **`?shot=<screen>`** opens the app without the boot animation or guide, on a given screen, so every release can be
      screenshotted at laptop size with a headless browser.
 
+## D49 — MODELS: a screen for picking a model, not for running the machine
+
+- **Date / by:** 2026-10-18, owner ("the model picker is still very cluttered and rudimentary"); design by Claude
+- **Status:** accepted; built in 0.33.0, in the same phosphor look.
+- **Decision:**
+  1. **What's running comes first:** one card says which model is running (or that none is, and how to start one),
+     with STOP, and this computer's hardware in one line.
+  2. **Two recommendations, as big cards:** *Quick start* (the catalog's starter) and *Best answers here* (the largest
+     model that runs well in a reasonable download), each with a filled button.
+  3. **Every other model is a card** with what it's good for, its size, how it runs here (runs well / slowly / too big)
+     and one action; source, licence and memory needed move to the name's tooltip. Too-big models fold away; game
+     mode's helper model isn't listed (game mode offers it).
+  4. **Downloads show a dot-matrix meter** with the time left and PAUSE; a stopped download says CONTINUE.
+  5. **Game mode folds into one line at the bottom** (its process list and settings open from there); a program whose
+     reported graphics memory is larger than the card shows "shared memory" instead of an impossible number.
+  6. **Cloud AIs get one line and CONNECT AN AI**, replacing the old "edit config.toml" text.
+

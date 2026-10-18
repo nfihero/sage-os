@@ -29,11 +29,10 @@ export default function GameMode({ g, onChange }: { g?: GameModePanel; onChange?
 
   return (
     <section data-testid="gamemode">
-      <h3 className="display mb-1 text-[12px] text-cyan">Game mode</h3>
       {err && <div className="mb-1 border border-red/50 px-2 py-1 text-red">{err}</div>}
       <div className="flex flex-wrap items-center gap-2">
         <span className={`light ${paused ? "idle" : g.mode === "never" ? "down" : "up"}`} />
-        <span className="min-w-0 flex-1 text-ink/85">{status}</span>
+        <span className="copy min-w-0 flex-1 text-[13px] text-ink/85">{status}</span>
         {paused
           ? <button className="chip" onClick={() => act("/api/gamemode/pause", { on: false })} disabled={!g.manual}
               title={g.manual ? "Load the model again now" : "Comes back on its own after the program closes"}>RESUME</button>
@@ -57,7 +56,7 @@ export default function GameMode({ g, onChange }: { g?: GameModePanel; onChange?
             return (
               <div key={p.name} className="flex flex-wrap items-center gap-2 border-b border-cyan/10 py-0.5">
                 <span className="min-w-0 flex-1 truncate font-mono text-[11.5px]">{p.name}</span>
-                <span className="text-mute">{p.vram_gb} GB{p.busy != null ? ` · ${Math.round(p.busy)}% busy` : ""}</span>
+                <span className="text-mute">{g.card && p.vram_gb > g.card.total_gb * 1.05 ? "shared memory" : `${p.vram_gb} GB`}{p.busy != null ? ` · ${Math.round(p.busy)}% busy` : ""}</span>
                 <button className={`chip ${rule === "always" ? "" : "mute"}`} onClick={() => act("/api/gamemode/program", rule === "always" ? { name: p.name, clear: true } : { name: p.name, counts: "always" })}
                   title="Always step aside when this program runs">ALWAYS</button>
                 <button className={`chip ${rule === "never" ? "red" : "mute"}`} onClick={() => act("/api/gamemode/program", rule === "never" ? { name: p.name, clear: true } : { name: p.name, counts: "never" })}
