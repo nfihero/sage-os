@@ -12,6 +12,10 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+### Docs (18 Oct)
+- D46: Sage OS is an independent app built to win new users. MISSION.md rewritten; the roadmap reordered:
+  U2 five minutes to value, U3 helpers (J1 + M1), U1 clean download, then P2, P3, A3, M2.
+
 ## [0.30.0] — 2026-10-18
 
 P1: pair your devices directly (D45). **Gate: pass in tests and on two hubs here; the owner's Mac and PC are the real

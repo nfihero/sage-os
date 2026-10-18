@@ -1148,3 +1148,28 @@ review.
 - **Costs:** while the listener runs, the computer's name and Sage OS's presence are visible to others on the same
   network (as with any Bonjour device); anyone there can ask `hello` or try a code (five tries, then the code ends).
 
+## D46 — Sage OS is an independent app built to win new users
+
+- **Date / by:** 2026-10-18, owner ("ensure the direction for the project is an independent app, assume and build as
+  though we need to get more users to start using the product: the app should download cleanly, easily, and all of
+  a sudden the AI agents are not just a buzzword for people"); plan by Claude
+- **Status:** accepted as the product direction; MISSION.md rewritten; ROADMAP "The plan" reordered (18 Oct).
+  Builds on D22 (the product audience), D41 (assume no agent experience) and D43 (no outside services).
+- **Decision:**
+  1. **Independent:** nothing a new user meets depends on the founder's setup (Hermes, a GPU, Claude Code, a
+     terminal). Those stay as optional integrations, out of sight until connected.
+  2. **Clean download (U1):** a signed and notarized Mac app and a signed Windows installer, so neither OS warns or
+     blocks; one download page that picks the right file; no terminal step anywhere, including Claude Code's
+     sign-in, which the app runs itself.
+  3. **Value in five minutes (U2):** on an ordinary 8 GB laptop, a person goes from download to a useful answer
+     about their own documents in about five minutes: a quick starter model (or a free Gemini key), documents added
+     on the first screen, and a first question suggested from them.
+  4. **Agents as helpers (U3):** "AI agents" become ready-made **helpers** a person switches on: a morning brief, a
+     weekly recap, meeting prep, a summary of each new document. Each says in plain words what it does and when,
+     runs on a schedule (J1), brings its results to the Inbox, and is logged (K7). Meeting prep is M1.
+  5. **Sync keeps its place right after** (P2, P3): one device has to delight first; a second device makes it stick.
+- **Order:** U2 → U3 → U1 (the signing part waits on the owner's accounts) → P2 → P3 → A3 → M2; independence
+  clean-ups (U4) go along with each step.
+- **Revisit if:** testers' first sessions show a different first blocker than install, first answer or "what would
+  an agent do for me".
+

@@ -5,32 +5,39 @@ starts. No dates; the order is the plan. Source: the design doc
 ([Sage OS — Design](https://claude.ai/code/artifact/af65a0a6-433a-48c3-b841-33d7aedab899)), extended
 on 30 Sep 2026 with the Bookshelf track.
 
-## The plan (17 Oct 2026 — DECISIONS D41, D42, D43)
+## The plan (18 Oct 2026 — DECISIONS D41, D43, D46)
 
-**Done so far:** the hub and desktop app on Windows and Mac with signed updates (W1, F1); the Bookshelf with review,
-undo, digests, briefing packs and meaning-based search (K1–K14); one chat space for every AI (W3); connect guides,
-keys in the keychain and costs (D40); the first-time-user pass (O0); the first Mac run's fixes (D42, 0.28.0); the
-sync-ready data model (Y1).
+**Direction (D46):** an independent app that a person who has never used an AI agent downloads, installs and gets
+value from in five minutes, and in which "AI agents" are concrete helpers that do useful work. No outside services
+(D43).
+
+**Done so far:** the app on Windows and Mac with updates (W1, F1); the Bookshelf with review, undo, digests, briefing
+packs and meaning-based search (K1–K14); one chat space for every AI (W3); connect guides, keys in the keychain and
+costs (D40); plain words for first-time users (O0); the first Mac run's fixes (D42); secrets in the keychain (Y2);
+pairing devices (P1, 0.30.0).
 
 **Next, in order:**
 
-| # | Step | What you get | Size |
+| # | Step | What a new user gets | Size |
 |---|---|---|---|
-| 0 | **Mac re-run** (owner) | The rest of docs/MAC-FIRST-RUN.md on 0.28.0: Gatekeeper, a local model on 8 GB, ADD FILES, the report email, an update keeping data | owner |
-| 1 | ~~**Y2** secrets in the keychain~~ **done (0.29.0, D44)** | The Google sign-in token left its file; each device has its own pairing key | small |
-| 2 | ~~**P1** pair your devices~~ **done (0.30.0, D45)** | *Add a device* on the PC shows a code; type it on the Mac. They find each other on your network. Remove a device any time | medium |
-| 3 | **P2** sync chats and decisions | Chats, inbox decisions, undo history, digests and threads flow between paired devices and merge (Y1 merge) | medium |
-| 4 | **P3** sync the Bookshelf | Notes and documents copy across by content; a file changed on both keeps both copies | medium |
-| 5 | **J1 + M1** recurring jobs and meeting briefs | Jobs on a schedule in plain words; a brief before each meeting from your notes (needs a calendar connection) | medium |
-| 6 | **A3** Sage OS task board | Work handed to AIs by stage, without Hermes' board | medium |
+| 1 | **U2** five minutes to value | A starter model that downloads and starts in a few minutes on an 8 GB laptop (or a free Gemini key); add documents on the first screen; a first question suggested from them; the answer shows its sources. Gate: download to first useful answer in about five minutes on the owner's M1 | medium |
+| 2 | **U3** helpers (J1 + M1) | Ready-made helpers to switch on: morning brief, weekly recap, meeting prep (calendar), summarize each new document. Plain words for what each does and when; results in the Inbox; every run logged. Gate: a new user switches one on and gets its first result without help | medium |
+| 3 | **U1** clean download | Signed and notarized Mac app and signed Windows installer (no OS warnings); one download page that picks the right file; Claude Code's sign-in run by the app (no terminal anywhere). Needs the owner's Apple Developer and Windows signing accounts | medium |
+| 4 | **P2** sync chats and decisions | Paired devices share chats, inbox decisions, undo history and helpers' results | medium |
+| 5 | **P3** sync the Bookshelf | Notes and documents copy across between paired devices | medium |
+| 6 | **A3** task board | Hand bigger work to helpers by stage, without Hermes | medium |
 | 7 | **M2** note-taker | Sage listens to a meeting (with consent), transcribes on the computer, proposes notes and follow-ups | large |
 
-**Later, order not set:** P4 sync away from home (through one of your own devices, D43.5), then Y6 the phone app;
-O1 organization bookshelves (an organization's own Sage OS that members pair with); S2 OCR; K9 work becomes
-knowledge; K11 answers only from your notes; A4 a second local agent; Phases 4–6. **Open checks:** O0's gate (a real
-first-time user), K7's live Librarian run, G1 with a real game.
+**Along the way (U4, independence):** anything that assumes the founder's setup (Hermes, the GPU lane, the Systems
+board, terminal steps, developer wording) stays out of sight until a person connects it.
 
-No outside services anywhere in this plan (D43): no cloud folder, no Sage account, no sync server.
+**Later, order not set:** P4 sync away from home (or the owner's router VPN), Y6 the phone app, O1 organization
+bookshelves, S2 OCR, K9, K11, A4, Phases 4–6. **Open checks:** O0's gate (a real first-time user), pairing the owner's
+Mac and PC, K7's live Librarian run, G1 with a real game.
+
+### The plan before 18 Oct (17 Oct 2026 — D41, D42, D43)
+
+Y2 (done, 0.29.0) → P1 (done, 0.30.0) → P2 → P3 → J1 + M1 → A3 → M2. Reordered by D46 above.
 
 ### Build order before 17 Oct (13 Oct 2026 — DECISIONS D30, D32, D39)
 
