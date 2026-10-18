@@ -1100,3 +1100,21 @@ review.
      members pair with it.
 - **Revisit if:** two devices are rarely on the same network at once, so syncs are too far apart to be useful.
 
+## D44 — Y2: every secret in the OS keychain, and a pairing key for each device
+
+- **Date / by:** 2026-10-18, owner ("start Y2"); design by Claude
+- **Status:** accepted; built in 0.29.0. Y2's gate passes: no secret is a plain file in app data.
+- **Decision:**
+  1. **The Google sign-in token moves into the keychain** (item *google-token* under *Sage OS*) the first time 0.29
+     starts: read from `google-token.json`, stored, read back, and only then the file is deleted. If it ever won't
+     fit (Windows holds 1,280 characters an item), the access token is left out; it's fetched again from the refresh
+     token. The OAuth *client* file stays a file: Google treats an installed app's client secret as public.
+  2. **The engine's key needs nothing:** it was already made fresh each time the engine starts and kept only in memory.
+  3. **Each device makes its own Ed25519 key pair** (`cryptography`), the private half in the keychain
+     (*device-key:<device ID>*), for P1's pairing. STORAGE shows its fingerprint (`K3F9-2QXA-7MLD`), which two
+     screens will show side by side when pairing.
+  4. **Without a keychain** (some Linux), the token stays in its owner-only file, there's no pairing key, and STORAGE
+     says so.
+  5. **The release workflow keeps "latest" on the highest version** (the 0.27/0.28 pushes left the update feed on
+     0.27.0), and the packaged app's self-check also checks the pairing key, then removes its own test key.
+

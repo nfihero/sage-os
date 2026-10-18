@@ -7,7 +7,7 @@ copies and indexes like any other file. Drive itself is never written.
 
   * The OAuth client is the user's own (a "Desktop app" client from Google Cloud, in testing mode), saved
     as data/google-oauth-client.json. A public release needs Google's verification for this scope (D22).
-  * The refresh token is kept in data/google-token.json (data/ is never committed) and never leaves the
+  * The refresh token is kept in the OS keychain (Y2; google-token.json before 0.29) and never leaves the
     hub: not logged, not sent to the browser.
   * Sign-in happens in the user's browser on Google's own page; Sage OS never sees the password.
 """
@@ -53,8 +53,10 @@ def loose(name: str) -> str:
 
 
 class GoogleDrive:
-    def __init__(self, client_path: Path, token_path: Path):
-        self.client_path, self.token_path = Path(client_path), Path(token_path)
+    def __init__(self, client_path: Path, token_path: Path, store=None):
+        """`store`: where the sign-in token lives (the OS keychain in the hub, Y2: get / set / delete); without one,
+        the file at `token_path`."""
+        self.client_path, self.token_path, self.store = Path(client_path), Path(token_path), store
         self.lock = threading.Lock()
         self._pending: dict[str, tuple[str, str, float]] = {}    # state -> (verifier, redirect, created)
         self._folders: dict[tuple[str, str], str | None] = {}   # (parent id, name) -> folder id, per sync
@@ -77,12 +79,17 @@ class GoogleDrive:
         return c if c.get("client_id") and c.get("client_secret") else None
 
     def _token(self) -> dict | None:
+        if self.store is not None:
+            return self.store.get()
         try:
             return json.loads(self.token_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
 
     def _save_token(self, tok: dict):
+        if self.store is not None:
+            self.store.set(tok)
+            return
         self.token_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.token_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(tok), encoding="utf-8")
@@ -150,6 +157,8 @@ class GoogleDrive:
                 httpx.post("https://oauth2.googleapis.com/revoke", data={"token": tok.get("refresh_token") or tok.get("access_token")}, timeout=10)
             except httpx.HTTPError:
                 pass
+        if self.store is not None:
+            self.store.delete()
         self.token_path.unlink(missing_ok=True)
 
     # -- API -------------------------------------------------------------------------------------------

@@ -89,6 +89,14 @@ def run(out: Path, with_engine: bool) -> int:
             return name
         check("the OS keychain", keychain)
 
+        def pairing_key():
+            k = state["app"].state.hub.device_key
+            assert k is not None, "this device made no pairing key"
+            from .sync.devicekey import DeviceKey
+            assert DeviceKey.verify(k.public_b64, k.sign(b"self-check"), b"self-check"), "the pairing key can't sign"
+            return k.fingerprint
+        check("this device's pairing key (in the keychain)", pairing_key)
+
         def report():
             text = c.post("/api/report/preview", json={"description": "self-check"}, headers={"X-Sage-OS": "1"}).json()["text"]
             assert "SAGE OS PROBLEM REPORT" in text
@@ -111,6 +119,9 @@ def run(out: Path, with_engine: bool) -> int:
 
     import logging
     import shutil
+    if state.get("app") is not None:              # the throwaway install's own secrets leave this computer's keychain
+        hub = state["app"].state.hub
+        hub.keys.delete(f"device-key:{hub.device.id}")
     logging.shutdown()                                     # let go of the temporary folder's files, then remove it
     shutil.rmtree(data, ignore_errors=True)
     ok = all(x["ok"] for x in checks)

@@ -12,6 +12,22 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.29.0] — 2026-10-18
+
+Y2: every secret in the OS keychain (D44). **Gate: pass** (no secret is a plain file in app data). pytest 371.
+
+### Added
+- Each device has its own pairing key, kept in the keychain; STORAGE shows its fingerprint, for pairing devices next
+  (P1, D43).
+
+### Changed
+- The Google Drive sign-in moves from `google-token.json` into the keychain the first time this version starts.
+- STORAGE no longer suggests putting the Bookshelf in a cloud folder (D43), and says where your secrets are kept.
+
+### Fixed
+- When two versions are released together, the update feed now points to the newest one (0.27.0 had been left as
+  "latest" over 0.28.0).
+
 ### Docs (17 Oct)
 - D43: sync without any outside service; devices pair and sync directly (replaces D27's account and server). The
   roadmap laid out as one plan: Y2, P1 pairing, P2 records, P3 Bookshelf, J1 + M1, A3, M2.

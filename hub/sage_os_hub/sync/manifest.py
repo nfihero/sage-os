@@ -70,7 +70,7 @@ FILES: dict[str, str] = {
     "gamemode.json": LOCAL,             # game mode settings: a game on this computer (G1)
     "engine": LOCAL,                    # llama-server builds and models (D22.3)
     "sources": LOCAL,                   # read-only copies of source folders (D15)
-    "google-token.json": LOCAL,         # Drive sign-in: a secret, moves to the keychain in Y2
+    "google-token.json": LOCAL,         # Drive sign-in before 0.29: moved into the OS keychain on first start (Y2)
     "google-oauth-client.json": LOCAL,  # the user's own OAuth client
     "client_secret_*.json": LOCAL,      # the same, under the name Google downloads it with
     "backups": LOCAL,                   # database copies made before a migration (Y1.6)

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 
-/** D25: where Sage OS keeps things. App data stays on this computer; the Library (notes + files) is what
- *  moves between your devices when it sits in a synced folder. */
+/** D25: where Sage OS keeps things. App data stays on this computer; the Bookshelf folder (notes + files) is what
+ *  your paired devices will sync with each other directly (D43). Secrets live in the OS keychain (Y2). */
 type Info = {
   data: { path: string; bytes: number; files: number; legacy: boolean };
   library: { path: string; notes: number; notes_bytes: number; files: number; files_bytes: number; sync: string | null; conflicts: string[] } | null;
   vault: string;
-  device: { id: string; name: string; created: number };
+  device: { id: string; name: string; created: number; pairing_key: string | null };
+  secrets: "keychain" | "files";
 };
 const mb = (b: number) => (b > 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${(b / 2 ** 20).toFixed(1)} MB`);
 
@@ -52,7 +53,7 @@ export default function Storage() {
         <section className="border border-cyan/25 p-3">
           <div className="flex items-baseline gap-2">
             <h3 className="display text-[13px] text-cyan">Bookshelf folder</h3>
-            <span className="text-mute">moves between your devices</span>
+            <span className="text-mute">your notes and documents</span>
           </div>
           {!lib ? (
             <p className="mt-1 text-amber">This install still keeps everything in the old <code>data/</code> folder next to the app. Stop Sage OS and run
@@ -61,8 +62,8 @@ export default function Storage() {
             <>
               <div className="mt-1 break-all font-mono text-[11.5px] text-ink/85">{lib.path}</div>
               <div className="mt-1 text-ink/80">{lib.notes} notes ({mb(lib.notes_bytes)}) · {lib.files} files ({mb(lib.files_bytes)})
-                {" · "}{lib.sync ? <span className="text-cyan">synced by {lib.sync}</span> : <span className="text-mute">not in a synced folder: only on this computer</span>}</div>
-              <p className="mt-1 text-mute">Notes are what every AI searches. Put any documents (PDF, Word, slides, spreadsheets, text) in Files and they're searchable and digestible too, on every device that shares this Library.</p>
+                {lib.sync && <>{" · "}<span className="text-cyan">in a {lib.sync} folder</span></>}</div>
+              <p className="mt-1 text-mute">Notes are what every AI searches. Put any documents (PDF, Word, slides, spreadsheets, text) in Files and they're searchable and digestible too.</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <button className="chip" onClick={() => open("library")}>OPEN FOLDER</button>
                 <button className="chip" onClick={() => open("notes")}>OPEN NOTES</button>
@@ -77,9 +78,9 @@ export default function Storage() {
                 </div>
               )}
               <div className="mt-3 border-t border-cyan/15 pt-2">
-                <div className="text-ink/85">Move the Bookshelf to a synced folder</div>
-                <p className="text-mute">Paste the full path of a folder inside OneDrive, iCloud Drive, Dropbox or Syncthing, for example
-                  <code className="mx-1 break-all">C:\Users\you\OneDrive\Sage Bookshelf</code>. On your other device, point Sage OS at the same folder; whatever is there is kept and merged, never overwritten.</p>
+                <div className="text-ink/85">Move the Bookshelf to another folder</div>
+                <p className="text-mute">Paste the full path of a folder on this computer, for example a bigger drive:
+                  <code className="mx-1 break-all">D:\Sage Bookshelf</code>. Whatever is already there is kept and merged, never overwritten. Your devices will sync with each other directly once they're paired; no cloud folder needed.</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="full folder path" aria-label="new Bookshelf folder"
                     className="min-w-[240px] flex-1 border border-cyan/30 bg-void/80 px-2 py-1 font-mono text-[12px] text-ink outline-none focus:border-cyan" />
@@ -115,7 +116,14 @@ export default function Storage() {
                 <button className="chip mute" onClick={() => setNaming(null)}>CANCEL</button>
               </div>
             )}
-            <p className="mt-1 text-mute">The name your other devices will see when sync arrives. Each install has its own ID, even when two share a Bookshelf.</p>
+            <p className="mt-1 text-mute">The name your other devices will see once you pair them. Each install has its own ID.</p>
+            <p className="mt-2 text-ink/85">Pairing key: {info.device.pairing_key
+              ? <span className="font-mono text-cyan" data-testid="pairing-key">{info.device.pairing_key}</span>
+              : <span className="text-amber">none (this computer has no keychain)</span>}</p>
+            <p className="mt-1 text-mute">When you pair this device with another, both screens show these characters; check they match. Its secret half,
+              like your API keys and Google sign-in, is kept by {info.secrets === "keychain"
+                ? (navigator.platform.includes("Mac") ? "the macOS Keychain" : "Windows Credential Manager") + ", never in a file"
+                : "a file only you can read, because this computer has no keychain"}.</p>
           </div>
         </section>
       </div>

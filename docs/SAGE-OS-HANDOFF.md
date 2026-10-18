@@ -28,7 +28,7 @@ macOS; nothing may assume this PC (no Hermes, GPU, drive letter or terminal requ
 lead or reviewer (D26).
 
 ### Where things are
-- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.28.0** (tags through 0.28.0; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
+- **Code:** `C:\Users\you\sage-os`, GitHub `nfihero/sage-os` (private). **Version 0.29.0** (tags through 0.29.0; docs-only changes stay under Unreleased, because a tag triggers a release build; the user pushes; v0.4.0–v0.15.1
   pushed 9 Oct at the user's request). Checked 11 Oct: `pytest` 264/264, `npm run build` clean, smoke 18/18.
 - **Data (D25):** `C:\Users\you\AppData\Roaming\Sage OS` = app data (databases, indexes, source copies, engine,
   Google client + token). The **Library** = `...\Sage OS\Library\Notes` (the vault, 56 approved notes) and
@@ -82,7 +82,7 @@ lead or reviewer (D26).
    `hub/sage_os_hub/pricing.json` from the providers' price pages each release). ~~F1~~ built (0.25.0): Report a problem, and a first-run self-check
    (`--self-check`) in the release workflow on macOS and Windows; the owner's Mac run follows docs/MAC-FIRST-RUN.md.
    O0 built (0.26.0–0.27.0; on-screen name is **Bookshelf**, the owner's choice); its gate is a real first-time user.
-   D42 (0.28.0): the first Mac run's fixes. **Next:** ROADMAP "The plan" (17 Oct): the owner's Mac re-run, then Y2,
+   D42 (0.28.0): the first Mac run's fixes. **Next:** ROADMAP "The plan" (17 Oct): the owner's Mac re-run; ~~Y2~~ done (0.29.0, D44); next
    P1 pairing, P2 records, P3 Bookshelf (D43: no outside service, no cloud folder, no account), J1 + M1, A3, M2. D41 (first demo, 14 Oct): assume users have
    never used an agent; proposed O0, J1, M1, M2, O1 (ROADMAP track *From the first demo*), order to be decided with the user.
 2. ~~Y1~~ done (0.16.0). The user wants to try sync on their own MacBook: nothing carries logs between devices

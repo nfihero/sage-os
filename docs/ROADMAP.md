@@ -17,7 +17,7 @@ sync-ready data model (Y1).
 | # | Step | What you get | Size |
 |---|---|---|---|
 | 0 | **Mac re-run** (owner) | The rest of docs/MAC-FIRST-RUN.md on 0.28.0: Gatekeeper, a local model on 8 GB, ADD FILES, the report email, an update keeping data | owner |
-| 1 | **Y2** secrets in the keychain | The Google sign-in token and the engine key leave plain files; each device gets its own key pair, ready for pairing | small |
+| 1 | ~~**Y2** secrets in the keychain~~ **done (0.29.0, D44)** | The Google sign-in token left its file; each device has its own pairing key | small |
 | 2 | **P1** pair your devices | *Add a device* on the PC shows a code; type it on the Mac. They find each other on your network. Remove a device any time | medium |
 | 3 | **P2** sync chats and decisions | Chats, inbox decisions, undo history, digests and threads flow between paired devices and merge (Y1 merge) | medium |
 | 4 | **P3** sync the Bookshelf | Notes and documents copy across by content; a file changed on both keeps both copies | medium |
@@ -105,7 +105,7 @@ talk to each other directly over your own network. Y1's data model carries over 
 |---|---|---|
 | Y0 | App data per computer; the Bookshelf (Notes + Files) can sit in a folder you choose; STORAGE tab (open, export, move, conflicts) (D25). Folder sync through a cloud service is no longer suggested (D43) | **Done** (9 Oct, v0.15.0) |
 | Y1 | **Sync-ready data model** (D27 "do now"): ULIDs on every record, tombstones, append-only change logs, synced vs device-local stores split, a device identity | Two hub instances on one PC, sharing only the synced stores by file copy, converge with no lost or duplicated item — **pass** (11 Oct, v0.16.0) |
-| Y2 | **Secrets in the keychain**: the Google token and the engine key (API keys done in D40), and each device's own key pair for pairing | No secret is a plain file in app data |
+| Y2 | **Secrets in the keychain**: the Google token and the engine key (API keys done in D40), and each device's own key pair for pairing | No secret is a plain file in app data — **pass** (18 Oct, v0.29.0, D44) |
 | P1 | **Pairing**: *Add a device* shows a short code, the other device types it; key pairs exchanged and checked; devices found on the local network (Bonjour/mDNS) or by address; a separate sync listener that accepts paired devices only (the hub stays localhost-only); remove a device | A Mac and a PC pair with a code; an unpaired device is refused; a removed device can't connect again |
 | P2 | **Records sync**: change logs exchanged over the paired, encrypted connection and replayed with the Y1 merge; per-device cursors; in the background when both are on the same network | A chat started on the Mac and continued on the PC, and an inbox decision on each, converge on both with nothing lost or doubled, made apart or together |
 | P3 | **Bookshelf sync**: notes and files by content hash; both copies kept when one file changed on two devices; STORAGE shows them | A note added on the Mac and a document added on the PC appear on both; a note edited on both keeps both versions |

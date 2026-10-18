@@ -42,7 +42,8 @@ from .engine import EmbedEngine, EngineError, LocalEngine
 from .gamemode import GameMode
 from .inbox import Inbox
 from .threads import Threads, ai_label
-from .keys import CLOUD, Keys
+from .keys import CLOUD, Keys, KeychainJSON
+from .sync.devicekey import DeviceKey
 from . import adddocs, modelnames, report
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
@@ -141,7 +142,10 @@ class Hub:
         self.index = SearchIndex(cfg.vault_index)
         self.writer = Writer(self.vault, cfg.vault_journal)
         self.trust = Trust(self.writer.db, self.writer.lock)     # K7: levels, roles and every agent's log (D36)
-        self.drive = GoogleDrive(cfg.google_client, cfg.google_token)
+        # Y2: the Google sign-in token lives in the OS keychain (moved there from google-token.json on first start)
+        self.drive = GoogleDrive(cfg.google_client, cfg.google_token,
+                                 KeychainJSON(self.keys, "google-token", cfg.google_token, droppable=("access_token", "expires_at")))
+        self.device_key = DeviceKey.load(self.keys, self.device.id)       # Y2: this device's pairing key (P1)
         specs = [SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
                             s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
                             api=bool(s.get("api", False)))
@@ -504,6 +508,10 @@ class Hub:
                        context={"held": True, "agent": who, "where": exc.where, "category": exc.category, "changes": preview})
 
     # -- source library (D15) -------------------------------------------------------------------
+    def device_info(self) -> dict:
+        """This device, with its pairing key's fingerprint (Y2) for a person to compare when pairing (P1)."""
+        return self.device.public() | {"pairing_key": self.device_key.fingerprint if self.device_key else None}
+
     def publish_sources(self):
         self.panel("sources", self.sources.summary())
 
@@ -640,7 +648,8 @@ class Hub:
         data_bytes, data_files = storage.folder_size(cfg.data_dir)
         out = {"data": {"path": str(cfg.data_dir), "bytes": data_bytes, "files": data_files,
                         "legacy": cfg.data_dir == ROOT / "data"},
-               "library": None, "vault": str(self.vault.root), "device": self.device.public()}
+               "library": None, "vault": str(self.vault.root), "device": self.device_info(),
+               "secrets": "keychain" if self.drive.store is not None and self.drive.store.in_keychain else "files"}
         lib = cfg.library
         if lib is not None:
             nb, nn = storage.folder_size(lib / "Notes")
@@ -1640,7 +1649,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             hub.device.rename(body.name)
         except ValueError as exc:
             raise HTTPException(400, str(exc))
-        return hub.device.public()
+        return hub.device_info()
 
     @app.get("/api/storage/export")
     async def storage_export(files: bool = False):
@@ -1653,7 +1662,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
     async def storage_library(body: LibraryMove):
         path = Path(body.path).expanduser()
         if not path.is_absolute():
-            raise HTTPException(400, "give the full path of a folder, e.g. C:\\Users\\you\\OneDrive\\Sage Bookshelf")
+            raise HTTPException(400, "give the full path of a folder, e.g. D:\\Sage Bookshelf")
         try:
             r = await asyncio.to_thread(hub.move_library, path)
         except (ValueError, OSError) as exc:

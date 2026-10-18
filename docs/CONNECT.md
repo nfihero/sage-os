@@ -75,6 +75,10 @@ A pasted key goes to your operating system's keychain: **Windows Credential Mana
 Keychain** on a Mac, under the name *Sage OS*. It is never written to a file and never sent to the page again. Only
 Sage OS's own hub reads it, to talk to that provider. **DISCONNECT** removes it from the keychain.
 
+The same goes for the Google Drive sign-in (moved out of `google-token.json` the first time 0.29 starts) and each
+device's pairing key, used later to pair your devices with each other. The local model's key is never stored at all:
+a new one is made each time the model starts.
+
 Developers can still set keys in `config.local.toml` with `[[models]]` and `api_key_env`. A provider set there
 wins over a keychain key with the same name.
 

@@ -82,3 +82,18 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+
+  # Two tags pushed together build at the same time, and whichever finishes last would become GitHub's "latest"
+  # release, which is what every installed copy's updater reads. Keep "latest" on the highest version.
+  latest:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark the newest version as the latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          newest=$(gh release list -R "$GITHUB_REPOSITORY" --limit 50 --exclude-drafts --exclude-pre-releases \
+            --json tagName -q '.[].tagName' | sort -V | tail -1)
+          echo "newest release: $newest"
+          gh release edit "$newest" -R "$GITHUB_REPOSITORY" --latest

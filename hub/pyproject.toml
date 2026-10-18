@@ -1,6 +1,6 @@
 [project]
 name = "sage-os-hub"
-version = "0.28.0"
+version = "0.29.0"
 description = "Sage OS hub: one event stream over Hermes, Claude Code and the local GPU (Phase 1: read-only)"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,7 +13,8 @@ dependencies = [
     "pyyaml>=6",
     "pypdf>=5",
     "numpy>=2",                 # meaning-based search (K14)
-    "keyring>=25",              # API keys in the OS keychain (D40)
+    "keyring>=25",              # secrets in the OS keychain (D40, Y2)
+    "cryptography>=42",         # each device's pairing key (Y2)
 ]
 
 [project.optional-dependencies]
