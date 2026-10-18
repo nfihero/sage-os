@@ -97,6 +97,20 @@ def run(out: Path, with_engine: bool) -> int:
             return k.fingerprint
         check("this device's pairing key (in the keychain)", pairing_key)
 
+        def sync_listener():
+            hub = state["app"].state.hub
+            hub.sync.host, hub.sync.port, hub.sync.mdns = "127.0.0.1", 0, False      # this computer only, for the check
+            r = c.post("/api/devices/pairing", headers={"X-Sage-OS": "1"})
+            assert r.status_code == 200 and r.json()["listening"], f"the sync listener didn't open: {r.text[:200]}"
+            from .sync.listener import Peer
+            p = Peer(f"127.0.0.1:{hub.sync.bound}", expect_key=hub.device_key.public_b64)   # TLS + the signed hello
+            p.close()
+            port = hub.sync.bound
+            c.post("/api/devices/pairing/cancel", headers={"X-Sage-OS": "1"})
+            assert hub.sync.task is None, "the sync listener stayed open after the pairing was cancelled"
+            return {"port": port, "tls": p.tls_fpr[:16], "closed_after": True}
+        check("the sync listener opens and proves who it is", sync_listener)
+
         def report():
             text = c.post("/api/report/preview", json={"description": "self-check"}, headers={"X-Sage-OS": "1"}).json()["text"]
             assert "SAGE OS PROBLEM REPORT" in text

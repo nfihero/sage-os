@@ -64,6 +64,10 @@ class Config:
     engine_enabled: bool = True
     engine_root: Path | None = None
     engine_port: int = 8790
+    # [sync] (P1, D45): the listener paired devices reach; only while there's a paired device or a pairing
+    sync_port: int = 8789
+    sync_mdns: bool = True
+    sync_host: str = "0.0.0.0"         # every network this computer is on; 127.0.0.1 keeps it to this computer (tests)
     engine_binary: str | None = None                           # an existing llama-server instead of a download
     engine_model_dirs: list[str] = field(default_factory=list)  # folders with GGUF files already on this computer
 
@@ -192,4 +196,8 @@ def load(path: Path | None = None) -> Config:
     cfg.engine_port = int(eng.get("port", cfg.engine_port))
     cfg.engine_binary = str(here(eng["binary"])) if eng.get("binary") else None
     cfg.engine_model_dirs = [str(here(d)) for d in eng.get("model_dirs", [])]
+    sync = raw.get("sync", {})
+    cfg.sync_port = int(sync.get("port", cfg.sync_port))
+    cfg.sync_mdns = bool(sync.get("mdns", cfg.sync_mdns))
+    cfg.sync_host = str(sync.get("host", cfg.sync_host))
     return cfg

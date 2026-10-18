@@ -12,6 +12,21 @@ user asks. 0.4.0 bundles A1 and K1 because neither was released on its own when 
 
 ## [Unreleased]
 
+## [0.30.0] — 2026-10-18
+
+P1: pair your devices directly (D45). **Gate: pass in tests and on two hubs here; the owner's Mac and PC are the real
+check.** pytest 376.
+
+### Added
+- **Your devices** (⚙ SETTINGS): pair this computer with your others. *ADD A DEVICE* shows a one-time code; on the
+  other device, *I HAVE A CODE*, pick it from the devices found on your network (or type its address), and type the
+  code. Both screens show both keys to compare. *CHECK* reaches a paired device and proves both sides; *REMOVE*
+  unpairs it.
+- A sync listener, separate from the app's own port, that only paired devices can use: TLS, every request signed,
+  and running only while you have a paired device or are showing a code. Sharing chats and the Bookshelf over it
+  comes next (P2, P3).
+- The packaged app's self-check opens the listener on that computer and checks its handshake.
+
 ## [0.29.0] — 2026-10-18
 
 Y2: every secret in the OS keychain (D44). **Gate: pass** (no secret is a plain file in app data). pytest 371.

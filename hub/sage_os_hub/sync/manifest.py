@@ -27,6 +27,7 @@ TABLES: dict[str, dict[str, str]] = {
         "price_overrides": SYNCED,      # the user's corrections to the price list (D40)
         "events": LOCAL,                # the live dashboard's catch-up feed, trimmed to the newest 5,000
         "panels": LOCAL,                # latest panel snapshots (GPU, board, health)
+        "peers": LOCAL,                 # this device's paired devices; each keeps its own list (P1, D45)
     },
     "bookshelf.db": {                   # proposals, the user's decisions and the undo journal (D11, D24)
         "proposals": SYNCED,

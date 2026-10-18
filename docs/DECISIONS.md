@@ -1118,3 +1118,33 @@ review.
   5. **The release workflow keeps "latest" on the highest version** (the 0.27/0.28 pushes left the update feed on
      0.27.0), and the packaged app's self-check also checks the pairing key, then removes its own test key.
 
+## D45 — P1: pairing devices directly, and the listener only they can use
+
+- **Date / by:** 2026-10-18, owner ("start P1"); design by Claude, following D43
+- **Status:** accepted; built in 0.30.0. P1's gate passes in tests (two devices pair with a code; an unpaired device,
+  a wrong code, a replay, a relayed request and a removed device are all refused) and through the screens on two hubs
+  on this PC. The owner's Mac and PC are the real check.
+- **Decision:**
+  1. **A separate listener** (port 8789, `[sync] port`) on the computer's own networks, running **only while this
+     device has a paired device or is showing a pairing code**. It answers four requests (hello, pair, ping, unpair)
+     and nothing else; the hub's own port stays localhost-only. On Windows the first start asks whether Sage OS may
+     use private networks; the screen says to allow it.
+  2. **TLS with a certificate made fresh each start** (P-256). The private key is in memory; it touches disk only in
+     a temporary owner-only file for the moment the TLS library reads it. Trust doesn't come from the certificate:
+     `hello` returns this device's Ed25519 signature (Y2's key) over the certificate's fingerprint, and the caller
+     checks it against the key it paired with, on the same connection.
+  3. **Every request after pairing is signed** with the sender's device key over method, path, body, a time (five
+     minutes either way), a one-use nonce and the receiver's certificate fingerprint. So a replay is refused, a
+     request relayed through someone else's TLS names the wrong certificate and is refused, and only paired, not
+     removed, devices are accepted.
+  4. **Pairing with a code:** *ADD A DEVICE* shows a 12-character code from 31 easy-to-read characters (about 59
+     bits), good for ten minutes and five tries, used once. The joining device proves it knows the code with an HMAC
+     over both keys and the host's certificate; the host answers with its own. The code never travels, and a
+     stranger in between can't swap in a key without it. Both screens then show both key fingerprints to compare.
+  5. **Finding each other:** Bonjour/mDNS (`zeroconf`) while the listener runs, announcing the device's ID and name;
+     every announced address is tried in turn (a PC can have virtual adapters). Typing an address works too.
+  6. **The paired list is per device** (hub.db `peers`, LOCAL in the manifest). *REMOVE* tells the other device
+     (best effort) and refuses it from then on; pairing again brings it back.
+- **Costs:** while the listener runs, the computer's name and Sage OS's presence are visible to others on the same
+  network (as with any Bonjour device); anyone there can ask `hello` or try a code (five tries, then the code ends).
+

@@ -46,6 +46,10 @@ Ollama): **[how to connect each one](docs/CONNECT.md)**. A short guide explains 
 **Something not working?** **REPORT A PROBLEM** in the top bar writes a report you read in full, then opens an email
 to send it with. It never includes your notes, documents, chats or keys.
 
+**Your devices:** ⚙ SETTINGS → *Your devices* pairs this computer with your others, directly over your own
+network with a one-time code: no account and no cloud. (Sharing chats and the Bookshelf between them comes next.)
+On Windows, allow Sage OS on private networks when asked.
+
 **Updates:** when a new version is out, an amber **UPDATE** chip appears in the top bar. Click it to see what's new,
 then **Update and restart**. Updates are signed; anything not signed by this project is refused. Your notes and
 settings are kept.

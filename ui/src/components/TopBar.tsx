@@ -16,9 +16,9 @@ const SERVICES = [
 
 type ThemeCtl = { theme: Theme; setTheme: (t: Theme) => void; motion: Motion; setMotion: (m: Motion) => void };
 
-export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels, onUsage, onReport }: {
+export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, theme, onLogo, onBookshelf, onGuide, onModels, onUsage, onReport, onDevices }: {
   hub: HubState; inboxCount: number; compact: boolean; unseen: Guard[]; onSafety: () => void; theme: ThemeCtl; onLogo?: () => void;
-  onBookshelf: () => void; onGuide: () => void; onModels: () => void; onUsage: () => void; onReport: () => void;
+  onBookshelf: () => void; onGuide: () => void; onModels: () => void; onUsage: () => void; onReport: () => void; onDevices: () => void;
 }) {
   const vault = hub.panels.vault;
   const now = useNow(1000);
@@ -84,7 +84,7 @@ export default function TopBar({ hub, inboxCount, compact, unseen, onSafety, the
         <button className="chip" onClick={onGuide} data-tour="guide" title="What Sage OS does, and a tour of the screen">? GUIDE</button>
         <button className="chip mute" onClick={onReport} data-testid="report-open" title="Something not working? Tell us; you see everything before it's sent">
           {compact ? "REPORT" : "REPORT A PROBLEM"}</button>
-        <Settings theme={theme} game={game} onModels={onModels} onSafety={onSafety} />
+        <Settings theme={theme} game={game} onModels={onModels} onSafety={onSafety} onDevices={onDevices} />
         <span className="flex items-center" title={hub.connected ? "hub stream connected" : "reconnecting to hub"}>
           <span className={`light ${hub.connected ? "up" : "down"}`} />
         </span>
@@ -103,7 +103,7 @@ function gameSummary(g: HubState["panels"]["gamemode"]): Game {         // game 
 }
 
 /** Everything a newcomer doesn't need on the first day, one click away (O0). */
-function Settings({ theme, game, onModels, onSafety }: { theme: ThemeCtl; game: Game; onModels: () => void; onSafety: () => void }) {
+function Settings({ theme, game, onModels, onSafety, onDevices }: { theme: ThemeCtl; game: Game; onModels: () => void; onSafety: () => void; onDevices: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -121,6 +121,9 @@ function Settings({ theme, game, onModels, onSafety }: { theme: ThemeCtl; game: 
       {open && (
         <div role="menu" className="border border-cyan/40 bg-void/95 py-1 shadow-[0_8px_30px_rgba(0,0,0,.6)] backdrop-blur"
           style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", width: 270, zIndex: 60 }}>
+          <button role="menuitem" className={row} onClick={() => { setOpen(false); onDevices(); }} data-testid="devices-open">
+            <span className="copy flex-1">Your devices <span className="block text-[11px] text-mute">pair your other computers</span></span>
+          </button>
           <label className={row}>
             <span className="copy flex-1">Look</span>
             <select value={theme.theme} onChange={(e) => theme.setTheme(e.target.value as Theme)}

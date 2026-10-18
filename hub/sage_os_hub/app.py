@@ -44,6 +44,9 @@ from .inbox import Inbox
 from .threads import Threads, ai_label
 from .keys import CLOUD, Keys, KeychainJSON
 from .sync.devicekey import DeviceKey
+from .sync.listener import SyncService
+from .sync.listener import addresses as lan_addresses
+from .sync.peers import PairingError, Peers
 from . import adddocs, modelnames, report
 from .usage import Usage
 from .knowledge import ProposalError, SearchIndex, SensitiveContent, Vault, Writer
@@ -146,6 +149,8 @@ class Hub:
         self.drive = GoogleDrive(cfg.google_client, cfg.google_token,
                                  KeychainJSON(self.keys, "google-token", cfg.google_token, droppable=("access_token", "expires_at")))
         self.device_key = DeviceKey.load(self.keys, self.device.id)       # Y2: this device's pairing key (P1)
+        self.peers = Peers(self.store.db, self.store.lock, self.device_key, self.device.id, lambda: self.device.name)
+        self.sync = SyncService(self, cfg.sync_port, host=cfg.sync_host, mdns=cfg.sync_mdns)  # P1: paired devices only (D45)
         specs = [SourceSpec(s["name"], Path(s["path"]), list(s.get("include", [])), list(s.get("exclude", [])),
                             s.get("notes_folder"), list(s.get("strip", [])), bool(s.get("google", False)),
                             api=bool(s.get("api", False)))
@@ -1035,6 +1040,11 @@ class KeyBody(BaseModel):
     key: str = Field(min_length=1, max_length=500)
 
 
+class JoinBody(BaseModel):
+    address: str = Field(min_length=3, max_length=200)
+    code: str = Field(min_length=12, max_length=40)
+
+
 class FolderBody(BaseModel):
     path: str | None = Field(default=None, max_length=1000)
 
@@ -1120,6 +1130,7 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if "chat" in hub.agents:
             hub.agents["chat"].publish()
         hub.digests.publish()
+        await hub.sync.apply()                         # P1: the sync listener, if this device has paired devices
         if hub.engine:
             orphan = await asyncio.to_thread(hub.engine.reap_orphan)
             if orphan:
@@ -1147,6 +1158,8 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
             t.cancel()
         for a in hub.agents.values():
             await a.shutdown()
+        await hub.sync.stop()
+        await asyncio.to_thread(hub.sync.close)
         if hub.engine:
             await asyncio.to_thread(hub.engine.stop)
         await asyncio.to_thread(hub.semantic.close)
@@ -1283,6 +1296,68 @@ def create_app(cfg: Config | None = None, start_adapters: bool = True) -> FastAP
         if doc is None:
             raise HTTPException(404, "no such source file")
         return doc
+
+    # -- your devices (P1, D45): pairing, the paired list, checks ----------------------------------------------
+    def devices_view() -> dict:
+        s = hub.sync
+        p = hub.peers.pairing()
+        return {"this": hub.device_info() | {"addresses": lan_addresses(), "port": s.bound or s.port},
+                "listening": s.task is not None, "error": s.error,
+                "pairing": {"code": p["code"], "expires": p["expires"]} if p else None,
+                "peers": [{k: v for k, v in x.items() if k != "pubkey"} for x in hub.peers.all()]}
+
+    @app.get("/api/devices")
+    async def devices():
+        return devices_view()
+
+    @app.post("/api/devices/pairing", dependencies=W)
+    async def devices_pair():
+        try:
+            hub.peers.start_pairing()
+        except PairingError as exc:
+            raise HTTPException(409, str(exc))
+        await hub.sync.apply()
+        if hub.sync.task is None:
+            hub.peers.cancel_pairing()
+            raise HTTPException(409, hub.sync.error or "the sync listener didn't start")
+        return devices_view()
+
+    @app.post("/api/devices/pairing/cancel", dependencies=W)
+    async def devices_pair_cancel():
+        hub.peers.cancel_pairing()
+        await hub.sync.apply()
+        return devices_view()
+
+    @app.post("/api/devices/join", dependencies=W)
+    async def devices_join(body: JoinBody):
+        try:
+            peer = await asyncio.to_thread(hub.sync.join, body.address.strip(), body.code)
+        except PairingError as exc:
+            raise HTTPException(400, str(exc))
+        await hub.sync.apply()
+        hub.event("system", "devices", "device.paired", {"device": peer["id"], "name": peer["name"]})
+        return devices_view() | {"paired": {k: v for k, v in peer.items() if k != "pubkey"}}
+
+    @app.get("/api/devices/nearby")
+    async def devices_nearby():
+        return {"nearby": await asyncio.to_thread(hub.sync.browse)}
+
+    @app.post("/api/devices/{device_id}/check", dependencies=W)
+    async def devices_check(device_id: str = FPath(max_length=40)):
+        try:
+            return await asyncio.to_thread(hub.sync.check, device_id)
+        except PairingError as exc:
+            raise HTTPException(400, str(exc))
+
+    @app.post("/api/devices/{device_id}/remove", dependencies=W)
+    async def devices_remove(device_id: str = FPath(max_length=40)):
+        if hub.peers.get(device_id) is None:
+            raise HTTPException(404, "not a paired device")
+        await asyncio.to_thread(hub.sync.tell_removed, device_id)
+        hub.peers.remove(device_id)
+        hub.event("system", "devices", "device.removed", {"device": device_id})
+        await hub.sync.apply()
+        return devices_view()
 
     # -- adding documents from the app (O0) -------------------------------------------------------------------
     @app.post("/api/bookshelf/files", dependencies=W)

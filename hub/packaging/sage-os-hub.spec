@@ -15,7 +15,8 @@ datas += [(str(ROOT / "hub" / "sage_os_hub" / "engine" / "catalog.json"), "sage_
 datas += [(str(ROOT / "hub" / "sage_os_hub" / "pricing.json"), "sage_os_hub")]
 datas += copy_metadata("keyring")      # keyring finds its OS backends (Windows, macOS) through its entry points
 hidden = (collect_submodules("sage_os_hub") + collect_submodules("uvicorn") + collect_submodules("mcp", filter=lambda n: not n.startswith("mcp.cli"))
-          + collect_submodules("claude_agent_sdk") + collect_submodules("keyring"))   # keyring picks its OS backend at run time
+          + collect_submodules("claude_agent_sdk") + collect_submodules("keyring")    # keyring picks its OS backend at run time
+          + collect_submodules("zeroconf") + collect_submodules("ifaddr"))   # devices finding each other (P1)
 
 a = Analysis([str(ROOT / "hub" / "packaging" / "run_hub.py")], pathex=[str(ROOT / "hub")], datas=datas,
              hiddenimports=hidden, excludes=["tkinter", "pytest", "PyInstaller"], noarchive=False)
